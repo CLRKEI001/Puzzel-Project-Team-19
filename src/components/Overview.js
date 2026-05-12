@@ -1,6 +1,7 @@
 import React from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, CartesianGrid } from "recharts";
- 
+import KPIcards from "./KPIcards";
+
 const T = {
   en: {
     totalScreened: "Total Screened", flagged: "Flagged", onTrack: "On Track", avgScore: "Avg Score",
@@ -101,31 +102,17 @@ export default function Overview({ children, lang }) {
   const trendData = Object.entries(monthlyCounts).map(([month, count]) => ({ month, count }));
  
   return (
-    <div className="page-fade">
+  
+    <div className="page-fade">  
       {/* STAT CARDS */}
-      <div className="stats-grid">
-        <div className="stat-card c1">
-          <div className="stat-label">{t.totalScreened}</div>
-          <div className="stat-value">{total}</div>
-          <div className="stat-change">↑ {t.thisWeek}</div>
-        </div>
-        <div className="stat-card c2">
-          <div className="stat-label">{t.flagged}</div>
-          <div className="stat-value">{flagged}</div>
-          <div className="stat-change down">{flagged} {t.requireFollowUp}</div>
-        </div>
-        <div className="stat-card c3">
-          <div className="stat-label">{t.onTrack}</div>
-          <div className="stat-value">{onTrack}</div>
-          <div className="stat-change">↑ {t.aboveAverage}</div>
-        </div>
-        <div className="stat-card c4">
-          <div className="stat-label">{t.avgScore}</div>
-          <div className="stat-value">{avgScore}<span>%</span></div>
-          <div className="stat-change">Eastern Cape pilot</div>
-        </div>
-      </div>
- 
+   <KPIcards
+     total = {total}
+    flagged = {flagged}
+    onTrack ={onTrack}
+    avgScore = {avgScore}
+    trendData = {trendData}
+    t = {t}
+  />
       {/* ROW 1: DOMAIN PERFORMANCE + PIE */}
       <div className="two-col">
         <div className="card">

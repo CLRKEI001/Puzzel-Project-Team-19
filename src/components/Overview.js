@@ -409,6 +409,7 @@ export default function Overview({ children, lang }) {
           )}
         </div>
 
+{/* This is for the results distribution pie chart */}
         <div className="card">
           <div className="card-header">
             <div className="card-title">{t.resultsDist}</div>
@@ -452,7 +453,7 @@ export default function Overview({ children, lang }) {
     );
   }}
 />
-              <Tooltip />
+              
               <Legend iconType="circle" iconSize={10} />
             </PieChart>
           </ResponsiveContainer>
@@ -480,10 +481,10 @@ export default function Overview({ children, lang }) {
             <div className="card-title">{t.byLanguage}</div>
             <span className="card-badge badge-purple">{t.breakdown}</span>
           </div>
-          <ResponsiveContainer width="100%" height={180}>
+          <ResponsiveContainer width="100%" height={200}>
             <PieChart>
-              <Pie data={langData} cx="50%" cy="50%" outerRadius={70} dataKey="value"
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+              <Pie data={langData} cx="50%" cy="50%" outerRadius={60} dataKey="value"
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={true}>
                 {langData.map((_, i) => <Cell key={i} fill={LANG_COLORS[i % LANG_COLORS.length]} />)}
               </Pie>
               <Tooltip />

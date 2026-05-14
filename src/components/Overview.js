@@ -69,6 +69,23 @@ const T = {
 };
 
 const COLORS = { teal: "#009B8D", pink: "#E8175D", purple: "#6B2F8A", orange: "#F26522" };
+const STATUS_DESCRIPTIONS = {
+  en: {
+    "On Track": "Child is developing as expected for their age with no concerns.",
+    "Monitor Needed": "Child is progressing but may need additional support or observation.",
+    "Developmental Concerns": "Child has been flagged and requires follow-up or intervention.",
+  },
+  af: {
+    "Op Koers": "Kind ontwikkel soos verwag vir hul ouderdom sonder bekommernisse.",
+    "Monitering Benodig": "Kind vorder maar mag ekstra ondersteuning of waarneming benodig.",
+    "Ontwikkelingsbekommernisse": "Kind is gevlag en benodig opvolg of ingryping.",
+  },
+  xh: {
+    "Esendleleni": "Umntwana uyakhula ngendlela elindelekileyo ngokulingana neminyaka yakhe.",
+    "Ukulandela Kuyadingeka": "Umntwana uyaqhubeka kodwa angadinga inkxaso eyongezelelekileyo.",
+    "Iingxaki Zentlalo": "Umntwana ukhombiwe kwaye udinga ukulandelwa okanye ukungenelela.",
+  },
+};
 const DOMAIN_BENCHMARK = 70;
 const DOMAIN_KEYS = ["cognitive", "motor", "language_score", "social", "emotion", "moral"];
 const GROUP_COLORS = ["#009B8D", "#6B2F8A", "#F26522", "#E8175D", "#378ADD", "#639922"];
@@ -402,6 +419,39 @@ export default function Overview({ children, lang }) {
               <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
                 {pieData.map((entry, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
               </Pie>
+              <Tooltip
+              wrapperStyle={{ zIndex: 1000 }}
+              filterNull={false}
+              cursor={ false }
+  content={({ active, payload }) => {
+    if (!active || !payload || !payload.length) return null;
+    const name = payload[0].name;
+    const value = payload[0].value;
+    const descriptions = STATUS_DESCRIPTIONS[lang] || STATUS_DESCRIPTIONS.en;
+    const description = descriptions[name] || "";
+    return (
+      <div style={{
+        background: "#fff",
+        border: "1px solid #eee",
+        borderRadius: 8,
+        padding: "10px 14px",
+        fontSize: 12,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+        maxWidth: 200,
+      }}>
+        <div style={{ fontWeight: 700, marginBottom: 4, color: payload[0].payload.fill }}>
+          {name}
+        </div>
+        <div style={{ color: "#555", marginBottom: 6 }}>
+          {value} {value === 1 ? "child" : "children"}
+        </div>
+        <div style={{ color: "#777", fontSize: 11, lineHeight: 1.4 }}>
+          {description}
+        </div>
+      </div>
+    );
+  }}
+/>
               <Tooltip />
               <Legend iconType="circle" iconSize={10} />
             </PieChart>

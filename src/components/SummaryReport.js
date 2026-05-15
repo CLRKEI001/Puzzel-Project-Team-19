@@ -1,353 +1,496 @@
-import React, { useState } from "react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import * as XLSX from "xlsx";
- 
-const T = {
-  en: {
-    title: "Summary Report", subtitle: "PuzzleBox Screener System · Eastern Cape Pilot 2026",
-    exportPDF: "Export PDF", exportExcel: "Export Excel", generating: "Generating...",
-    projectOverview: "Project Overview", screeningResults: "Screening Results Summary",
-    domainAnalysis: "Domain Performance Analysis", flaggedChildren: "Flagged Children",
-    totalScreened: "Total Children Screened", onTrack: "On Track", progressing: "Progressing",
-    devConcerns: "Developmental Concerns", flagged: "Flagged for Follow-up",
-    avgScore: "Average Total Score", schools: "Schools Covered", languages: "Languages Used",
-    cognitive: "Cognitive", motor: "Fine Motor", language: "Language",
-    social: "Social Cognition", emotion: "Emotion", moral: "Moral",
-    childID: "Child ID", school: "School", score: "Score", status: "Status", date: "Date",
-    reportGenerated: "Report generated on", by: "by", system: "PuzzleBox Screener System",
-    disclaimer: "DISCLAIMER: This report contains simplified percentile summaries only. Results must not be interpreted as clinical diagnoses. Detailed domain scores are available to registered psychologists only.",
-    fundingNote: "This data was collected as part of the PuzzleBox Screener standardisation phase and is intended to support evidence-based funding applications and programme evaluation."
-  },
-  af: {
-    title: "Opsommingsverslag", subtitle: "PuzzleBox Sifterstelsel · Oos-Kaap Loodsprojek 2026",
-    exportPDF: "Voer PDF Uit", exportExcel: "Voer Excel Uit", generating: "Genereer...",
-    projectOverview: "Projekoorsig", screeningResults: "Siftingsresultate Opsomming",
-    domainAnalysis: "Domeinprestasie Analise", flaggedChildren: "Gevlae Kinders",
-    totalScreened: "Totale Kinders Gesif", onTrack: "Op Koers", progressing: "Vordering",
-    devConcerns: "Ontwikkelingsbekommernisse", flagged: "Gevlag vir Opvolg",
-    avgScore: "Gemiddelde Totale Punt", schools: "Skole Gedek", languages: "Tale Gebruik",
-    cognitive: "Kognitief", motor: "Fyn Motories", language: "Taal",
-    social: "Sosiale Kognisie", emotion: "Emosie", moral: "Moreel",
-    childID: "Kind ID", school: "Skool", score: "Punt", status: "Status", date: "Datum",
-    reportGenerated: "Verslag gegenereer op", by: "deur", system: "PuzzleBox Sifterstelsel",
-    disclaimer: "VRYWARING: Hierdie verslag bevat slegs vereenvoudigde persentiel-opsommings. Resultate moet nie as kliniese diagnoses geïnterpreteer word nie.",
-    fundingNote: "Hierdie data is ingesamel as deel van die PuzzleBox Sifter-standaardiseringsfase."
-  },
-  xh: {
-    title: "Ingxelo Efuphi", subtitle: "Inkqubo ye-PuzzleBox · Umzekelo weMpuma Koloni 2026",
-    exportPDF: "Thumela kwi-PDF", exportExcel: "Thumela kwi-Excel", generating: "Ikhiqiza...",
-    projectOverview: "Inkcazelo yeProjekthi", screeningResults: "Isishwankathelo Seziphumo",
-    domainAnalysis: "Uhlalutyo lweMihlaba", flaggedChildren: "Abantwana Abakhombiweyo",
-    totalScreened: "Isibalaniso Sabantwana", onTrack: "Esendleleni", progressing: "Inkqubela",
-    devConcerns: "Iingxaki Zentlalo", flagged: "Ikhombiwe Ukulandelwa",
-    avgScore: "Amanqaku Apha Phakathi", schools: "Izikolo Ezikhethiweyo", languages: "Iilwimi Ezisetyenzisiweyo",
-    cognitive: "Ukucinga", motor: "Amandla", language: "Ulwimi",
-    social: "Uluntu", emotion: "Imvakalelo", moral: "Isimo",
-    childID: "ID yoMntwana", school: "Isikolo", score: "Amanqaku", status: "Imeko", date: "Umhla",
-    reportGenerated: "Ingxelo ikhiqizwe ngo", by: "ngu", system: "Inkqubo ye-PuzzleBox",
-    disclaimer: "ISAZISO: Le ngxelo iqulathe izishwankathelo zamanqaku asilwe kuphela.",
-    fundingNote: "Le ngxelo yaqokelelwa njengeyeyinxalenye yefeyizi yokumiselwa kwe-PuzzleBox Screener."
-  }
+import React, { useState, useMemo } from "react";
+
+/* ─── MOCK DATA ──────────────────────────────────────────────────────────── */
+const ALL_CHILDREN = [
+  { id:"PB-001", name:"Child PB-001", school:"Adelaide Primary",    district:"Komani District",           age:6, gender:"F", language:"isiXhosa",  cognitive:72, motor:68, language_score:65, social:70, emotion:74, moral:69, total:70, status:"On Track",               flagged:false, date:"2026-02-05", examiner:"Dr. Moyo" },
+  { id:"PB-002", name:"Child PB-002", school:"Adelaide Primary",    district:"Komani District",           age:5, gender:"M", language:"isiXhosa",  cognitive:38, motor:44, language_score:40, social:45, emotion:42, moral:43, total:42, status:"Developmental Concerns",  flagged:true,  date:"2026-02-10", examiner:"Dr. Moyo" },
+  { id:"PB-003", name:"Child PB-003", school:"Komani ECD",          district:"Komani District",           age:6, gender:"F", language:"Afrikaans", cognitive:80, motor:75, language_score:78, social:82, emotion:79, moral:77, total:79, status:"On Track",               flagged:false, date:"2026-02-12", examiner:"Ms. Pietersen" },
+  { id:"PB-004", name:"Child PB-004", school:"Komani ECD",          district:"Komani District",           age:5, gender:"M", language:"Afrikaans", cognitive:30, motor:35, language_score:33, social:36, emotion:34, moral:38, total:34, status:"Developmental Concerns",  flagged:true,  date:"2026-02-14", examiner:"Ms. Pietersen" },
+  { id:"PB-005", name:"Child PB-005", school:"edcsc",               district:"Stutterheim District",      age:6, gender:"F", language:"English",   cognitive:58, motor:62, language_score:55, social:60, emotion:57, moral:54, total:58, status:"Progressing",           flagged:false, date:"2026-02-17", examiner:"Mr. Dlamini" },
+  { id:"PB-006", name:"Child PB-006", school:"edcsc",               district:"Stutterheim District",      age:6, gender:"M", language:"English",   cognitive:65, motor:70, language_score:68, social:63, emotion:66, moral:64, total:66, status:"Progressing",           flagged:false, date:"2026-02-18", examiner:"Mr. Dlamini" },
+  { id:"PB-007", name:"Child PB-007", school:"Stutterheim Primary", district:"Stutterheim District",      age:5, gender:"F", language:"isiXhosa",  cognitive:76, motor:72, language_score:74, social:78, emotion:75, moral:73, total:75, status:"On Track",               flagged:false, date:"2026-02-19", examiner:"Dr. Moyo" },
+  { id:"PB-008", name:"Child PB-008", school:"Stutterheim Primary", district:"Stutterheim District",      age:6, gender:"M", language:"isiXhosa",  cognitive:36, motor:40, language_score:38, social:41, emotion:39, moral:42, total:39, status:"Developmental Concerns",  flagged:true,  date:"2026-02-21", examiner:"Dr. Moyo" },
+  { id:"PB-009", name:"Child PB-009", school:"Fort Beaufort ECD",   district:"Fort Beaufort District",    age:5, gender:"F", language:"Afrikaans", cognitive:62, motor:58, language_score:60, social:55, emotion:63, moral:59, total:60, status:"Progressing",           flagged:false, date:"2026-02-25", examiner:"Ms. Pietersen" },
+  { id:"PB-010", name:"Child PB-010", school:"Fort Beaufort ECD",   district:"Fort Beaufort District",    age:6, gender:"M", language:"English",   cognitive:78, motor:82, language_score:79, social:80, emotion:77, moral:76, total:79, status:"On Track",               flagged:false, date:"2026-02-27", examiner:"Mr. Dlamini" },
+  { id:"PB-011", name:"Child PB-011", school:"Fort Beaufort ECD",   district:"Fort Beaufort District",    age:5, gender:"F", language:"isiXhosa",  cognitive:28, motor:32, language_score:30, social:29, emotion:33, moral:31, total:30, status:"Developmental Concerns",  flagged:true,  date:"2026-03-03", examiner:"Dr. Moyo" },
+  { id:"PB-012", name:"Child PB-012", school:"Adelaide Primary",    district:"Komani District",           age:6, gender:"M", language:"Afrikaans", cognitive:55, motor:60, language_score:57, social:52, emotion:58, moral:54, total:56, status:"Progressing",           flagged:false, date:"2026-03-05", examiner:"Ms. Pietersen" },
+  { id:"PB-013", name:"Child PB-013", school:"Komani ECD",          district:"Komani District",           age:6, gender:"F", language:"English",   cognitive:83, motor:79, language_score:81, social:85, emotion:82, moral:80, total:82, status:"On Track",               flagged:false, date:"2026-03-07", examiner:"Mr. Dlamini" },
+  { id:"PB-014", name:"Child PB-014", school:"edcsc",               district:"Stutterheim District",      age:5, gender:"M", language:"isiXhosa",  cognitive:67, motor:71, language_score:69, social:65, emotion:68, moral:66, total:68, status:"Progressing",           flagged:false, date:"2026-03-10", examiner:"Dr. Moyo" },
+  { id:"PB-015", name:"Child PB-015", school:"Stutterheim Primary", district:"Stutterheim District",      age:6, gender:"F", language:"Afrikaans", cognitive:74, motor:70, language_score:72, social:76, emotion:73, moral:71, total:73, status:"On Track",               flagged:false, date:"2026-03-12", examiner:"Ms. Pietersen" },
+  { id:"PB-016", name:"Child PB-016", school:"Fort Beaufort ECD",   district:"Fort Beaufort District",    age:5, gender:"M", language:"English",   cognitive:59, motor:63, language_score:61, social:57, emotion:60, moral:58, total:60, status:"Progressing",           flagged:false, date:"2026-03-15", examiner:"Mr. Dlamini" },
+];
+
+const DOMAINS = [
+  { key:"cognitive",      label:"Cognitive" },
+  { key:"motor",          label:"Fine Motor" },
+  { key:"language_score", label:"Language" },
+  { key:"social",         label:"Social Cognition" },
+  { key:"emotion",        label:"Emotion" },
+  { key:"moral",          label:"Moral" },
+];
+
+const STATUS_META = {
+  "On Track":               { color:"#0E7A6E", bg:"#E6F4F2", dot:"#0E7A6E" },
+  "Progressing":            { color:"#A84F00", bg:"#FEF0E4", dot:"#F26522" },
+  "Developmental Concerns": { color:"#991040", bg:"#FDEDF3", dot:"#E8175D" },
 };
- 
-const statusColors = { "On Track": [0, 155, 141], "Progressing": [242, 101, 34], "Developmental Concerns": [232, 23, 93] };
- 
-export default function SummaryReport({ children, lang }) {
-  const t = T[lang];
-  const [exporting, setExporting] = useState(false);
- 
-  const total = children.length;
-  const onTrack = children.filter(c => c.status === "On Track").length;
-  const progressing = children.filter(c => c.status === "Progressing").length;
-  const concerns = children.filter(c => c.status === "Developmental Concerns").length;
-  const flagged = children.filter(c => c.flagged).length;
-  const avgScore = total > 0 ? Math.round(children.reduce((a, c) => a + (c.total || 0), 0) / total) : 0;
-  const schools = [...new Set(children.map(c => c.school))];
-  const langs = [...new Set(children.map(c => c.language))];
- 
-  const domainAvg = (key) => total > 0 ? Math.round(children.reduce((a, c) => a + (c[key] || 0), 0) / total) : 0;
-  const domains = [
-    { label: t.cognitive, key: "cognitive" },
-    { label: t.motor, key: "motor" },
-    { label: t.language, key: "language_score" },
-    { label: t.social, key: "social" },
-    { label: t.emotion, key: "emotion" },
-    { label: t.moral, key: "moral" },
-  ];
- 
-  // PDF EXPORT
-  const exportPDF = () => {
-    setExporting(true);
-    setTimeout(() => {
-      const doc = new jsPDF();
-      const now = new Date().toLocaleDateString();
- 
-      // Header
-      doc.setFillColor(26, 26, 46);
-      doc.rect(0, 0, 210, 40, "F");
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(20);
-      doc.setFont("helvetica", "bold");
-      doc.text("The Puzzle Project", 14, 18);
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-      doc.text(t.subtitle, 14, 27);
-      doc.setFontSize(9);
-      doc.text(`${t.reportGenerated} ${now}`, 14, 35);
- 
-      let y = 50;
- 
-      // Overview stats
-      doc.setTextColor(26, 26, 46);
-      doc.setFontSize(13);
-      doc.setFont("helvetica", "bold");
-      doc.text(t.projectOverview, 14, y);
-      y += 8;
- 
-      const stats = [
-        [t.totalScreened, total],
-        [t.onTrack, `${onTrack} (${total > 0 ? Math.round((onTrack / total) * 100) : 0}%)`],
-        [t.progressing, `${progressing} (${total > 0 ? Math.round((progressing / total) * 100) : 0}%)`],
-        [t.devConcerns, `${concerns} (${total > 0 ? Math.round((concerns / total) * 100) : 0}%)`],
-        [t.flagged, flagged],
-        [t.avgScore, `${avgScore}%`],
-        [t.schools, schools.join(", ")],
-        [t.languages, langs.join(", ")],
-      ];
- 
-      autoTable(doc, {
-        startY: y,
-        head: [],
-        body: stats,
-        theme: "striped",
-        styles: { fontSize: 10 },
-        columnStyles: { 0: { fontStyle: "bold", cellWidth: 70 } },
-      });
- 
-      y = doc.lastAutoTable.finalY + 12;
- 
-      // Domain analysis
-      doc.setFontSize(13);
-      doc.setFont("helvetica", "bold");
-      doc.text(t.domainAnalysis, 14, y);
-      y += 6;
- 
-      autoTable(doc, {
-        startY: y,
-        head: [["Domain", "Average Score", "Status"]],
-        body: domains.map(d => {
-          const avg = domainAvg(d.key);
-          const status = avg >= 75 ? t.onTrack : avg >= 50 ? t.progressing : t.devConcerns;
-          return [d.label, `${avg}%`, status];
-        }),
-        theme: "grid",
-        headStyles: { fillColor: [26, 26, 46], textColor: 255, fontSize: 10 },
-        styles: { fontSize: 10 },
-        didParseCell: (data) => {
-          if (data.column.index === 2 && data.section === "body") {
-            const val = data.cell.raw;
-            if (val === t.onTrack) data.cell.styles.textColor = statusColors["On Track"];
-            else if (val === t.progressing) data.cell.styles.textColor = statusColors["Progressing"];
-            else data.cell.styles.textColor = statusColors["Developmental Concerns"];
-          }
-        }
-      });
- 
-      y = doc.lastAutoTable.finalY + 12;
- 
-      // Children table
-      doc.setFontSize(13);
-      doc.setFont("helvetica", "bold");
-      doc.text(t.screeningResults, 14, y);
-      y += 6;
- 
-      autoTable(doc, {
-        startY: y,
-        head: [[t.childID, t.school, "Age", t.language, t.score, t.status, t.date]],
-        body: children.map(c => [c.name, c.school, `${c.age} yrs`, c.language, `${c.total}%`, c.status, c.date]),
-        theme: "striped",
-        headStyles: { fillColor: [0, 155, 141], textColor: 255, fontSize: 9 },
-        styles: { fontSize: 9 },
-      });
- 
-      y = doc.lastAutoTable.finalY + 12;
- 
-      // Disclaimer
-      if (y > 250) { doc.addPage(); y = 20; }
-      doc.setFillColor(252, 230, 238);
-      doc.rect(14, y, 182, 20, "F");
-      doc.setTextColor(232, 23, 93);
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "bold");
-      doc.text("DISCLAIMER:", 17, y + 7);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(7.5);
-      const disclaimerLines = doc.splitTextToSize(t.disclaimer.replace("DISCLAIMER: ", ""), 170);
-      doc.text(disclaimerLines, 40, y + 7);
- 
-      y += 26;
-      doc.setTextColor(100, 100, 120);
-      doc.setFontSize(8);
-      const fundingLines = doc.splitTextToSize(t.fundingNote, 182);
-      doc.text(fundingLines, 14, y);
- 
-      doc.save(`PuzzleProject_SummaryReport_${now.replace(/\//g, "-")}.pdf`);
-      setExporting(false);
-    }, 100);
-  };
- 
-  // EXCEL EXPORT
-  const exportExcel = () => {
-    setExporting(true);
-    setTimeout(() => {
-      const wb = XLSX.utils.book_new();
- 
-      // Summary sheet
-      const summaryData = [
-        ["The Puzzle Project — Screener System Report"],
-        [t.subtitle],
-        [`Generated: ${new Date().toLocaleDateString()}`],
-        [],
-        [t.projectOverview],
-        [t.totalScreened, total],
-        [t.onTrack, onTrack],
-        [t.progressing, progressing],
-        [t.devConcerns, concerns],
-        [t.flagged, flagged],
-        [t.avgScore, `${avgScore}%`],
-        [t.schools, schools.join(", ")],
-        [],
-        [t.domainAnalysis],
-        ["Domain", "Average Score"],
-        ...domains.map(d => [d.label, `${domainAvg(d.key)}%`]),
-      ];
-      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-      XLSX.utils.book_append_sheet(wb, wsSummary, "Summary");
- 
-      // Children sheet
-      const childrenData = [
-        [t.childID, t.school, "Province", "Age", "Gender", t.language, t.cognitive, t.motor, t.language, t.social, t.emotion, t.moral, "Total Score", "Status", "Flagged", t.date, "Examiner"],
-        ...children.map(c => [c.name, c.school, c.province, c.age, c.gender, c.language, c.cognitive, c.motor, c.language_score, c.social, c.emotion, c.moral, `${c.total}%`, c.status, c.flagged ? "Yes" : "No", c.date, c.examiner])
-      ];
-      const wsChildren = XLSX.utils.aoa_to_sheet(childrenData);
-      XLSX.utils.book_append_sheet(wb, wsChildren, "Children Data");
- 
-      // Flagged sheet
-      const flaggedChildren = children.filter(c => c.flagged);
-      const flaggedData = [
-        [t.childID, t.school, "Total Score", "Status", t.date],
-        ...flaggedChildren.map(c => [c.name, c.school, `${c.total}%`, c.status, c.date])
-      ];
-      const wsFlagged = XLSX.utils.aoa_to_sheet(flaggedData);
-      XLSX.utils.book_append_sheet(wb, wsFlagged, "Flagged Children");
- 
-      XLSX.writeFile(wb, `PuzzleProject_Data_${new Date().toLocaleDateString().replace(/\//g, "-")}.xlsx`);
-      setExporting(false);
-    }, 100);
-  };
- 
+
+const domainAvg = (arr, key) =>
+  arr.length ? Math.round(arr.reduce((s, c) => s + (c[key] || 0), 0) / arr.length) : 0;
+const pct = (n, t) => (t ? Math.round((n / t) * 100) : 0);
+const unique = (arr, key) => [...new Set(arr.map(c => c[key]))].filter(Boolean).sort();
+
+/* ── StatusPill ─────────────────────────────────────────────────────────── */
+function StatusPill({ status }) {
+  const m = STATUS_META[status] || STATUS_META["Progressing"];
   return (
-    <div className="page-fade">
-      {/* EXPORT BUTTONS */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
-        <button className="btn btn-primary" onClick={exportPDF} disabled={exporting}>
-          {exporting ? t.generating : `📄 ${t.exportPDF}`}
-        </button>
-        <button className="btn btn-teal" onClick={exportExcel} disabled={exporting}>
-          {exporting ? t.generating : `📊 ${t.exportExcel}`}
-        </button>
+    <span style={{ display:"inline-flex", alignItems:"center", gap:5,
+      padding:"3px 10px", borderRadius:99, fontSize:11, fontWeight:700,
+      background:m.bg, color:m.color, whiteSpace:"nowrap" }}>
+      <span style={{ width:6, height:6, borderRadius:"50%", background:m.dot, flexShrink:0 }} />
+      {status}
+    </span>
+  );
+}
+
+/* ── ScoreBar ────────────────────────────────────────────────────────────── */
+function ScoreBar({ value }) {
+  const color = value >= 75 ? "#0E7A6E" : value >= 50 ? "#F26522" : "#E8175D";
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+      <div style={{ flex:1, height:4, background:"#EBEBEB", borderRadius:99, overflow:"hidden" }}>
+        <div style={{ width:`${value}%`, height:"100%", background:color, borderRadius:99 }} />
       </div>
- 
-      {/* REPORT PREVIEW */}
-      <div className="card">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-          <div>
-            <div style={{ fontFamily: "Nunito", fontSize: 20, fontWeight: 900, color: "var(--ink)" }}>{t.title}</div>
-            <div style={{ fontSize: 13, color: "var(--ink-faint)", marginTop: 4 }}>{t.subtitle}</div>
-          </div>
-          <div style={{ fontSize: 12, color: "var(--ink-faint)" }}>{t.reportGenerated} {new Date().toLocaleDateString()}</div>
-        </div>
- 
-        {/* OVERVIEW STATS */}
-        <div className="report-section">
-          <div className="report-section-title">{t.projectOverview}</div>
-          <div className="report-row"><span className="report-row-label">{t.totalScreened}</span><span className="report-row-value">{total}</span></div>
-          <div className="report-row">
-            <span className="report-row-label">{t.onTrack}</span>
-            <span className="report-row-value" style={{ color: "var(--teal)" }}>{onTrack} ({total > 0 ? Math.round((onTrack / total) * 100) : 0}%)</span>
-          </div>
-          <div className="report-row">
-            <span className="report-row-label">{t.progressing}</span>
-            <span className="report-row-value" style={{ color: "var(--orange)" }}>{progressing} ({total > 0 ? Math.round((progressing / total) * 100) : 0}%)</span>
-          </div>
-          <div className="report-row">
-            <span className="report-row-label">{t.devConcerns}</span>
-            <span className="report-row-value" style={{ color: "var(--pink)" }}>{concerns} ({total > 0 ? Math.round((concerns / total) * 100) : 0}%)</span>
-          </div>
-          <div className="report-row"><span className="report-row-label">{t.flagged}</span><span className="report-row-value">{flagged}</span></div>
-          <div className="report-row"><span className="report-row-label">{t.avgScore}</span><span className="report-row-value">{avgScore}%</span></div>
-          <div className="report-row"><span className="report-row-label">{t.schools}</span><span className="report-row-value">{schools.join(", ")}</span></div>
-          <div className="report-row"><span className="report-row-label">{t.languages}</span><span className="report-row-value">{langs.join(", ")}</span></div>
-        </div>
- 
-        {/* DOMAIN ANALYSIS */}
-        <div className="report-section">
-          <div className="report-section-title">{t.domainAnalysis}</div>
-          <div className="bar-chart">
-            {domains.map(d => {
-              const avg = domainAvg(d.key);
-              const color = avg >= 75 ? "var(--teal)" : avg >= 50 ? "var(--orange)" : "var(--pink)";
-              return (
-                <div className="bar-row" key={d.key}>
-                  <div className="bar-label">{d.label}</div>
-                  <div className="bar-track">
-                    <div className="bar-fill" style={{ width: `${avg}%`, background: color }}></div>
-                  </div>
-                  <div className="bar-pct">{avg}%</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
- 
-        {/* FLAGGED CHILDREN */}
-        {children.filter(c => c.flagged).length > 0 && (
-          <div className="report-section">
-            <div className="report-section-title">{t.flaggedChildren}</div>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>{t.childID}</th>
-                  <th>{t.school}</th>
-                  <th>{t.score}</th>
-                  <th>{t.status}</th>
-                  <th>{t.date}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {children.filter(c => c.flagged).map((c, i) => (
-                  <tr key={i}>
-                    <td style={{ fontWeight: 700 }}>{c.name}</td>
-                    <td>{c.school}</td>
-                    <td><strong>{c.total}%</strong></td>
-                    <td><span className="pill pill-pink">{c.status}</span></td>
-                    <td style={{ color: "var(--ink-faint)" }}>{c.date}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
- 
-        {/* DISCLAIMER */}
-        <div style={{ padding: "14px 16px", background: "var(--pink-lt)", borderRadius: 12, fontSize: 12, color: "var(--pink)", fontWeight: 600, marginBottom: 12 }}>
-          {t.disclaimer}
-        </div>
-        <div style={{ fontSize: 12, color: "var(--ink-faint)", lineHeight: 1.6 }}>
-          {t.fundingNote}
-        </div>
-      </div>
+      <span style={{ fontSize:12, fontWeight:700, color, width:32, textAlign:"right" }}>{value}%</span>
     </div>
+  );
+}
+
+/* ── StatBox ─────────────────────────────────────────────────────────────── */
+function StatBox({ label, value, sub, accent }) {
+  return (
+    <div style={{ padding:"20px 22px", borderTop:`3px solid ${accent}`,
+      background:"#fff", borderRadius:10, boxShadow:"0 1px 4px rgba(0,0,0,0.05)" }}>
+      <div style={{ fontSize:10, fontWeight:800, letterSpacing:"0.08em",
+        textTransform:"uppercase", color:"#AAA", marginBottom:8 }}>{label}</div>
+      <div style={{ fontSize:32, fontWeight:900, color:"#111", lineHeight:1,
+        fontFamily:"'Nunito', sans-serif", letterSpacing:"-0.02em" }}>{value}</div>
+      {sub && <div style={{ fontSize:11, color:"#AAA", marginTop:5 }}>{sub}</div>}
+    </div>
+  );
+}
+
+/* ── FilterSelect ────────────────────────────────────────────────────────── */
+function FilterSelect({ label, value, onChange, options, placeholder }) {
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+      <label style={{ fontSize:10, fontWeight:800, letterSpacing:"0.08em",
+        textTransform:"uppercase", color:"#888" }}>{label}</label>
+      <select value={value} onChange={e => onChange(e.target.value)} style={{
+        padding:"8px 32px 8px 12px", borderRadius:8, border:"1.5px solid #E0E0E0",
+        fontSize:13, color:"#111", background:"#fff", cursor:"pointer",
+        fontFamily:"inherit", appearance:"none",
+        backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`,
+        backgroundRepeat:"no-repeat", backgroundPosition:"right 10px center",
+        minWidth:170, outline:"none",
+      }}>
+        <option value="">{placeholder}</option>
+        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN
+═══════════════════════════════════════════════════════════════════════════ */
+export default function SummaryReport({ children: propChildren, lang: initialLang = "en" }) {
+  const [filterScope, setFilterScope] = useState("all");
+  const [filterValue, setFilterValue] = useState("");
+  const [lang, setLang] = useState(initialLang);
+
+  const source = propChildren || ALL_CHILDREN;
+  const schools   = unique(source, "school");
+  const districts = unique(source, "district");
+  const childIds  = source.map(c => c.id).sort();
+
+  // FIX: options now use consistent lowercase value keys
+  const scopeOptions = [
+    { value:"all",      label:"All Children" },
+    { value:"child",    label:"Child" },
+    { value:"school",   label:"School" },
+    { value:"district", label:"District" },
+  ];
+
+  const data = useMemo(() => {
+    if (!filterValue || filterScope === "all") return source;
+    if (filterScope === "child")    return source.filter(c => c.id === filterValue);
+    if (filterScope === "school")   return source.filter(c => c.school === filterValue);
+    if (filterScope === "district") return source.filter(c => c.district === filterValue);
+    return source;
+  }, [filterScope, filterValue, source]);
+
+  const total       = data.length;
+  const onTrack     = data.filter(c => c.status === "On Track").length;
+  const progressing = data.filter(c => c.status === "Progressing").length;
+  const concerns    = data.filter(c => c.status === "Developmental Concerns").length;
+  const flaggedList = data.filter(c => c.flagged);
+  const avgTotal    = domainAvg(data, "total");
+  const schoolSet   = unique(data, "school");
+  const langSet     = unique(data, "language");
+
+  const isSingleChild = filterScope === "child" && filterValue && data.length === 1;
+  const child = isSingleChild ? data[0] : null;
+
+  const scopeLabel = !filterValue || filterScope === "all"
+    ? "All Children · Eastern Cape Pilot 2026"
+    : filterScope === "child"    ? `Individual Report · ${filterValue}`
+    : filterScope === "school"   ? `School Report · ${filterValue}`
+    : `District Report · ${filterValue}`;
+
+  const today = new Date().toLocaleDateString("en-ZA", { day:"numeric", month:"long", year:"numeric" });
+
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+        *, *::before, *::after { box-sizing: border-box; }
+        body { margin: 0; background: #F2F1EE; font-family: 'Nunito', sans-serif; color: #111; }
+        @media print {
+          .no-print { display: none !important; }
+          body { background: #fff; }
+          .report-card { box-shadow: none !important; border-radius: 0 !important; }
+          @page { margin: 18mm 20mm; }
+        }
+      `}</style>
+
+      <div style={{ minHeight:"100vh", background:"#F2F1EE" }}>
+
+        {/* ══ CONTROL BAR ══════════════════════════════════════════════ */}
+        <div className="no-print" style={{
+          background:"#fff", borderBottom:"1px solid #E5E5E5",
+          padding:"0 40px",
+        }}>
+          <div style={{ maxWidth:1060, margin:"0 auto", padding:"16px 0",
+            display:"flex", alignItems:"center", gap:20, flexWrap:"wrap" }}>
+
+            <div style={{ fontFamily:"'Nunito', sans-serif", fontWeight:900,
+              fontSize:16, color:"#111", marginRight:12, flexShrink:0 }}>
+              The Puzzle Project
+            </div>
+
+            <div style={{ width:1, height:28, background:"#E5E5E5", flexShrink:0 }} />
+
+            {/* FIX: using lowercase value options */}
+            <FilterSelect
+              label="Filter By"
+              value={filterScope}
+              onChange={v => { setFilterScope(v); setFilterValue(""); }}
+              options={scopeOptions}
+              placeholder="All children"
+            />
+
+            {/* FIX: all conditions now use lowercase */}
+            {filterScope === "child" && (
+              <FilterSelect
+                label="Child ID"
+                value={filterValue}
+                onChange={setFilterValue}
+                options={childIds.map(id => ({ value: id, label: id }))}
+                placeholder="Select child…"
+              />
+            )}
+            {filterScope === "school" && (
+              <FilterSelect
+                label="School"
+                value={filterValue}
+                onChange={setFilterValue}
+                options={schools.map(s => ({ value: s, label: s }))}
+                placeholder="Select school…"
+              />
+            )}
+            {filterScope === "district" && (
+              <FilterSelect
+                label="District"
+                value={filterValue}
+                onChange={setFilterValue}
+                options={districts.map(d => ({ value: d, label: d }))}
+                placeholder="Select district…"
+              />
+            )}
+
+            <div style={{ flex:1 }} />
+
+            {/* Language toggle */}
+            <div style={{ display:"flex", gap:4 }}>
+              {["en","af","xh"].map(l => (
+                <button key={l} onClick={() => setLang(l)} style={{
+                  padding:"5px 11px", borderRadius:6,
+                  border:`1.5px solid ${lang===l?"#111":"#DDD"}`,
+                  background: lang===l?"#111":"transparent",
+                  color: lang===l?"#fff":"#888",
+                  fontSize:10, fontWeight:800, cursor:"pointer",
+                  textTransform:"uppercase", letterSpacing:"0.07em",
+                  fontFamily:"inherit",
+                }}>{l}</button>
+              ))}
+            </div>
+
+            <div style={{ width:1, height:28, background:"#E5E5E5", flexShrink:0 }} />
+
+            <button onClick={() => window.print()} style={{
+              display:"flex", alignItems:"center", gap:7,
+              padding:"8px 18px", borderRadius:8,
+              background:"#111", color:"#fff", border:"none",
+              fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit",
+            }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 9V2h12v7"/><rect x="6" y="14" width="12" height="8"/>
+                <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
+              </svg>
+              Print / PDF
+            </button>
+          </div>
+        </div>
+
+        {/* ══ REPORT DOCUMENT ══════════════════════════════════════════ */}
+        <div style={{ maxWidth:1060, margin:"0 auto", padding:"36px 40px" }}>
+          <div className="report-card" style={{
+            background:"#fff", borderRadius:16,
+            boxShadow:"0 2px 32px rgba(0,0,0,0.08)",
+            overflow:"hidden",
+          }}>
+
+            {/* ── HEADER ─────────────────────────────────────────────── */}
+            <div style={{ padding:"44px 52px 36px", borderBottom:"1px solid #EBEBEB" }}>
+              <div style={{ display:"flex", justifyContent:"space-between",
+                alignItems:"flex-start", gap:24 }}>
+                <div>
+                  <p style={{ margin:"0 0 10px", fontSize:10, fontWeight:800,
+                    letterSpacing:"0.12em", textTransform:"uppercase", color:"#AAA" }}>
+                    PuzzleBox Screener System
+                  </p>
+                  <h1 style={{ margin:"0 0 8px", fontSize:34, fontWeight:900, lineHeight:1.05,
+                    fontFamily:"'Nunito', sans-serif", letterSpacing:"-0.02em", color:"#111" }}>
+                    {isSingleChild ? child.name : "Summary Report"}
+                  </h1>
+                  <p style={{ margin:0, fontSize:13, color:"#888", fontWeight:400 }}>
+                    {scopeLabel}
+                  </p>
+                </div>
+                <div style={{ textAlign:"right", flexShrink:0 }}>
+                  <p style={{ margin:"0 0 4px", fontSize:10, fontWeight:700,
+                    letterSpacing:"0.08em", textTransform:"uppercase", color:"#AAA" }}>Generated</p>
+                  <p style={{ margin:0, fontSize:13, fontWeight:600, color:"#555" }}>{today}</p>
+                  {isSingleChild && (
+                    <p style={{ margin:"10px 0 0", fontSize:11, color:"#AAA" }}>
+                      Examiner: <strong style={{ color:"#555" }}>{child.examiner}</strong>
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div style={{ marginTop:28, height:2, width:80, borderRadius:99,
+                background:"linear-gradient(90deg,#0E7A6E,#F26522,#E8175D)" }} />
+            </div>
+
+            <div style={{ padding:"44px 52px" }}>
+
+              {/* ════ SINGLE CHILD VIEW ═════════════════════════════════ */}
+              {isSingleChild ? (
+                <>
+                  <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:36 }}>
+                    {[
+                      ["School",   child.school],
+                      ["District", child.district],
+                      ["Age",      `${child.age} years`],
+                      ["Language", child.language],
+                      ["Date",     child.date],
+                    ].map(([l,v]) => (
+                      <div key={l} style={{ padding:"10px 16px", background:"#F7F7F5",
+                        borderRadius:8, border:"1px solid #E8E8E8" }}>
+                        <div style={{ fontSize:9, fontWeight:800, letterSpacing:"0.09em",
+                          textTransform:"uppercase", color:"#AAA", marginBottom:4 }}>{l}</div>
+                        <div style={{ fontSize:13, fontWeight:600, color:"#111" }}>{v}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ display:"grid", gridTemplateColumns:"180px 1fr",
+                    gap:32, marginBottom:40, alignItems:"start" }}>
+                    <div style={{ textAlign:"center", padding:"28px 20px",
+                      background:"#F7F7F5", borderRadius:12, border:"1px solid #E8E8E8" }}>
+                      <p style={{ margin:"0 0 10px", fontSize:9, fontWeight:800,
+                        letterSpacing:"0.1em", textTransform:"uppercase", color:"#AAA" }}>
+                        Total Score
+                      </p>
+                      <div style={{
+                        fontSize:64, fontWeight:900, lineHeight:1,
+                        fontFamily:"'Nunito', sans-serif",
+                        color: child.total>=75?"#0E7A6E":child.total>=50?"#F26522":"#E8175D",
+                      }}>{child.total}%</div>
+                      <div style={{ marginTop:14 }}><StatusPill status={child.status} /></div>
+                      {child.flagged && (
+                        <p style={{ margin:"10px 0 0", fontSize:11,
+                          color:"#991040", fontWeight:700 }}>Flagged for follow-up</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <p style={{ margin:"0 0 18px", fontSize:10, fontWeight:800,
+                        letterSpacing:"0.1em", textTransform:"uppercase", color:"#AAA" }}>
+                        Domain Breakdown
+                      </p>
+                      {DOMAINS.map(d => (
+                        <div key={d.key} style={{ marginBottom:14 }}>
+                          <p style={{ margin:"0 0 5px", fontSize:12,
+                            fontWeight:600, color:"#333" }}>{d.label}</p>
+                          <ScoreBar value={child[d.key] || 0} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+
+              ) : (
+                /* ════ COHORT / SCHOOL / DISTRICT VIEW ═════════════════ */
+                <>
+                  <p style={{ margin:"0 0 14px", fontSize:10, fontWeight:800,
+                    letterSpacing:"0.1em", textTransform:"uppercase", color:"#AAA" }}>
+                    Project Overview
+                  </p>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)",
+                    gap:12, marginBottom:40 }}>
+                    <StatBox label="Screened"    value={total}          sub={`${schoolSet.length} school${schoolSet.length!==1?"s":""}`} accent="#555" />
+                    <StatBox label="On Track"    value={onTrack}        sub={`${pct(onTrack,total)}% of cohort`}       accent="#0E7A6E" />
+                    <StatBox label="Progressing" value={progressing}    sub={`${pct(progressing,total)}% of cohort`}   accent="#F26522" />
+                    <StatBox label="Concerns"    value={concerns}       sub={`${pct(concerns,total)}% of cohort`}      accent="#E8175D" />
+                    <StatBox label="Avg Score"   value={`${avgTotal}%`} sub="cohort average"                           accent="#888" />
+                  </div>
+
+                  <p style={{ margin:"0 0 18px", fontSize:10, fontWeight:800,
+                    letterSpacing:"0.1em", textTransform:"uppercase", color:"#AAA" }}>
+                    Domain Performance
+                  </p>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr",
+                    columnGap:52, marginBottom:44 }}>
+                    {DOMAINS.map(d => (
+                      <div key={d.key} style={{ marginBottom:16 }}>
+                        <p style={{ margin:"0 0 6px", fontSize:12,
+                          fontWeight:600, color:"#333" }}>{d.label}</p>
+                        <ScoreBar value={domainAvg(data, d.key)} />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ height:1, background:"#EBEBEB", marginBottom:36 }} />
+
+                  <p style={{ margin:"0 0 16px", fontSize:10, fontWeight:800,
+                    letterSpacing:"0.1em", textTransform:"uppercase", color:"#AAA" }}>
+                    All Screened Children ({total})
+                  </p>
+                  <div style={{ overflowX:"auto", marginBottom:44 }}>
+                    <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
+                      <thead>
+                        <tr style={{ borderBottom:"2px solid #111" }}>
+                          {["Child ID","School","Age","Language","Score","Status","Date"].map(h => (
+                            <th key={h} style={{ padding:"8px 12px", textAlign:"left",
+                              fontSize:10, fontWeight:800, letterSpacing:"0.07em",
+                              textTransform:"uppercase", color:"#666", whiteSpace:"nowrap" }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.map((c, i) => (
+                          <tr key={c.id} style={{ borderBottom:"1px solid #F0F0F0",
+                            background: i%2===0?"#fff":"#FAFAFA" }}>
+                            <td style={{ padding:"10px 12px", fontWeight:700, color:"#111" }}>{c.id}</td>
+                            <td style={{ padding:"10px 12px", color:"#555" }}>{c.school}</td>
+                            <td style={{ padding:"10px 12px", color:"#555" }}>{c.age} yrs</td>
+                            <td style={{ padding:"10px 12px", color:"#555" }}>{c.language}</td>
+                            <td style={{ padding:"10px 12px" }}>
+                              <span style={{ fontWeight:800,
+                                color:c.total>=75?"#0E7A6E":c.total>=50?"#F26522":"#E8175D" }}>
+                                {c.total}%
+                              </span>
+                            </td>
+                            <td style={{ padding:"10px 12px" }}><StatusPill status={c.status} /></td>
+                            <td style={{ padding:"10px 12px", color:"#AAA",
+                              fontStyle:"italic", fontSize:11 }}>{c.date}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {flaggedList.length > 0 && (
+                    <>
+                      <div style={{ height:1, background:"#EBEBEB", marginBottom:36 }} />
+                      <p style={{ margin:"0 0 16px", fontSize:10, fontWeight:800,
+                        letterSpacing:"0.1em", textTransform:"uppercase", color:"#991040" }}>
+                        Flagged for Follow-up ({flaggedList.length})
+                      </p>
+                      <div style={{ display:"grid",
+                        gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",
+                        gap:12, marginBottom:44 }}>
+                        {flaggedList.map(c => (
+                          <div key={c.id} style={{ padding:"16px 18px", borderRadius:10,
+                            border:"1px solid #F0C0D0", background:"#FEF5F8" }}>
+                            <p style={{ margin:"0 0 2px", fontWeight:800,
+                              fontSize:13, color:"#111" }}>{c.id}</p>
+                            <p style={{ margin:"0 0 10px", fontSize:11, color:"#888" }}>{c.school}</p>
+                            <div style={{ fontSize:28, fontWeight:900, color:"#E8175D",
+                              fontFamily:"'Nunito', sans-serif", lineHeight:1 }}>{c.total}%</div>
+                            <div style={{ marginTop:8 }}><StatusPill status={c.status} /></div>
+                            <p style={{ margin:"8px 0 0", fontSize:10,
+                              color:"#AAA", fontStyle:"italic" }}>{c.date}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  <div style={{ height:1, background:"#EBEBEB", marginBottom:32 }} />
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr",
+                    gap:32, marginBottom:8 }}>
+                    {[["Schools Covered", schoolSet], ["Languages Used", langSet]].map(([lbl, set]) => (
+                      <div key={lbl}>
+                        <p style={{ margin:"0 0 12px", fontSize:10, fontWeight:800,
+                          letterSpacing:"0.1em", textTransform:"uppercase", color:"#AAA" }}>{lbl}</p>
+                        <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                          {set.map(s => (
+                            <span key={s} style={{ fontSize:11, fontWeight:600, color:"#444",
+                              background:"#F0F0EE", padding:"4px 10px", borderRadius:6,
+                              border:"1px solid #E5E5E5" }}>{s}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* ── DISCLAIMER ─────────────────────────────────────────── */}
+              <div style={{ height:1, background:"#EBEBEB", margin:"40px 0 28px" }} />
+              <div style={{ display:"flex", gap:14, padding:"16px 20px",
+                background:"#FEF5F8", borderRadius:10, border:"1px solid #F0C0D0",
+                marginBottom:16 }}>
+                <span style={{ fontSize:16, flexShrink:0, lineHeight:1.4 }}>⚠</span>
+                <p style={{ margin:0, fontSize:11, color:"#880030", lineHeight:1.8 }}>
+                  <strong>Disclaimer:</strong> This report contains simplified percentile summaries only.
+                  Results must not be interpreted as clinical diagnoses. Detailed domain scores are
+                  available to registered psychologists only.
+                </p>
+              </div>
+              <p style={{ margin:0, fontSize:11, color:"#AAA", lineHeight:1.9 }}>
+                Data collected as part of the PuzzleBox Screener standardisation phase and is intended
+                to support evidence-based funding applications and programme evaluation.
+              </p>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

@@ -5,6 +5,7 @@ import {
 } from "recharts";
 import KPIcards from "./KPIcards";
 import { downloadPDF, downloadExcel } from "./reportGenerator";
+import SchoolsMap from "./SchoolsMap";
 
 const T = {
   en: {
@@ -477,20 +478,29 @@ export default function Overview({ children, lang }) {
 
       {/* ROW 2: SCHOOL + LANGUAGE */}
       <div className="two-col">
-        <div className="card">
-          <div className="card-header">
-            <div className="card-title">{t.bySchool}</div>
-            <span className="card-badge badge-orange">Eastern Cape</span>
-          </div>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={schoolData} layout="vertical">
-              <XAxis type="number" tick={{ fontSize: 11 }} />
-              <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} width={80} />
-              <Tooltip />
-              <Bar dataKey="value" fill={COLORS.teal} radius={[0, 6, 6, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+  <div className="card">
+    <div className="card-header">
+      <div className="card-title">{t.bySchool}</div>
+      <span className="card-badge badge-orange">Eastern Cape</span>
+    </div>
+    <SchoolsMap screenings={children} t={t} />
+  </div>
+  <div className="card">
+    <div className="card-header">
+      <div className="card-title">{t.byLanguage}</div>
+      <span className="card-badge badge-purple">{t.breakdown}</span>
+    </div>
+    <ResponsiveContainer width="100%" height={200}>
+      <PieChart>
+        <Pie data={langData} cx="50%" cy="50%" outerRadius={60} dataKey="value"
+          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={true}>
+          {langData.map((_, i) => <Cell key={i} fill={LANG_COLORS[i % LANG_COLORS.length]} />)}
+        </Pie>
+        <Tooltip />
+      </PieChart>
+    </ResponsiveContainer>
+  </div>
+
         <div className="card">
           <div className="card-header">
             <div className="card-title">{t.byLanguage}</div>

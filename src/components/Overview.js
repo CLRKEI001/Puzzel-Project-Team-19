@@ -268,7 +268,7 @@ export default function Overview({ children, lang }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             <h2 style={{ fontSize: 22, fontWeight: 700, color: "#1a1a2e", margin: 0 }}></h2>
-            <p style={{ fontSize: 13, color: "#888", margin: "2px 0 0" }}>/</p>
+            <p style={{ fontSize: 13, color: "#888", margin: "2px 0 0" }}></p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {lastUpdated && (

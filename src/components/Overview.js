@@ -4,6 +4,7 @@ import {
   PieChart, Pie, Cell, Legend, LineChart, Line, CartesianGrid
 } from "recharts";
 import KPIcards from "./KPIcards";
+import { downloadPDF, downloadExcel } from "./reportGenerator";
 
 const T = {
   en: {
@@ -242,21 +243,35 @@ export default function Overview({ children, lang }) {
     { key: "language", label: t.langLabel },
   ];
 
-  return (
+ return (
     <div className="page-fade">
 
       {/* PAGE HEADER */}
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
-            <h2 style={{ fontSize: 22, fontWeight: 700, color: "#1a1a2e", margin: 0 }}>Overview</h2>
-            <p style={{ fontSize: 13, color: "#888", margin: "2px 0 0" }}>{t.eastCapePilot}</p>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: "#1a1a2e", margin: 0 }}></h2>
+            <p style={{ fontSize: 13, color: "#888", margin: "2px 0 0" }}>/</p>
           </div>
-          {lastUpdated && (
-            <div style={{ fontSize: 11, color: "#aaa", background: "#f5f5f5", borderRadius: 20, padding: "4px 12px", marginTop: 4 }}>
-              {t.lastUpdated}: {lastUpdated}
-            </div>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {lastUpdated && (
+              <div style={{ fontSize: 11, color: "#aaa", background: "#f5f5f5", borderRadius: 20, padding: "4px 12px" }}>
+                {t.lastUpdated}: {lastUpdated}
+              </div>
+            )}
+            <button
+              onClick={() => downloadExcel({ children, compareMode })}
+              style={{ padding: "6px 12px", borderRadius: 8, border: "0.5px solid #e5e5e5", background: "#fff", fontSize: 12, color: "#555", cursor: "pointer" }}
+            >
+              Export Excel
+            </button>
+            <button
+              onClick={() => downloadPDF({ children, compareMode, insights, lang })}
+              style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "#009B8D", color: "#fff", fontSize: 12, fontWeight: 500, cursor: "pointer" }}
+            >
+              Download PDF
+            </button>
+          </div>
         </div>
         {summaryText && (
           <div style={{

@@ -14,7 +14,7 @@ const T = {
     resultsDist: "Results Distribution", breakdown: "Breakdown",
     byLanguage: "Language of Assessment", bySchool: "Schools & Regions",
     byAge: "Age Distribution", byGender: "Gender Split",
-    devConcerns: "Developmental Concerns", progressing: "Progressing",
+    devConcerns: "Developmental Concerns", progressing: "Monitor Needed",
     cognitive: "Cognitive", motor: "Fine Motor", language: "Language", social: "Social", emotion: "Emotion", moral: "Moral",
     fiveYr: "5 years", sixYr: "6 years", girls: "Girls", boys: "Boys",
     monthlyTrend: "Monthly Screening Trend", screenings: "Screenings",
@@ -34,7 +34,7 @@ const T = {
     resultsDist: "Resultaatverspreiding", breakdown: "Uiteensetting",
     byLanguage: "Taal van Assessering", bySchool: "Skole & Streke",
     byAge: "Ouderdomsverdeling", byGender: "Geslagsverdeling",
-    devConcerns: "Ontwikkelingsbekommernisse", progressing: "Vordering",
+    devConcerns: "Ontwikkelingsbekommernisse", progressing: "Monitering Benodig",
     cognitive: "Kognitief", motor: "Fyn Motories", language: "Taal", social: "Sosiaal", emotion: "Emosie", moral: "Moreel",
     fiveYr: "5 jaar", sixYr: "6 jaar", girls: "Meisies", boys: "Seuns",
     monthlyTrend: "Maandelikse Siftingsneiging", screenings: "Siftings",
@@ -54,7 +54,7 @@ const T = {
     resultsDist: "Ukusasazwa Kweziphumo", breakdown: "Uhlalutyo",
     byLanguage: "Ulwimi Lokuhlolwa", bySchool: "Izikolo & Iindawo",
     byAge: "Ukusasazwa Ngeminyaka", byGender: "Ukwahlulwa ngesini",
-    devConcerns: "Iingxaki Zentlalo", progressing: "Inkqubela",
+    devConcerns: "Iingxaki Zentlalo", progressing: "Ukulandela Kuyadingeka",
     cognitive: "Ukucinga", motor: "Amandla", language: "Ulwimi", social: "Uluntu", emotion: "Imvakalelo", moral: "Isimo",
     fiveYr: "5 iminyaka", sixYr: "6 iminyaka", girls: "Amantombazana", boys: "Abafana",
     monthlyTrend: "Inqwelomoya Yenyanga", screenings: "Ukuhlolwa",
@@ -70,6 +70,23 @@ const T = {
 };
 
 const COLORS = { teal: "#009B8D", pink: "#E8175D", purple: "#6B2F8A", orange: "#F26522" };
+const STATUS_DESCRIPTIONS = {
+  en: {
+    "On Track": "Child is developing as expected for their age with no concerns.",
+    "Monitor Needed": "Child is progressing but may need additional support or observation.",
+    "Developmental Concerns": "Child has been flagged and requires follow-up or intervention.",
+  },
+  af: {
+    "Op Koers": "Kind ontwikkel soos verwag vir hul ouderdom sonder bekommernisse.",
+    "Monitering Benodig": "Kind vorder maar mag ekstra ondersteuning of waarneming benodig.",
+    "Ontwikkelingsbekommernisse": "Kind is gevlag en benodig opvolg of ingryping.",
+  },
+  xh: {
+    "Esendleleni": "Umntwana uyakhula ngendlela elindelekileyo ngokulingana neminyaka yakhe.",
+    "Ukulandela Kuyadingeka": "Umntwana uyaqhubeka kodwa angadinga inkxaso eyongezelelekileyo.",
+    "Iingxaki Zentlalo": "Umntwana ukhombiwe kwaye udinga ukulandelwa okanye ukungenelela.",
+  },
+};
 const DOMAIN_BENCHMARK = 70;
 const DOMAIN_KEYS = ["cognitive", "motor", "language_score", "social", "emotion", "moral"];
 const GROUP_COLORS = ["#009B8D", "#6B2F8A", "#F26522", "#E8175D", "#378ADD", "#639922"];
@@ -407,6 +424,7 @@ export default function Overview({ children, lang }) {
           )}
         </div>
 
+{/* This is for the results distribution pie chart */}
         <div className="card">
           <div className="card-header">
             <div className="card-title">{t.resultsDist}</div>
@@ -417,7 +435,40 @@ export default function Overview({ children, lang }) {
               <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
                 {pieData.map((entry, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
               </Pie>
-              <Tooltip />
+              <Tooltip
+              wrapperStyle={{ zIndex: 1000 }}
+              filterNull={false}
+              cursor={ false }
+  content={({ active, payload }) => {
+    if (!active || !payload || !payload.length) return null;
+    const name = payload[0].name;
+    const value = payload[0].value;
+    const descriptions = STATUS_DESCRIPTIONS[lang] || STATUS_DESCRIPTIONS.en;
+    const description = descriptions[name] || "";
+    return (
+      <div style={{
+        background: "#fff",
+        border: "1px solid #eee",
+        borderRadius: 8,
+        padding: "10px 14px",
+        fontSize: 12,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+        maxWidth: 200,
+      }}>
+        <div style={{ fontWeight: 700, marginBottom: 4, color: payload[0].payload.fill }}>
+          {name}
+        </div>
+        <div style={{ color: "#555", marginBottom: 6 }}>
+          {value} {value === 1 ? "child" : "children"}
+        </div>
+        <div style={{ color: "#777", fontSize: 11, lineHeight: 1.4 }}>
+          {description}
+        </div>
+      </div>
+    );
+  }}
+/>
+              
               <Legend iconType="circle" iconSize={10} />
             </PieChart>
           </ResponsiveContainer>
@@ -445,10 +496,10 @@ export default function Overview({ children, lang }) {
             <div className="card-title">{t.byLanguage}</div>
             <span className="card-badge badge-purple">{t.breakdown}</span>
           </div>
-          <ResponsiveContainer width="100%" height={180}>
+          <ResponsiveContainer width="100%" height={200}>
             <PieChart>
-              <Pie data={langData} cx="50%" cy="50%" outerRadius={70} dataKey="value"
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+              <Pie data={langData} cx="50%" cy="50%" outerRadius={60} dataKey="value"
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={true}>
                 {langData.map((_, i) => <Cell key={i} fill={LANG_COLORS[i % LANG_COLORS.length]} />)}
               </Pie>
               <Tooltip />

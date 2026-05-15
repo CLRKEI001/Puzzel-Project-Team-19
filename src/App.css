@@ -631,9 +631,155 @@ The full screen login page that appears when no user is logged in.
   .three-col { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 768px) {
-  .main-content { margin-left: 0; padding: 20px; }
-  .sidebar { display: flex; width: 100%; height: auto; position: relative; }
-  .stats-grid { grid-template-columns: 1fr 1fr; }
-  .three-col { grid-template-columns: 1fr; }
-  .equal-col { grid-template-columns: 1fr; }
+  .sidebar {
+    display: none;
+  }
+
+  .hamburger-btn {
+    display: flex;
+  }
+
+  .mobile-menu {
+    display: block;
+  }
+
+.hamburger-btn {
+  display: flex !important;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.hamburger-btn span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: var(--ink);
+  border-radius: 2px;
+  transition: all 0.2s;
+}
+
+.mobile-menu {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--dark);
+  z-index: 200;
+  padding: 24px 22px;
+  overflow-y: auto;
+  animation: fadeIn 0.2s ease;
+}
+
+.mobile-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.mobile-menu-close {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+  .main-content {
+    margin-left: 0;
+    padding: 10px;
+    width: 90vw;
+    box-sizing: border-box;
+    padding-top: 60px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .two-col,
+  .three-col,
+  .equal-col {
+    grid-template-columns: 1fr;
+  }
+
+  /* This fixes ROW 3 which uses inline grid style */
+  .page-fade > div[style*="grid-template-columns"] {
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .card {
+    padding: 6px;
+  }
+
+  .stat-card {
+    padding: 16px 8px;
+  }
+
+  .stat-value {
+    font-size: 16px !important;
+  }
+
+  .stat-label {
+    font-size: 9px !important;
+  }
+
+  .stat-change {
+    font-size: 8px !important;
+  }
+
+  .bar-label {
+    width: 80px;
+    font-size: 11px;
+  }
+
+  .page-title {
+    font-size: 16px !important;
+
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .topbar-right {
+    width: 80%;
+    flex-wrap: wrap;
+  }
+
+.page-sub {
+    font-size: 10px !important;
+  }
+
+
+  .card-title {
+    font-size: 10px !important;
+  }
+
+  .btn {
+    padding: 7px 12px;
+    font-size: 9px;
+  }
+
+  .lang-btn {
+    padding: 4px 8px;
+    font-size: 8px;
+  }
+  /* Prevent ANY horizontal scroll */
+  img, svg {
+    max-width: 800%;
+  }
+
+  body, html, #root, .dashboard-layout {
+    overflow-x: visible;
+    max-width: 40vw;
+  }
 }

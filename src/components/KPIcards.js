@@ -152,7 +152,7 @@ export default function KpiCards({ total, flagged, onTrack, avgScore, trendData,
         <div style={{ vdisplay: "flex", flexDirection: "column", alignItems: "center", textAlign: "center"}}>
           <div>
             <div className="stat-label" style={labelStyle}>{t.totalScreened}</div>
-            <div className="stat-value" style={{ ...valueStyle, color: COLORS.teal, fontSize: 52 }}>
+            <div className="stat-value" style={{ ...valueStyle, color: COLORS.teal, fontSize: "clamp(28px, 8vw, 52px)" }}>
               {animatedTotal}
             </div>
             <div className="stat-change" style={changeStyle}>↑ {t.thisWeek}</div>
@@ -249,7 +249,7 @@ const labelStyle = {
 };
 
 const valueStyle = {
-  fontSize: 32,
+  fontSize: "clamp(24px, 5vw, 36px)",
   fontWeight: 700,
   lineHeight: 1,
   marginBottom: 6,

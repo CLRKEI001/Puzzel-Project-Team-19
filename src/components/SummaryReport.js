@@ -160,7 +160,7 @@ export default function SummaryReport({ children: propChildren, lang: initialLan
           .no-print { display: none !important; }
           body { background: #fff; }
           .report-card { box-shadow: none !important; border-radius: 0 !important; }
-          @page { margin: 18mm 20mm; }
+          @page { margin: 12mm 16mm; }
         }
       `}</style>
 
@@ -169,10 +169,10 @@ export default function SummaryReport({ children: propChildren, lang: initialLan
         {/* ══ CONTROL BAR ══════════════════════════════════════════════ */}
         <div className="no-print" style={{
           background:"#fff", borderBottom:"1px solid #E5E5E5",
-          padding:"0 40px",
+          padding:"0 6px",
         }}>
-          <div style={{ maxWidth:1060, margin:"0 auto", padding:"16px 0",
-            display:"flex", alignItems:"center", gap:20, flexWrap:"wrap" }}>
+          <div style={{ maxWidth:1060, margin:"0 auto", padding:"14px 0",
+            display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
 
             <div style={{ fontFamily:"'Nunito', sans-serif", fontWeight:900,
               fontSize:16, color:"#111", marginRight:12, flexShrink:0 }}>
@@ -255,7 +255,7 @@ export default function SummaryReport({ children: propChildren, lang: initialLan
         </div>
 
         {/* ══ REPORT DOCUMENT ══════════════════════════════════════════ */}
-        <div style={{ maxWidth:1060, margin:"0 auto", padding:"36px 40px" }}>
+        <div style={{ maxWidth:1060, margin:"0 auto", padding:"16px" }}>
           <div className="report-card" style={{
             background:"#fff", borderRadius:16,
             boxShadow:"0 2px 32px rgba(0,0,0,0.08)",
@@ -263,7 +263,7 @@ export default function SummaryReport({ children: propChildren, lang: initialLan
           }}>
 
             {/* ── HEADER ─────────────────────────────────────────────── */}
-            <div style={{ padding:"44px 52px 36px", borderBottom:"1px solid #EBEBEB" }}>
+            <div style={{ padding:"24px 20px 20px", borderBottom:"1px solid #EBEBEB" }}>
               <div style={{ display:"flex", justifyContent:"space-between",
                 alignItems:"flex-start", gap:24 }}>
                 <div>
@@ -294,7 +294,7 @@ export default function SummaryReport({ children: propChildren, lang: initialLan
                 background:"linear-gradient(90deg,#0E7A6E,#F26522,#E8175D)" }} />
             </div>
 
-            <div style={{ padding:"44px 52px" }}>
+            <div style={{ padding:"20px" }}>
 
               {/* ════ SINGLE CHILD VIEW ═════════════════════════════════ */}
               {isSingleChild ? (
@@ -316,7 +316,7 @@ export default function SummaryReport({ children: propChildren, lang: initialLan
                     ))}
                   </div>
 
-                  <div style={{ display:"grid", gridTemplateColumns:"180px 1fr",
+                  <div style={{ display:"grid", gridTemplateColumns: window.innerWidth < 768 ? "1fr" : "180px 1fr",
                     gap:32, marginBottom:40, alignItems:"start" }}>
                     <div style={{ textAlign:"center", padding:"28px 20px",
                       background:"#F7F7F5", borderRadius:12, border:"1px solid #E8E8E8" }}>
@@ -359,7 +359,7 @@ export default function SummaryReport({ children: propChildren, lang: initialLan
                     letterSpacing:"0.1em", textTransform:"uppercase", color:"#AAA" }}>
                     Project Overview
                   </p>
-                  <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)",
+                  <div style={{ display:"grid", gridTemplateColumns: window.innerWidth < 768 ? "repeat(5,1fr)" : "repeat(5,1fr)", 
                     gap:12, marginBottom:40 }}>
                     <StatBox label="Screened"    value={total}          sub={`${schoolSet.length} school${schoolSet.length!==1?"s":""}`} accent="#555" />
                     <StatBox label="On Track"    value={onTrack}        sub={`${pct(onTrack,total)}% of cohort`}       accent="#0E7A6E" />
@@ -372,7 +372,7 @@ export default function SummaryReport({ children: propChildren, lang: initialLan
                     letterSpacing:"0.1em", textTransform:"uppercase", color:"#AAA" }}>
                     Domain Performance
                   </p>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr",
+                  <div style={{ display:"grid", gridTemplateColumns: window.innerWidth < 768 ? "1fr" : "1fr 1fr",
                     columnGap:52, marginBottom:44 }}>
                     {DOMAINS.map(d => (
                       <div key={d.key} style={{ marginBottom:16 }}>
@@ -390,7 +390,7 @@ export default function SummaryReport({ children: propChildren, lang: initialLan
                     All Screened Children ({total})
                   </p>
                   <div style={{ overflowX:"auto", marginBottom:44 }}>
-                    <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
+                    <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
                       <thead>
                         <tr style={{ borderBottom:"2px solid #111" }}>
                           {["Child ID","School","Age","Language","Score","Status","Date"].map(h => (
@@ -451,7 +451,7 @@ export default function SummaryReport({ children: propChildren, lang: initialLan
                   )}
 
                   <div style={{ height:1, background:"#EBEBEB", marginBottom:32 }} />
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr",
+                  <div style={{ display:"grid",gridTemplateColumns: window.innerWidth < 768 ? "1fr" : "1fr 1fr",
                     gap:32, marginBottom:8 }}>
                     {[["Schools Covered", schoolSet], ["Languages Used", langSet]].map(([lbl, set]) => (
                       <div key={lbl}>

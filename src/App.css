@@ -1,5 +1,21 @@
+/* App.css is the main stylesheet for the entire Puzzle Project dashboard.
+   */
+
+   /* FONTS
+   This line reaches out to Google Fonts on the internet and downloads
+   two custom fonts for for our app:
+   Nunito — a rounded bold font used for headings, titles, and big numbers
+   Nunito Sans — a cleaner lighter version used for body text and paragraphs
+    */
+
+
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&display=swap');
  
+
+/*  
+   :root means these variables are available everywhere in the entire stylesheet.
+   */
+
 :root {
   --teal: #009B8D;
   --teal-lt: #E0F5F3;
@@ -17,16 +33,29 @@
   --card: #ffffff;
   --border: rgba(100, 80, 160, 0.12);
 }
- 
+ /* 
+   The * selector targets absolutely every single element on the page.
+   . Setting them
+   all to 0 gives you a clean consistent blank slate to build on.
+   box-sizing: border-box changes how width calculations work */
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
  
+/* Sets the default font and background for the entire page.
+   */
 body {
   font-family: 'Nunito Sans', sans-serif;
   background: var(--surface);
   color: var(--ink);
 }
  
-/* LOADING */
+/* LOADING
+
+This is the full screen shown while App.js waits for Firebase
+   to confirm the login state. It uses flexbox to centre everything
+   vertically and horizontally. 100vh means 100% of the viewport height
+   so it always fills the entire screen regardless of screen size.*/
+
 .app-loading {
   height: 100vh;
   display: flex;
@@ -36,7 +65,14 @@ body {
   gap: 20px;
   background: var(--dark);
 }
-.loading-logo { height: 50px; }
+
+
+.loading-logo { height: 50px; }/* Sets the logo image to a fixed height */
+
+/* The spinner is an empty div that gets styled into a circle and animated.
+   , creating the appearance of a spinning arc.
+   . */
+
 .loading-spinner {
   width: 40px; height: 40px;
   border: 3px solid rgba(255,255,255,0.1);
@@ -44,10 +80,17 @@ body {
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
+
 .app-loading p { color: rgba(255,255,255,0.4); font-size: 14px; }
 @keyframes spin { to { transform: rotate(360deg); } }
  
-/* LOGIN PAGE */
+/* LOGIN PAGE 
+
+The full screen login page that appears when no user is logged in.
+   
+*/
+
+
 .login-page {
   min-height: 100vh;
   display: flex;
@@ -57,6 +100,12 @@ body {
   position: relative;
   overflow: hidden;
 }
+
+/*  two large soft glowing circles
+   in the background corners to give the login page visual depth.
+    */
+
+    
 .login-page::before {
   content: '';
   position: absolute;

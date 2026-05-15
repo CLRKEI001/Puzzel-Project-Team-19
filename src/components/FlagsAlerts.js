@@ -98,23 +98,25 @@ const [sortOrder, setSortOrder] = useState("highest");
   .filter(child => {
 
     // STATUS FILTER
-    const statusMatch =
-      selectedStatus === "all" ||
-      (selectedStatus === "flagged" && child.flagged) ||
-      (selectedStatus === "referred" && child.referred) ||
-      (selectedStatus === "resolved" && child.resolved);
-
+   const statusMatch =
+  selectedStatus === "all" ||
+  (selectedStatus === "flagged" && child.flagged === true) ||
+  (selectedStatus === "referred" && child.referred === true) ||
+  (selectedStatus === "resolved" && child.resolved === true);
     // DOMAIN FILTER
     const domainMatch =
-      selectedDomain === "all"
-        ? child.flagged
-        : (child[selectedDomain] || 0) <= 2;
+  selectedDomain === "all"
+    ? child.flagged
+    : (child[selectedDomain] || 0) < 50;
 
         // SCORE FILTER
+    const score = child[selectedDomain] || 0;
     const scoreMatch =
-      selectedScore === "all"
-        ? true
-        : (child[selectedDomain] || 0) === Number(selectedScore);
+  selectedScore === "all" ? true
+  : selectedScore === "low" ? score < 40
+  : selectedScore === "mid" ? score >= 40 && score <= 60
+  : selectedScore === "high" ? score > 60
+  : true;
 
     return statusMatch && domainMatch && scoreMatch;
   })
@@ -216,6 +218,13 @@ const [sortOrder, setSortOrder] = useState("highest");
             <div className="empty-state-icon">✅</div>
             <div className="empty-state-title">{t.noFlags}</div>
             <div className="empty-state-sub">{t.noFlagsSub}</div>
+            <button
+            className="btn btn-teal"
+            style={{ marginTop: 20 }}
+            onClick={() => setSelectedScore("all")}
+          >
+            ← Back to All Flags
+          </button>
           </div>
         </div>
       </div>
@@ -252,18 +261,17 @@ const [sortOrder, setSortOrder] = useState("highest");
 
   {/* STATUS */}
   <div className="filter-group">
-    <label>Status</label>
-
-    <select
-      value={selectedStatus}
-      onChange={(e) => setSelectedStatus(e.target.value)}
-    >
-      <option value="all">All Students</option>
-      <option value="flagged">Flagged</option>
-      <option value="referred">Referred</option>
-      <option value="resolved">Resolved</option>
-    </select>
-  </div>
+  <label>Domain Score</label>
+  <select
+    value={selectedScore}
+    onChange={(e) => setSelectedScore(e.target.value)}
+  >
+    <option value="all">All Scores</option>
+    <option value="low">Below 40 — Critical</option>
+    <option value="mid">40–60 — Concern</option>
+    <option value="high">Above 60 — Good</option>
+  </select>
+</div>
 
   {/* DOMAIN */}
   <div className="filter-group">
@@ -281,20 +289,6 @@ const [sortOrder, setSortOrder] = useState("highest");
     </select>
   </div>
 
-  {/* SCORE */}
-  <div className="filter-group">
-    <label>Domain Score</label>
-
-    <select
-      value={selectedScore}
-      onChange={(e) => setSelectedScore(e.target.value)}
-    >
-      <option value="all">All Scores</option>
-      <option value="0">0</option>
-      <option value="1">1</option>
-      <option value="2">2</option>
-    </select>
-  </div>
 
   {/* SORT */}
   <div className="filter-group">

@@ -269,7 +269,7 @@ export default function Overview({ children, lang }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             <h2 style={{ fontSize: 22, fontWeight: 700, color: "#1a1a2e", margin: 0 }}></h2>
-            <p style={{ fontSize: 13, color: "#888", margin: "2px 0 0" }}>/</p>
+            <p style={{ fontSize: 13, color: "#888", margin: "2px 0 0" }}></p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {lastUpdated && (
@@ -312,13 +312,13 @@ export default function Overview({ children, lang }) {
           <div style={{ fontSize: 11, fontWeight: 500, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
             {t.keyInsights}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(insights.length, 2)}, 1fr)`, gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(insights.length, 2)}, 1fr)`, gap: 8 }}>
             {insights.map((ins, i) => (
               <div key={i} style={{
                 background: "#fff", border: `0.5px solid ${ins.color}33`,
                 borderLeft: `4px solid ${ins.color}`,
-                borderRadius: "0 8px 8px 0", padding: "10px 14px",
-                fontSize: 12, color: "#333",
+                borderRadius: "0 8px 8px 0", padding: "6px 10px",
+                fontSize: 10, color: "#333",
               }}>
                 {ins.text}
               </div>
@@ -433,7 +433,7 @@ export default function Overview({ children, lang }) {
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
-              <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
+              <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
                 {pieData.map((entry, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
               </Pie>
               <Tooltip
@@ -490,9 +490,9 @@ export default function Overview({ children, lang }) {
       <div className="card-title">{t.byLanguage}</div>
       <span className="card-badge badge-purple">{t.breakdown}</span>
     </div>
-    <ResponsiveContainer width="100%" height={200}>
+    <ResponsiveContainer width="100%" height={220}>
       <PieChart>
-        <Pie data={langData} cx="50%" cy="50%" outerRadius={60} dataKey="value"
+        <Pie data={langData} cx="50%" cy="50%" outerRadius={50} dataKey="value"
           label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={true}>
           {langData.map((_, i) => <Cell key={i} fill={LANG_COLORS[i % LANG_COLORS.length]} />)}
         </Pie>
@@ -500,23 +500,7 @@ export default function Overview({ children, lang }) {
       </PieChart>
     </ResponsiveContainer>
   </div>
-
-        <div className="card">
-          <div className="card-header">
-            <div className="card-title">{t.byLanguage}</div>
-            <span className="card-badge badge-purple">{t.breakdown}</span>
-          </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
-              <Pie data={langData} cx="50%" cy="50%" outerRadius={60} dataKey="value"
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={true}>
-                {langData.map((_, i) => <Cell key={i} fill={LANG_COLORS[i % LANG_COLORS.length]} />)}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+</div>  
 
       {/* ROW 3: AGE + GENDER + MONTHLY TREND */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1.5fr", gap: "20px", marginBottom: "20px" }}>

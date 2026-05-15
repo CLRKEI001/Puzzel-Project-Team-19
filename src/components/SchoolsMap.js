@@ -115,7 +115,7 @@ export default function SchoolsMap({ screenings = [], t = {} }) {
       {/* EXPANDED MAP */}
       {expanded && (
         <div style={{
-          display: "grid", gridTemplateColumns: "1fr 220px", gap: 16,
+          display: "grid", gridTemplateColumns: window.innerWidth < 500 ? "1fr" : "1fr 220px",
           marginTop: 16, animation: "fadeIn 0.3s ease",
         }}>
 

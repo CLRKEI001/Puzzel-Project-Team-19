@@ -86,7 +86,7 @@ function GaugeMeter({ value, color, size = 90 }) {
 }
 
 // Mini sparkline component
-function Sparkline({ data, color, width = 80, height = 36 }) {
+function Sparkline({ data, color, width = 55, height = 100 }) {
   if (!data || data.length < 2) return null;
   const max = Math.max(...data);
   const min = Math.min(...data);

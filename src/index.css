@@ -1,9 +1,14 @@
+/* index.css is a global stylesheet where styles are written here to apply to every single page
+   and component in the entire app. */
+
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
-  -webkit-font-smoothing: antialiased;
+  -webkit-font-smoothing: antialiased;  /*  it makes text edges look sharper and less pixelated.
+     The -webkit- prefix means it targets Safari and Chrome on Apple devices. */
   -moz-osx-font-smoothing: grayscale;
 }
 

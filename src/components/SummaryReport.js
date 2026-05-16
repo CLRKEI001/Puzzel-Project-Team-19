@@ -217,18 +217,7 @@ export default function SummaryReport({ children: propChildren, lang: initialLan
 
             <div style={{ flex:1 }} />
 
-            <div style={{ display:"flex", gap:4 }}>
-              {["en","af","xh"].map(l => (
-                <button key={l} onClick={() => setLang(l)} style={{
-                  padding:"5px 11px", borderRadius:6,
-                  border:`1.5px solid ${lang===l?"#111":"#DDD"}`,
-                  background: lang===l?"#111":"transparent",
-                  color: lang===l?"#fff":"#888",
-                  fontSize:10, fontWeight:800, cursor:"pointer",
-                  textTransform:"uppercase", letterSpacing:"0.07em", fontFamily:"inherit",
-                }}>{l}</button>
-              ))}
-            </div>
+           
 
             <div style={{ width:1, height:28, background:"#E5E5E5", flexShrink:0 }} />
 
@@ -364,7 +353,7 @@ export default function SummaryReport({ children: propChildren, lang: initialLan
                   </div>
 
                   <div style={{ height:1, background:"#EBEBEB", marginBottom:36 }} />
-
+                  
                   <p style={{ margin:"0 0 16px", fontSize:10, fontWeight:800,
                     letterSpacing:"0.1em", textTransform:"uppercase", color:"#AAA" }}>
                     All Screened Children ({total})
@@ -405,6 +394,7 @@ export default function SummaryReport({ children: propChildren, lang: initialLan
                   {flaggedList.length > 0 && (
                     <>
                       <div style={{ height:1, background:"#EBEBEB", marginBottom:36 }} />
+                      <div className="page-break" />
                       <p style={{ margin:"0 0 16px", fontSize:10, fontWeight:800,
                         letterSpacing:"0.1em", textTransform:"uppercase", color:"#991040" }}>
                         Flagged for Follow-up ({flaggedList.length})

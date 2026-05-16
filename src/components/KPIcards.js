@@ -149,18 +149,15 @@ export default function KpiCards({ total, flagged, onTrack, avgScore, trendData,
 
       {/* CARD 1 — Total Screened with sparkline */}
       <div className="stat-card c1" style={cardStyle}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div style={{ vdisplay: "flex", flexDirection: "column", alignItems: "center", textAlign: "center"}}>
           <div>
             <div className="stat-label" style={labelStyle}>{t.totalScreened}</div>
-            <div className="stat-value" style={{ ...valueStyle, color: COLORS.teal }}>
+            <div className="stat-value" style={{ ...valueStyle, color: COLORS.teal, fontSize: "clamp(28px, 8vw, 52px)" }}>
               {animatedTotal}
             </div>
             <div className="stat-change" style={changeStyle}>↑ {t.thisWeek}</div>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-            <Sparkline data={sparkValues} color={COLORS.teal} />
-            <span style={{ fontSize: 10, color: "#aaa" }}>trend</span>
-          </div>
+          
         </div>
       </div>
 
@@ -239,6 +236,7 @@ const cardStyle = {
   background: "#fff",
   boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
   borderTop: "3px solid transparent",
+  overflow: "visible",
 };
 
 const labelStyle = {
@@ -251,7 +249,7 @@ const labelStyle = {
 };
 
 const valueStyle = {
-  fontSize: 32,
+  fontSize: "clamp(24px, 5vw, 36px)",
   fontWeight: 700,
   lineHeight: 1,
   marginBottom: 6,

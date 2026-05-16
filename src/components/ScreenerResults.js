@@ -121,7 +121,11 @@ export default function ScreenerResults({ lang }) {
   const [sessions, setSessions] = useState([]);
   const [followUps, setFollowUps] = useState({});
   const [search, setSearch] = useState("");
-  const [stageFilter, setStageFilter] = useState("");
+ const [stageFilter, setStageFilter] = useState("");
+const [ageFilter, setAgeFilter] = useState("");
+const [languageFilter, setLanguageFilter] = useState("");
+const [scoreFilter, setScoreFilter] = useState("");
+const [followUpFilter, setFollowUpFilter] = useState("");
   const [selected, setSelected] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -155,13 +159,22 @@ export default function ScreenerResults({ lang }) {
     return () => unsub();
   }, []);
  
-  const filtered = sessions.filter(s => {
-    const matchSearch = !search ||
-      s.childName?.toLowerCase().includes(search.toLowerCase()) ||
-      s.school?.toLowerCase().includes(search.toLowerCase());
-    const matchStage = !stageFilter || s.stage === stageFilter;
-    return matchSearch && matchStage;
-  });
+ const filtered = sessions.filter(s => {
+  const matchSearch = !search ||
+    s.childName?.toLowerCase().includes(search.toLowerCase()) ||
+    s.school?.toLowerCase().includes(search.toLowerCase());
+  const matchStage = !stageFilter || s.stage === stageFilter;
+  const matchAge = !ageFilter || String(s.age) === ageFilter;
+  const matchLanguage = !languageFilter || s.language === languageFilter;
+  const matchScore =
+    !scoreFilter ? true
+    : scoreFilter === "low" ? s.score < 40
+    : scoreFilter === "mid" ? s.score >= 40 && s.score <= 60
+    : scoreFilter === "high" ? s.score > 60
+    : true;
+  const matchFollowUp = !followUpFilter || s.followUpStage === followUpFilter;
+  return matchSearch && matchStage && matchAge && matchLanguage && matchScore && matchFollowUp;
+});
  
   const statusLabel = (s) => {
     if (s === "On Track") return t.onTrack;
@@ -189,6 +202,8 @@ export default function ScreenerResults({ lang }) {
   if (loading) {
     return (
       <div className="page-fade">
+        <div className="top-filter-bar" style={{ marginBottom: 20, display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 12 }}></div>
+        <div className="filter-heading">Student Filters</div>
         <div className="card">
           <div className="empty-state">
             <div className="empty-state-icon">⏳</div>
@@ -201,20 +216,84 @@ export default function ScreenerResults({ lang }) {
   }
  
   return (
-    <div className="page-fade">
-      <div className="search-bar">
-        <input className="search-input" placeholder={t.search} value={search} onChange={e => setSearch(e.target.value)} />
-        <select className="filter-select" value={stageFilter} onChange={e => setStageFilter(e.target.value)}>
-          <option value="">{t.filterStatus}</option>
-          <option value="stage1">{t.stage1}</option>
-          <option value="stage2">{t.stage2}</option>
-          <option value="stage3">{t.stage3}</option>
-          <option value="stage4">{t.stage4}</option>
-        </select>
-        <span style={{ fontSize: 12, color: "var(--ink-faint)", fontWeight: 600, marginLeft: "auto" }}>
-          {t.showing} {filtered.length} {t.of} {sessions.length} {t.sessions}
-        </span>
-      </div>
+    <div className="top-filter-bar" style={{ marginBottom: 20, display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 12 }}>
+  <div className="filter-heading">Student Filters</div>
+
+  {/* SEARCH */}
+  <div className="filter-group" style={{  minWidth: 200, flex: "2 1 200px" }}>
+    <label>Search</label>
+    <input
+      className="search-input"
+      placeholder={t.search}
+      value={search}
+      onChange={e => setSearch(e.target.value)}
+      style={{ height: 48, borderRadius: 16, border: "1.5px solid transparent", background: "#F8F8FC", padding: "0 16px", fontSize: 14, fontWeight: 700, color: "var(--ink-mid)", outline: "none" }}
+    />
+  </div>
+
+  {/* SESSION STATUS */}
+  <div className="filter-group" style={{ minWidth: 160, flex: "1 1 160px" }}>
+    <label>Session Status</label>
+    <select value={stageFilter} onChange={e => setStageFilter(e.target.value)}>
+      <option value="">{t.filterStatus}</option>
+      <option value="stage1">{t.stage1}</option>
+      <option value="stage2">{t.stage2}</option>
+      <option value="stage3">{t.stage3}</option>
+      <option value="stage4">{t.stage4}</option>
+    </select>
+  </div>
+
+  {/* AGE */}
+  <div className="filter-group" style={{ minWidth: 160, flex: "1 1 160px" }}>
+    <label>Age</label>
+    <select value={ageFilter} onChange={e => setAgeFilter(e.target.value)}>
+      <option value="">All Ages</option>
+      <option value="5">5 years</option>
+      <option value="6">6 years</option>
+    </select>
+  </div>
+
+  {/* LANGUAGE */}
+  <div className="filter-group" style={{ minWidth: 160, flex: "1 1 160px" }}>
+    <label>Language</label>
+    <select value={languageFilter} onChange={e => setLanguageFilter(e.target.value)}>
+      <option value="">All Languages</option>
+      <option value="isiXhosa">isiXhosa</option>
+      <option value="English">English</option>
+      <option value="Afrikaans">Afrikaans</option>
+    </select>
+  </div>
+
+  {/* SCORE */}
+  <div className="filter-group" style={{ minWidth: 160, flex: "1 1 160px" }}>
+    <label>Score Range</label>
+    <select value={scoreFilter} onChange={e => setScoreFilter(e.target.value)}>
+      <option value="">All Scores</option>
+      <option value="low">Below 40 — Critical</option>
+      <option value="mid">40–60 — Concern</option>
+      <option value="high">Above 60 — Good</option>
+    </select>
+  </div>
+
+  {/* FOLLOW UP */}
+  <div className="filter-group" style={{ minWidth: 160, flex: "1 1 160px" }}>
+    <label>Follow-up Status</label>
+    <select value={followUpFilter} onChange={e => setFollowUpFilter(e.target.value)}>
+      <option value="">All Follow-ups</option>
+      <option value="fu1">{t.fu1}</option>
+      <option value="fu2">{t.fu2}</option>
+      <option value="fu3">{t.fu3}</option>
+      <option value="fu4">{t.fu4}</option>
+      <option value="fu5">{t.fu5}</option>
+      <option value="fu6">{t.fu6}</option>
+    </select>
+  </div>
+
+  {/* RESULTS COUNT */}
+  <div style={{ marginLeft: "auto", fontSize: 12, color: "var(--ink-faint)", fontWeight: 600, alignSelf: "center", whiteSpace: "nowrap" }}>
+    {t.showing} {filtered.length} {t.of} {sessions.length} {t.sessions}
+  </div>
+
  
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         {filtered.length === 0 ? (

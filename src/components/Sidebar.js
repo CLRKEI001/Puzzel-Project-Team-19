@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { auth } from "../firebase";
 import { signOut } from "firebase/auth";
- 
+
 const labels = {
   en: {
     overview: "Overview", children: "Student Records", results: "Screener Results",
@@ -22,10 +22,11 @@ const labels = {
     role: "Isazi Sengqondo", system: "Inkqubo"
   }
 };
- 
+
 export default function Sidebar({ activePage, setActivePage, lang, user }) {
   const t = labels[lang];
- 
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   const navItems = [
     { id: "overview", label: t.overview, section: t.nav1, icon: (
       <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
@@ -43,20 +44,11 @@ export default function Sidebar({ activePage, setActivePage, lang, user }) {
       <svg viewBox="0 0 16 16" fill="none"><rect x="2" y="1" width="12" height="14" rx="2" stroke="currentColor" strokeWidth="1.5"/><path d="M5 5h6M5 8h6M5 11h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
     )},
   ];
- 
-  let lastSection = null;
- 
-  return (
-    <nav className="sidebar">
-      <div className="sidebar-logo">
-        <img src="/logo.png" alt="The Puzzle Project" />
-      </div>
-      <div className="sidebar-role">
-        <div className="sidebar-role-label">Signed in as</div>
-        <div className="sidebar-role-name">{user?.email?.split("@")[0] || "Psychologist"}</div>
-        <div className="sidebar-role-type">{t.role}</div>
-      </div>
-      <div className="sidebar-nav">
+
+  const NavContent = ({ onNavigate }) => {
+    let lastSection = null;
+    return (
+      <>
         {navItems.map((item) => {
           const showSection = item.section && item.section !== lastSection;
           if (item.section) lastSection = item.section;
@@ -65,7 +57,7 @@ export default function Sidebar({ activePage, setActivePage, lang, user }) {
               {showSection && <div className="nav-section-label">{item.section}</div>}
               <button
                 className={`nav-item ${activePage === item.id ? "active" : ""}`}
-                onClick={() => setActivePage(item.id)}
+                onClick={() => { setActivePage(item.id); onNavigate?.(); }}
               >
                 {item.icon}
                 {item.label}
@@ -73,13 +65,93 @@ export default function Sidebar({ activePage, setActivePage, lang, user }) {
             </React.Fragment>
           );
         })}
-      </div>
-      <div className="sidebar-footer">
-        
-        <button className="logout-btn" onClick={() => signOut(auth)}>
-          {t.logout}
-        </button>
-      </div>
-    </nav>
+      </>
+    );
+  };
+
+  return (
+    <>
+      {/* ── DESKTOP SIDEBAR ── */}
+      <nav className="sidebar">
+        <div className="sidebar-logo">
+          <img src="/logo.png" alt="The Puzzle Project" />
+        </div>
+        <div className="sidebar-role">
+          <div className="sidebar-role-label">Signed in as</div>
+          <div className="sidebar-role-name">{user?.email?.split("@")[0] || "Psychologist"}</div>
+          <div className="sidebar-role-type">{t.role}</div>
+        </div>
+        <div className="sidebar-nav">
+          <NavContent />
+        </div>
+        <div className="sidebar-footer">
+          <button className="logout-btn" onClick={() => signOut(auth)}>
+            {t.logout}
+          </button>
+        </div>
+      </nav>
+
+      {/* ── MOBILE HAMBURGER BUTTON ── */}
+      <button
+        className="hamburger-btn"
+        onClick={() => setMobileOpen(true)}
+        style={{
+          position: "fixed", top: 16, left: 16, zIndex: 150,
+          display: "none",
+          flexDirection: "column", gap: 5,
+          background: "var(--dark)", border: "none",
+          borderRadius: 8, padding: "8px 10px", cursor: "pointer",
+        }}
+      >
+        <span style={{ display: "block", width: 20, height: 2, background: "#fff", borderRadius: 2 }} />
+        <span style={{ display: "block", width: 20, height: 2, background: "#fff", borderRadius: 2 }} />
+        <span style={{ display: "block", width: 20, height: 2, background: "#fff", borderRadius: 2 }} />
+      </button>
+
+      {/* ── MOBILE FULLSCREEN MENU ── */}
+      {mobileOpen && (
+        <div style={{
+          position: "fixed", inset: 0,
+          background: "var(--dark)",
+          zIndex: 200,
+          display: "flex", flexDirection: "column",
+          padding: "24px 22px",
+          overflowY: "auto",
+          animation: "fadeIn 0.2s ease",
+        }}>
+          {/* Header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+            <img src="/logo.png" alt="logo" style={{ height: 32 }} />
+            <button
+              onClick={() => setMobileOpen(false)}
+              style={{ background: "none", border: "none", color: "#fff", fontSize: 22, cursor: "pointer", lineHeight: 1 }}
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Role badge */}
+          <div className="sidebar-role" style={{ margin: "0 0 20px" }}>
+            <div className="sidebar-role-label">Signed in as</div>
+            <div className="sidebar-role-name">{user?.email?.split("@")[0] || "Psychologist"}</div>
+            <div className="sidebar-role-type">{t.role}</div>
+          </div>
+
+          {/* Nav */}
+          <div className="sidebar-nav" style={{ flex: 1 }}>
+            <NavContent onNavigate={() => setMobileOpen(false)} />
+          </div>
+
+          {/* Logout */}
+          <button
+            className="logout-btn"
+            onClick={() => { setMobileOpen(false); signOut(auth); }}
+            style={{ marginTop: 24 }}
+          >
+            {t.logout}
+          </button>
+        </div>
+      )}
+    </>
   );
 }

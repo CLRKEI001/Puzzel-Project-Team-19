@@ -83,8 +83,56 @@ export default function FlagsAlerts({ children, lang }) {
   const [messages, setMessages] = useState([]);
   const [showMessages, setShowMessages] = useState(false);
   const [success, setSuccess] = useState("");
+    // =========================
+  // FILTER STATES
+  // =========================
+  const [selectedDomain, setSelectedDomain] = useState("all");
+const [selectedStatus, setSelectedStatus] = useState("flagged");
+const [selectedScore, setSelectedScore] = useState("all");
+const [sortOrder, setSortOrder] = useState("highest");
+//const flagged = children.filter(c => c.flagged);
+    // =========================
+  // FILTER LOGIC
+  // =========================
+ const filteredChildren = children
+  .filter(child => {
 
-  const flagged = children.filter(c => c.flagged);
+    // STATUS FILTER
+   const statusMatch =
+  selectedStatus === "all" ||
+  (selectedStatus === "flagged" && child.flagged === true) ||
+  (selectedStatus === "referred" && child.referred === true) ||
+  (selectedStatus === "resolved" && child.resolved === true);
+    // DOMAIN FILTER
+    const domainMatch =
+  selectedDomain === "all"
+    ? child.flagged
+    : (child[selectedDomain] || 0) < 50;
+
+        // SCORE FILTER
+    const score = child[selectedDomain] || 0;
+    const scoreMatch =
+  selectedScore === "all" ? true
+  : selectedScore === "low" ? score < 40
+  : selectedScore === "mid" ? score >= 40 && score <= 60
+  : selectedScore === "high" ? score > 60
+  : true;
+
+    return statusMatch && domainMatch && scoreMatch;
+  })
+
+  .sort((a, b) => {
+
+    if (selectedDomain === "all") return 0;
+
+    const aScore = a[selectedDomain] || 0;
+    const bScore = b[selectedDomain] || 0;
+
+    return sortOrder === "highest"
+      ? aScore - bScore
+      : bScore - aScore;
+  });
+  const flagged = filteredChildren.filter(c => c.flagged);
   const domainKeys = ["cognitive", "motor", "social", "emotion"];
   const domainLabels = {
     cognitive: t.cognitive, motor: t.motor, social: t.social, emotion: t.emotion
@@ -170,6 +218,13 @@ export default function FlagsAlerts({ children, lang }) {
             <div className="empty-state-icon">✅</div>
             <div className="empty-state-title">{t.noFlags}</div>
             <div className="empty-state-sub">{t.noFlagsSub}</div>
+            <button
+            className="btn btn-teal"
+            style={{ marginTop: 20 }}
+            onClick={() => setSelectedScore("all")}
+          >
+            ← Back to All Flags
+          </button>
           </div>
         </div>
       </div>
@@ -183,8 +238,8 @@ export default function FlagsAlerts({ children, lang }) {
       <div className="three-col" style={{ marginBottom: 20 }}>
         <div className="stat-card c4" style={{ marginBottom: 0 }}>
           <div className="stat-label">{t.activeFlags}</div>
-          <div className="stat-value">{flagged.length}</div>
-          <div className="stat-change down">{flagged.length} {t.total}</div>
+          <div className="stat-value">{filteredChildren.length}</div>
+          <div className="stat-change down">{filteredChildren.length} {t.total}</div>
         </div>
         <div className="stat-card c2" style={{ marginBottom: 0 }}>
           <div className="stat-label">{t.referred}</div>
@@ -193,26 +248,97 @@ export default function FlagsAlerts({ children, lang }) {
         </div>
         <div className="stat-card c1" style={{ marginBottom: 0 }}>
           <div className="stat-label">{t.resolved}</div>
-          <div className="stat-value">{Math.floor(flagged.length * 0.2)}</div>
+          <div className="stat-value">{Math.floor(filteredChildren.length * 0.2)}</div>
           <div className="stat-change">↑ this month</div>
         </div>
       </div>
 
-      <div className="two-col">
+      <div className="top-filter-bar">
 
+  <div className="filter-heading">
+    Student Filters
+  </div>
+
+  {/* STATUS */}
+  <div className="filter-group">
+  <label>Domain Score</label>
+  <select
+    value={selectedScore}
+    onChange={(e) => setSelectedScore(e.target.value)}
+  >
+    <option value="all">All Scores</option>
+    <option value="low">Below 40 — Critical</option>
+    <option value="mid">40–60 — Concern</option>
+    <option value="high">Above 60 — Good</option>
+  </select>
+</div>
+
+  {/* DOMAIN */}
+  <div className="filter-group">
+    <label>Weak Domain</label>
+
+    <select
+      value={selectedDomain}
+      onChange={(e) => setSelectedDomain(e.target.value)}
+    >
+      <option value="all">All Domains</option>
+      <option value="cognitive">Cognitive</option>
+      <option value="motor">Fine Motor</option>
+      <option value="social">Social</option>
+      <option value="emotion">Emotion</option>
+    </select>
+  </div>
+
+
+  {/* SORT */}
+  <div className="filter-group">
+    <label>Sort Scores</label>
+
+    <select
+      value={sortOrder}
+      onChange={(e) => setSortOrder(e.target.value)}
+    >
+      <option value="highest">Highest → Lowest</option>
+      <option value="lowest">Lowest → Highest</option>
+    </select>
+  </div>
+
+</div>
+ 
         {/* FLAGGED CHILDREN LIST */}
         <div className="card">
           <div className="card-header">
             <div className="card-title">{t.activeFlags}</div>
-            <span className="card-badge badge-pink">{flagged.length} {t.total}</span>
+            <span className="card-badge badge-pink">{filteredChildren.length} {t.total}</span>
           </div>
           <div className="flag-list">
-            {flagged.map((child, i) => (
+            {filteredChildren.map((child, i) => (
               <div className="flag-item" key={child.id || i}>
                 <div className="flag-icon" style={{ background: "var(--pink-lt)", color: "var(--pink)" }}>⚑</div>
                 <div style={{ flex: 1 }}>
                   <div className="flag-name">{child.name}</div>
-                  <div className="flag-meta">{child.school} · {t.score}: {child.total}%</div>
+               <div className="flag-meta">
+  {child.school}
+</div>
+
+{selectedDomain !== "all" && (
+  <div
+    style={{
+      marginTop: 6,
+      display: "inline-block",
+      padding: "6px 12px",
+      borderRadius: 999,
+      background: "var(--pink-lt)",
+      color: "var(--pink)",
+      fontWeight: 800,
+      fontSize: 12
+    }}
+  >
+    {domainLabels[selectedDomain]} Score:
+    {" "}
+    {child[selectedDomain] || 0}
+  </div>
+)}
                   <div className="flag-meta">{t.flaggedOn} {child.date}</div>
                 </div>
                 <button
@@ -266,7 +392,7 @@ export default function FlagsAlerts({ children, lang }) {
             )}
           </div>
         </div>
-      </div>
+     
 
       {/* SEND MESSAGE MODAL */}
       {selectedChild && !sentId && (

@@ -1,7 +1,34 @@
+
+// It is the entire Children page 
+// handles viewing a child's details in a modal and then adding the new children to Firebase/database,
+// It talks directly to Firebase Firestore for all its data operations.
+
 import React, { useState, useEffect } from "react";
-import { db } from "../firebase";
+import { db } from "../firebase";  // db is our Firestore database connection from firebase.js
+
 import { collection, addDoc, serverTimestamp, getDocs, query, where, updateDoc, deleteDoc, doc, onSnapshot } from "firebase/firestore";
- 
+
+// TFirestore functions that component needs:
+// collection   — points to a collection/a table in the database
+// addDoc       — adds a new document/ row to a collection
+// serverTimestamp — inserts the current server time automatically
+// getDocs      — fetches all documents from a query once
+// query        — builds a database query with filters
+// where        — adds a filter condition to a query
+// updateDoc    — updates specific fields in an existing document without replacing the whole thing
+// deleteDoc    — permanently deletes a document from the database
+// doc          — points to a specific single document by its ID
+// onSnapshot   — sets up a real-time listener that fires every time data changes in Firebase,
+//                so your UI updates live without needing to refresh the page
+
+
+
+// T is an object containing all the text strings used in this component
+// The component receives a lang prop ("en", "af", or "xh") and uses
+// const t = T[lang] to get the right language object.
+//  writes t.search
+// which automatically returns the right translation for the active language.
+
 const T = {
   en: {
     search: "Search by name or school...", filterStatus: "All Stages",
@@ -104,61 +131,100 @@ const T = {
   }
 };
  
+// The six possible follow-up status keys. They are used to loop through and build the dropdown options
 const FOLLOW_UP_OPTIONS = ["fu1", "fu2", "fu3", "fu4", "fu5", "fu6"];
  
+// Each follow-up status key maps to a background colour and text colour.
+//  colour the follow-up status pill in the UI.
+// Instead of writing if/else for every status, you just do followUpColors[status]
+
 const followUpColors = {
-  fu1: { bg: "#F7F6FF", color: "#8888a8" },
-  fu2: { bg: "#FEF0E7", color: "#F26522" },
-  fu3: { bg: "#FCE6EE", color: "#E8175D" },
-  fu4: { bg: "#E0F5F3", color: "#009B8D" },
-  fu5: { bg: "#F0E8F7", color: "#6B2F8A" },
-  fu6: { bg: "#FEF0E7", color: "#F26522" },
+  fu1: { bg: "#F7F6FF", color: "#8888a8" },  // Grey — not required
+  fu2: { bg: "#FEF0E7", color: "#F26522" },  // Orange — awaiting
+  fu3: { bg: "#FCE6EE", color: "#E8175D" },   // Pink — in progress
+  fu4: { bg: "#E0F5F3", color: "#009B8D" },   // Teal — completed
+  fu5: { bg: "#F0E8F7", color: "#6B2F8A" },   // Purple — referred
+  fu6: { bg: "#FEF0E7", color: "#F26522" },    // Orange — pending parent
 };
- 
+
+// four screening stage keys — used to colour the stage pills in the table
+//session stage 
 const stageColors = {
-  stage1: { bg: "#F0EDF8", color: "#6B2F8A" },
-  stage2: { bg: "#FEF0E7", color: "#F26522" },
-  stage3: { bg: "#FCE6EE", color: "#E8175D" },
-  stage4: { bg: "#E0F5F3", color: "#009B8D" },
+  stage1: { bg: "#F0EDF8", color: "#6B2F8A" },  // Purple — not started
+  stage2: { bg: "#FEF0E7", color: "#F26522" },  // Orange — registered 
+  stage3: { bg: "#FCE6EE", color: "#E8175D" },  // Pink — processing
+  stage4: { bg: "#E0F5F3", color: "#009B8D" },   // Teal — completed
 };
- 
+
+// Reusable inline style objects for form inputs and labels.
+// Defining them here once and reusing them throughout the JSX below avoids  repeating the same style block on every single input field in the forms.
 const inputStyle = { width: "100%", padding: "9px 12px", border: "1.5px solid var(--border)", borderRadius: 10, fontSize: 13, fontFamily: "inherit", outline: "none", background: "#fff" };
 const labelStyle = { fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--ink-mid)", display: "block", marginBottom: 5 };
  
+
+// This component receives two props from Dashboard.js:
+// children — the array of child objects fetched from Firebase, passed down from the parent
+// lang — the currently active language string ("en", "af", or "xh"), also from the parent
+// Props are how parent components pass data down to child components in React.
+
 export default function ChildrenTable({ children, lang }) {
+  // t is set once at the top — from this point on, t.search, t.save etc
+  // automatically return the right text for whatever language is active
+
+  // STATE VARIABLES
+  // Every piece of data that can change and needs to trigger a screen redraw
+  // is stored in useState. The pattern is always:
+  // const [value, setValue] = useState(initialValue)
+  // always call setValue(newValue)
+  // and React automatically redraws the parts of the screen that use it.
   const t = T[lang];
-  const [search, setSearch] = useState("");
-  const [stageFilter, setStageFilter] = useState("");
-  const [selected, setSelected] = useState(null);
-  const [consentView, setConsentView] = useState(false);
-  const [showAdd, setShowAdd] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState(null);
-  const [uploadedFileURL, setUploadedFileURL] = useState(null);
-  const [uploadedFileType, setUploadedFileType] = useState(null);
-  const [consentFiles, setConsentFiles] = useState({});
-  const [showFollowUp, setShowFollowUp] = useState(false);
-  const [followUpDate, setFollowUpDate] = useState("");
-  const [followUpPsych, setFollowUpPsych] = useState("");
-  const [followUpReason, setFollowUpReason] = useState("");
-  const [followUpType, setFollowUpType] = useState("fu2");
-  const [followUpSaved, setFollowUpSaved] = useState(false);
-  const [existingFollowUp, setExistingFollowUp] = useState(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [duplicateWarning, setDuplicateWarning] = useState(false);
-  const [followUps, setFollowUps] = useState({});
+  const [search, setSearch] = useState("");  // Current text in the search input
+  const [stageFilter, setStageFilter] = useState("");  // Currently selected stage filter dropdown value
+  const [selected, setSelected] = useState(null);     // The child object currently open in the view modal, or null if no modal is open
+  const [consentView, setConsentView] = useState(false);   // Whether the modal is showing the Details tab (false) or Consent Form tab (true)
+  const [showAdd, setShowAdd] = useState(false);      // Whether the Add New Child modal is open
+  const [uploadedFile, setUploadedFile] = useState(null);       // The raw File object from the file input
+  const [uploadedFileURL, setUploadedFileURL] = useState(null); // A temporary browser URL created from the uploaded file for preview
+  const [uploadedFileType, setUploadedFileType] = useState(null); // The MIME type of the uploaded file 
+  const [consentFiles, setConsentFiles] = useState({}); // An object mapping child IDs to their uploaded consent file data, stored in memory only
+  const [showFollowUp, setShowFollowUp] = useState(false);   // Whether the follow-up scheduling form is expanded inside the modal
+  const [followUpDate, setFollowUpDate] = useState("");       // Date value typed into the follow-up date field
+  const [followUpPsych, setFollowUpPsych] = useState("");     // Psychologist name typed into the follow-up form
+  const [followUpReason, setFollowUpReason] = useState("");   // Reason text typed into the follow-up form
+  const [followUpType, setFollowUpType] = useState("fu2");    // Currently selected follow-up status from the dropdown
+  const [followUpSaved, setFollowUpSaved] = useState(false);  // Whether to show the green success message after saving a follow-up
+  const [existingFollowUp, setExistingFollowUp] = useState(null); // The follow-up document from Firebase for the currently selected child, or null
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); // Whether the delete confirmation panel is showing
+  const [duplicateWarning, setDuplicateWarning] = useState(false);   // Whether to show the duplicate name warning in the add form
+  const [followUps, setFollowUps] = useState({});  // A live map of all follow-ups from Firebase — keyed by child name for fast lookup
+
+  // The form data object for the Add New Child form.
+  // All fields live together in one state object rather than separate useState calls.
+  // When any field changes, the spread operator  copies all existing
+  // fields and then the new value overwrites just the one that changed.
+  
   const [newChild, setNewChild] = useState({
     name: "", school: "", province: "Eastern Cape", age: "", gender: "Female",
     language: "English", date: "", examiner: "", stage: "stage1", flagged: false,
     total: 0, status: "Progressing"
   });
  
-  // Load all follow-ups from Firebase in real time
+  // REAL-TIME FIREBASE LISTENER FOR FOLLOW-UPS
+  // onSnapshot subscribes to the entire followUps collection in Firestore.
+  // Every time any follow-up document is created, updated, or deleted in Firebase
+  // this callback fires automatically with the new data 
+  // snap.docs is the array of all documents returned.
+  // We use childName so that later we can instantly check
+  // if a child has a follow-up by doing followUps[child.name] in O(1) time.
+  
+  // The empty [] dependency array means this runs once when the component first loads.
+
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "followUps"), (snap) => {
       const map = {};
       snap.docs.forEach(d => {
         const data = d.data();
-        map[data.childName] = { ...data, docId: d.id };
+        map[data.childName] = { ...data, docId: d.id };  // Key the follow-up by childName so we can look it up instantly
       });
       setFollowUps(map);
     });

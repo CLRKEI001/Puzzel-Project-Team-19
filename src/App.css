@@ -322,14 +322,7 @@ The full screen login page that appears when no user is logged in.
   flex-wrap: wrap;
   gap: 14px;
 }
-.topbar-left {}
-.page-title {
-  font-family: 'Nunito', sans-serif;
-  font-size: 26px;
-  font-weight: 900;
-  color: var(--ink);
-  letter-spacing: -0.5px;
-}
+
 .page-sub { font-size: 13px; color: var(--ink-faint); margin-top: 2px; }
 .topbar-right { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
  
@@ -650,6 +643,12 @@ The full screen login page that appears when no user is logged in.
   }
 }
 @media (max-width: 768px) {
+
+  .main-content {
+    margin-left: 0;
+    padding: 20px;
+  }
+
   .sidebar {
     display: none;
   }
@@ -661,6 +660,91 @@ The full screen login page that appears when no user is logged in.
   .mobile-menu {
     display: block;
   }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .three-col {
+    grid-template-columns: 1fr;
+  }
+
+  .equal-col {
+    grid-template-columns: 1fr;
+  }
+
+  .top-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-group {
+    width: 100%;
+  }
+}
+
+/*Print for Summary Reports*/
+@media print {
+
+  
+
+  html, body {
+    width: 210mm;
+    min-height: 297mm;
+    background: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .report-card {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    width: 100% !important;
+    overflow: visible !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  table {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
+  .page-break {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  .avoid-break {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+}
+
+
 
 .hamburger-btn {
   display: flex !important;
@@ -707,13 +791,7 @@ The full screen login page that appears when no user is logged in.
   cursor: pointer;
 }
 
-  .main-content {
-    margin-left: 0;
-    padding: 10px;
-    width: 90vw;
-    box-sizing: border-box;
-    padding-top: 60px;
-  }
+ 
 
   .stats-grid {
     grid-template-columns: 1fr 1fr;
@@ -797,11 +875,7 @@ The full screen login page that appears when no user is logged in.
     max-width: 800%;
   }
 
-  body, html, #root, .dashboard-layout {
-    overflow-x: visible;
-    max-width: 40vw;
-  }
-}
+ 
 /* ========================================
    TOP FILTER BAR
 ======================================== */
@@ -975,3 +1049,4 @@ The full screen login page that appears when no user is logged in.
 
 }
 
+ 

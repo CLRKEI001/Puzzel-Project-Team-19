@@ -83,8 +83,8 @@ function App() {
  
   if (loading) {
     return (
-      <div className="app-loading">   /*  Puzzle Project logo is displayed in the centre of the loading screen *
-        <img src="/logo.png" alt="The Puzzle Project" className="loading-logo" />  /* An empty div that is animated in CSS to spin and act as a loading spinner */
+      <div className="app-loading">  
+        <img src="/logo.png" alt="The Puzzle Project" className="loading-logo" />  
         <div className="loading-spinner"></div>
         <p>Loading...</p>
       </div>

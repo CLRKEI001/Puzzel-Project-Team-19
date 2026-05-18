@@ -503,7 +503,7 @@ export default function Overview({ children, lang }) {
 </div>  
 
       {/* ROW 3: AGE + GENDER + MONTHLY TREND */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1.5fr", gap: "20px", marginBottom: "20px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1.5fr", gap: "20px", marginBottom: "20px", alignItems: "start" }}>
         <div className="card" style={{ marginBottom: 0 }}>
           <div className="card-header"><div className="card-title">{t.byAge}</div></div>
           <div className="bar-chart">
@@ -534,10 +534,10 @@ export default function Overview({ children, lang }) {
             </div>
           </div>
         </div>
-        <div className="card" style={{ marginBottom: 0 }}>
-          <div className="card-header"><div className="card-title">{t.monthlyTrend}</div></div>
-          <ResponsiveContainer width="100%" height={120}>
-            <LineChart data={trendData}>
+        <div className="card" style={{ marginBottom: 0, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+  <div className="card-header"><div className="card-title">{t.monthlyTrend}</div></div>
+  <ResponsiveContainer width="100%" height={220}>
+    <LineChart data={trendData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
               <XAxis dataKey="month" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} />

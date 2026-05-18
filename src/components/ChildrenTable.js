@@ -231,13 +231,26 @@ export default function ChildrenTable({ children, lang }) {
     return () => unsub();
   }, []);
  
-  // When a child is selected, load their follow-up
+  // This useEffect watches two dependencies: selected and followUps.
+  // Whenever either one changes it re-runs.
+  // If a child is selected, it looks up their follow-up in the followUps map
+  // and stores it in existingFollowUp so the modal can display it.
+  // This runs again when followUps changes 
+  // so the modal always shows the most current follow-up data without any delay.
   useEffect(() => {
     if (selected) {
       setExistingFollowUp(followUps[selected.name] || null);
     }
   }, [selected, followUps]);
  
+  // filtered is not a state variable — it is a derived value recalculated
+  // every time the component re-renders. .filter() creates a new array
+  // containing only the children that pass both conditions:
+  // 1. Their name or school contains the search text 
+  // 2. Their stage matches the selected filter 
+  // This runs automatically every time search, stageFilter, or children changes
+  // because React re-renders the component whenever any state changes.
+
   const filtered = children.filter(c => {
     const matchSearch = !search ||
       c.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -246,6 +259,12 @@ export default function ChildrenTable({ children, lang }) {
     return matchSearch && matchStage;
   });
  
+  // Called when the user picks a file in the consent form file input.
+  // e.target.files[0] gets the first selected file.
+  // URL.createObjectURL() creates a temporary local browser URL pointing to
+  // the file in memory — this lets you display an image or PDF preview
+  // without actually uploading the file to any server.
+
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -254,6 +273,13 @@ export default function ChildrenTable({ children, lang }) {
     setUploadedFileType(file.type);
   };
  
+
+// Saves the uploaded consent file into the consentFiles state object
+  // keyed by the child's ID. This is stored in browser memory only —
+  // it resets if the page refreshes. A production version would upload
+  // the file to Firebase Storage and save the URL to Firestore instead.
+
+
   const handleSaveConsent = () => {
     if (selected && uploadedFileURL) {
       setConsentFiles(prev => ({
@@ -262,32 +288,57 @@ export default function ChildrenTable({ children, lang }) {
       }));
     }
   };
+
+  // This is an async function because it does database operations that
+  // take time. async/await lets us write asynchronous code that reads
+  // like normal synchronous code — we wait for each Firebase call to
+  // finish before moving to the next line.
+  // Steps:
+  // 1. Validate that name and school are filled in
+  // 2. Query Firebase to check if a child with this name already exists
+  // 3. If duplicate found, show warning and stop
+  // 4. If no duplicate, add the new child document to the children collection
+  // 5. Reset the form and close the modal
  
   const handleAddChild = async () => {
     if (!newChild.name || !newChild.school) return;
     // Check for duplicate
+    // Build a query: SELECT * FROM children WHERE name == newChild.name
     const q = query(collection(db, "children"), where("name", "==", newChild.name));
+    // getDocs executes the query and returns all matching documents once
     const snap = await getDocs(q);
     if (!snap.empty) {
+      // snap.empty is false meaning at least one child with this name exists
       setDuplicateWarning(true);
       return;
-    }
+    }        // Stop here, dont add the duplicate
+
+    // addDoc adds a new document to the children collection with all the form fields
+    // serverTimestamp() tells Firebase to record the exact time the document was created
     await addDoc(collection(db, "children"), {
-      ...newChild,
-      age: parseInt(newChild.age) || 5,
-      createdAt: serverTimestamp()
+      ...newChild,                              // Spread all form fields in
+      age: parseInt(newChild.age) || 5,         // Convert age string to a number, default 5
+      createdAt: serverTimestamp()              // Firebase records the server time automatically
     });
+
+    // Reset everything after successfully adding
     setShowAdd(false);
     setDuplicateWarning(false);
     setNewChild({ name: "", school: "", province: "Eastern Cape", age: "", gender: "Female", language: "English", date: "", examiner: "", stage: "stage1", flagged: false, total: 0, status: "Progressing" });
   };
  
+  // Deletes the child document from the children collection using the
+  //  Firestore doc ID.
+  // Also deletes their follow-up document if one exists, to keep the database clean.
+  // doc(db, "children", selected.id) builds a reference to the specific document
+  // that needs to be deleted — you need the collection name and the document ID.
+
   const handleDeleteChild = async () => {
-    if (!selected?.id) return;
+    if (!selected?.id) return;   // Safety check — do nothing if no child is selected
     await deleteDoc(doc(db, "children", selected.id));
     // Also delete their follow-up if exists
-    if (existingFollowUp?.docId) {
-      await deleteDoc(doc(db, "followUps", existingFollowUp.docId));
+    if (existingFollowUp?.docId) {   // Close the modal
+      await deleteDoc(doc(db, "followUps", existingFollowUp.docId));  // Hide the confirmation panel
     }
     setSelected(null);
     setShowDeleteConfirm(false);

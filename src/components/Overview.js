@@ -242,7 +242,12 @@ export default function Overview({ children, lang }) {
   const girls = children.filter(c => c.gender === "Female").length;
   const boys = children.filter(c => c.gender === "Male").length;
 
-  const monthMap = { "02": "Feb", "03": "Mar", "04": "Apr" };
+  const monthMap = { 
+  "01": "Jan", "02": "Feb", "03": "Mar", 
+  "04": "Apr", "05": "May", "06": "Jun",
+  "07": "Jul", "08": "Aug", "09": "Sep",
+  "10": "Oct", "11": "Nov", "12": "Dec"
+};
   const monthlyCounts = {};
   children.forEach(c => {
     if (c.date) {

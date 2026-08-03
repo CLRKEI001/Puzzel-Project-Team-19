@@ -1,0 +1,92 @@
+/* AdminHome.css — the fancier hero banner for the admin console.
+   Everything else (cards, tables, modals) reuses the app's existing
+   global styles plus TeacherHome.css's shared quicklink/back-fab bits. */
+ 
+.ah-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  padding: 30px 32px;
+  margin-bottom: 20px;
+  background: radial-gradient(ellipse at 15% 20%, #1e1b3a 0%, var(--dark, #14142b) 55%, #0e0d1f 100%);
+  color: #fff;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  justify-content: space-between;
+  align-items: center;
+}
+ 
+.ah-hero-glow {
+  position: absolute;
+  inset: -30%;
+  background:
+    radial-gradient(circle at 10% 20%, rgba(0, 155, 141, 0.35), transparent 42%),
+    radial-gradient(circle at 85% 30%, rgba(232, 23, 93, 0.3), transparent 40%),
+    radial-gradient(circle at 60% 90%, rgba(107, 47, 138, 0.3), transparent 42%),
+    radial-gradient(circle at 30% 100%, rgba(242, 101, 34, 0.2), transparent 38%);
+  filter: blur(6px);
+  pointer-events: none;
+}
+ 
+.ah-hero-content { position: relative; z-index: 1; max-width: 420px; }
+.ah-hero-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6FE0D3;
+  margin-bottom: 10px;
+}
+.ah-hero-title {
+  font-family: "Nunito", sans-serif;
+  font-size: 26px;
+  font-weight: 900;
+  margin-bottom: 6px;
+  letter-spacing: -0.01em;
+}
+.ah-hero-sub {
+  font-size: 13.5px;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.5;
+}
+ 
+.ah-hero-stats {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(78px, 1fr));
+  gap: 22px;
+}
+.ah-hero-stat { text-align: center; }
+.ah-hero-stat-value {
+  font-family: "Nunito", sans-serif;
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.ah-hero-stat-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.55);
+}
+ 
+.ah-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+ 
+@media (max-width: 720px) {
+  .ah-hero { flex-direction: column; align-items: flex-start; }
+  .ah-hero-stats { grid-template-columns: repeat(2, 1fr); width: 100%; }
+}

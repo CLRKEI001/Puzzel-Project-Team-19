@@ -1,0 +1,74 @@
+/* TeacherHome.css — small additions only; stat-card / card / data-table /
+   modal / flag-list etc. all reuse the app's existing global styles so the
+   teacher home stays visually consistent with the analytics Dashboard. */
+ 
+.th-quicklink {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  text-align: left;
+  padding: 14px;
+  border: 1.5px solid var(--border, #e5e5f0);
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.th-quicklink:last-child { margin-bottom: 0; }
+.th-quicklink:hover { border-color: var(--teal, #009b8d); transform: translateY(-1px); }
+ 
+.th-quicklink-icon {
+  font-size: 20px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--teal-lt, #e0f5f3);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+ 
+.th-quicklink-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--ink, #1a1a2e);
+}
+.th-quicklink-sub {
+  font-size: 12px;
+  color: var(--ink-faint, #8a8aa3);
+  margin-top: 2px;
+}
+.th-quicklink-arrow {
+  margin-left: auto;
+  color: var(--ink-faint, #8a8aa3);
+  font-weight: 700;
+}
+ 
+/* Full-dashboard embed: dashboard renders its own layout, this just adds
+   a floating way back to the teacher's home screen. */
+.th-dashboard-embed {
+  position: relative;
+}
+.th-back-fab {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  z-index: 140;
+  padding: 9px 16px;
+  border: none;
+  border-radius: 999px;
+  background: var(--dark, #14142b);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+.th-back-fab:hover { opacity: 0.9; }
+ 
+@media (max-width: 880px) {
+  .th-back-fab { top: 68px; right: 16px; }
+}

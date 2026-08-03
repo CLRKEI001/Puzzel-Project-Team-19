@@ -1,0 +1,281 @@
+/* Login.css — PuzzleBox Screener System
+   Reuses the app's existing --teal / --pink / --purple / --orange / --dark
+   tokens where they're already defined globally; falls back sensibly if not. */
+ 
+.pb-login-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #fafaff;
+}
+ 
+/* ── LEFT VISUAL PANEL ───────────────────────────────────────────────── */
+.pb-login-visual {
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 30% 20%, #1e1b3a 0%, var(--dark, #14142b) 60%, #0e0d1f 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+}
+ 
+.pb-login-visual-glow {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(circle at 20% 25%, rgba(0, 155, 141, 0.3), transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(232, 23, 93, 0.25), transparent 40%),
+    radial-gradient(circle at 60% 15%, rgba(107, 47, 138, 0.3), transparent 35%),
+    radial-gradient(circle at 30% 85%, rgba(242, 101, 34, 0.18), transparent 38%);
+  filter: blur(10px);
+  pointer-events: none;
+}
+ 
+.pb-ambient-piece {
+  position: absolute;
+  animation: pb-drift var(--dur, 24s) ease-in-out infinite;
+  animation-delay: inherit;
+  will-change: transform;
+  pointer-events: none;
+}
+.pb-ambient-piece svg { width: 100%; height: 100%; display: block; }
+ 
+@keyframes pb-drift {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  50%  { transform: translate(14px, -18px) rotate(var(--rot)); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+ 
+.pb-login-visual-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 380px;
+  text-align: center;
+  color: #fff;
+}
+ 
+.pb-login-mark {
+  position: relative;
+  width: 116px;
+  height: 116px;
+  margin: 0 auto 28px;
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.35));
+}
+.pb-mark-piece {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+ 
+.pb-login-visual-copy h1 {
+  font-size: 30px;
+  font-weight: 900;
+  margin: 0 0 12px;
+  letter-spacing: -0.02em;
+}
+.pb-login-visual-copy p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.68);
+  margin: 0;
+}
+ 
+/* ── RIGHT FORM PANEL ─────────────────────────────────────────────────── */
+.pb-login-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+}
+ 
+.pb-login-card {
+  width: 100%;
+  max-width: 420px;
+}
+ 
+.pb-login-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--teal, #009B8D);
+  margin-bottom: 10px;
+}
+ 
+.pb-login-card-head h2 {
+  font-size: 26px;
+  font-weight: 900;
+  margin: 0 0 6px;
+  color: var(--ink, #1a1a2e);
+}
+ 
+.pb-login-sub {
+  font-size: 13px;
+  color: var(--ink-faint, #8a8aa3);
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+ 
+.pb-alert {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+.pb-alert-error { background: var(--pink-lt, #fce6ee); color: var(--pink, #e8175d); }
+.pb-alert-info  { background: var(--teal-lt, #e0f5f3); color: var(--teal, #009b8d); }
+ 
+.pb-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--ink-mid, #555570);
+  margin-bottom: 6px;
+}
+.pb-required {
+  text-transform: none;
+  font-weight: 500;
+  color: var(--ink-faint, #8a8aa3);
+  letter-spacing: normal;
+}
+ 
+.pb-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+ 
+.pb-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 14px;
+  margin-bottom: 16px;
+  border: 1.5px solid var(--border, #e5e5f0);
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  background: #fff;
+  transition: border-color 0.15s;
+}
+.pb-input:focus {
+  border-color: var(--teal, #009b8d);
+}
+ 
+.pb-input-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+ 
+.pb-role-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.pb-role-chip {
+  padding: 10px 10px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border, #e5e5f0);
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-mid, #555570);
+  cursor: pointer;
+  text-align: left;
+  position: relative;
+  padding-left: 22px;
+  transition: border-color 0.15s, color 0.15s;
+}
+.pb-role-chip::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--chip-color, #999);
+  opacity: 0.5;
+}
+.pb-role-chip.active {
+  border-color: var(--chip-color, #009b8d);
+  color: var(--ink, #1a1a2e);
+}
+.pb-role-chip.active::before { opacity: 1; }
+ 
+.pb-submit {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--teal, #009b8d), #00b39f);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.1s, opacity 0.15s;
+}
+.pb-submit:hover:not(:disabled) { transform: translateY(-1px); }
+.pb-submit:disabled { opacity: 0.6; cursor: default; }
+ 
+.pb-link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--teal, #009b8d);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+}
+ 
+.pb-switch-row {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--ink-faint, #8a8aa3);
+}
+ 
+.pb-pending {
+  text-align: center;
+  padding: 8px 0 4px;
+}
+.pb-pending-icon { font-size: 40px; margin-bottom: 12px; }
+.pb-pending p {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink-mid, #555570);
+  margin: 0 0 20px;
+}
+ 
+.pb-login-footer {
+  margin-top: 28px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--ink-faint, #b0b0c5);
+  line-height: 1.6;
+}
+ 
+/* ── RESPONSIVE ──────────────────────────────────────────────────────── */
+@media (max-width: 880px) {
+  .pb-login-page { grid-template-columns: 1fr; }
+  .pb-login-visual { padding: 32px 24px; min-height: 220px; }
+  .pb-login-visual-copy h1 { font-size: 24px; }
+  .pb-login-visual-copy p { display: none; }
+  .pb-login-mark { width: 72px; height: 72px; margin-bottom: 16px; }
+  .pb-mark-piece { width: 30px; height: 30px; }
+}
+ 
+@media (prefers-reduced-motion: reduce) {
+  .pb-ambient-piece { animation: none; }
+}

@@ -1,0 +1,177 @@
+/* RoleHomeKit.css — the distinct visual language for the three role home
+   screens: colorful hero, progress rings, icon-row lists, and a profile
+   rail. Sidebar restyling is scoped under .rh-shell so Dashboard.js's own
+   Sidebar (used elsewhere) is completely unaffected. */
+ 
+/* ── HERO ─────────────────────────────────────────────────────────── */
+.rh-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 28px;
+  padding: 32px 34px;
+  margin-bottom: 22px;
+  color: #fff;
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.28);
+}
+.rh-hero-piece {
+  position: absolute;
+  width: 170px;
+  height: 170px;
+  pointer-events: none;
+}
+.rh-hero-piece-a { top: -40px; right: -30px; transform: rotate(12deg); }
+.rh-hero-piece-b { bottom: -60px; right: 140px; transform: rotate(-18deg); width: 120px; height: 120px; }
+.rh-hero-body { position: relative; z-index: 1; max-width: 480px; }
+.rh-hero-eyebrow {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85); margin-bottom: 10px;
+}
+.rh-hero-greeting {
+  font-family: "Nunito", sans-serif; font-size: 30px; font-weight: 900;
+  letter-spacing: -0.01em; margin-bottom: 8px; line-height: 1.15;
+}
+.rh-hero-subtitle { font-size: 14px; color: rgba(255, 255, 255, 0.85); line-height: 1.5; }
+.rh-hero-rings {
+  position: relative; z-index: 1; margin-top: 24px;
+  display: flex; gap: 28px; flex-wrap: wrap;
+}
+ 
+/* ── RINGS ────────────────────────────────────────────────────────── */
+.rh-ring-block { display: flex; flex-direction: column; align-items: center; text-align: center; width: 92px; }
+.rh-ring-label { font-size: 11.5px; font-weight: 800; color: #fff; margin-top: 6px; }
+.rh-ring-sublabel { font-size: 10px; color: rgba(255, 255, 255, 0.7); margin-top: 1px; }
+ 
+/* Rings used outside the hero (light background) need dark text */
+.rh-ring-block.on-light .rh-ring-label { color: var(--ink, #1a1a2e); }
+.rh-ring-block.on-light .rh-ring-sublabel { color: var(--ink-faint, #8a8aa3); }
+ 
+/* ── LAYOUT: main content + right profile rail ──────────────────── */
+.rh-home-grid {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 980px) {
+  .rh-home-grid { grid-template-columns: 1fr; }
+}
+ 
+/* ── GENERIC SOFT CARD ────────────────────────────────────────────── */
+.rh-card {
+  background: #fff;
+  border-radius: 22px;
+  padding: 20px 22px;
+  box-shadow: 0 2px 14px rgba(20, 20, 43, 0.05);
+  margin-bottom: 20px;
+}
+.rh-card:last-child { margin-bottom: 0; }
+.rh-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.rh-card-title { font-family: "Nunito", sans-serif; font-size: 15px; font-weight: 800; color: var(--ink, #1a1a2e); }
+.rh-card-action {
+  background: none; border: none; font-size: 12px; font-weight: 700;
+  color: var(--ink-faint, #8a8aa3); cursor: pointer;
+}
+.rh-card-action:hover { color: var(--ink, #1a1a2e); }
+ 
+/* ── ICON-ROW LIST ────────────────────────────────────────────────── */
+.rh-list { display: flex; flex-direction: column; gap: 4px; }
+.rh-list-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 8px; border-radius: 14px;
+}
+.rh-list-row.clickable { cursor: pointer; }
+.rh-list-row.clickable:hover { background: #FAFAFF; }
+.rh-list-icon {
+  width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 16px;
+}
+.rh-list-text { flex: 1; min-width: 0; }
+.rh-list-title { font-size: 13px; font-weight: 800; color: var(--ink, #1a1a2e); }
+.rh-list-meta { font-size: 11.5px; color: var(--ink-faint, #8a8aa3); margin-top: 1px; }
+.rh-list-badge { font-size: 10.5px; font-weight: 800; padding: 4px 10px; border-radius: 20px; flex-shrink: 0; white-space: nowrap; }
+.rh-list-btn {
+  font-size: 11px; font-weight: 800; padding: 6px 12px; border-radius: 20px;
+  border: none; background: var(--dark, #14142b); color: #fff; cursor: pointer; flex-shrink: 0;
+}
+ 
+/* ── EMPTY STATE ──────────────────────────────────────────────────── */
+.rh-empty { text-align: center; padding: 26px 10px; }
+.rh-empty-icon { font-size: 30px; margin-bottom: 8px; }
+.rh-empty-title { font-size: 13px; font-weight: 800; color: var(--ink, #1a1a2e); }
+.rh-empty-sub { font-size: 11.5px; color: var(--ink-faint, #8a8aa3); margin-top: 4px; }
+ 
+/* ── PROFILE RAIL ─────────────────────────────────────────────────── */
+.rh-profile-card {
+  background: #fff; border-radius: 22px; padding: 24px 20px;
+  text-align: center; box-shadow: 0 2px 14px rgba(20, 20, 43, 0.05);
+  margin-bottom: 20px;
+}
+.rh-profile-avatar {
+  width: 66px; height: 66px; border-radius: 50%; margin: 0 auto 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: "Nunito", sans-serif; font-size: 24px; font-weight: 900; color: #fff;
+}
+.rh-profile-name { font-size: 15px; font-weight: 800; color: var(--ink, #1a1a2e); }
+.rh-profile-role {
+  display: inline-block; margin-top: 6px; padding: 4px 12px; border-radius: 20px;
+  font-size: 11px; font-weight: 800;
+}
+.rh-profile-verified {
+  margin-top: 12px; font-size: 11.5px; font-weight: 700; color: var(--teal, #009b8d);
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+}
+ 
+.rh-chip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+.rh-chip { background: #FAFAFF; border-radius: 14px; padding: 10px 8px; text-align: center; }
+.rh-chip-value { font-family: "Nunito", sans-serif; font-size: 17px; font-weight: 900; color: var(--ink, #1a1a2e); }
+.rh-chip-label { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-faint, #8a8aa3); margin-top: 2px; }
+ 
+/* ── STAT PILLS ROW (compact alternative to rings, used inline) ──── */
+.rh-pill-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+.rh-pill {
+  flex: 1; min-width: 130px; background: #fff; border-radius: 18px; padding: 14px 16px;
+  box-shadow: 0 2px 14px rgba(20, 20, 43, 0.05); display: flex; align-items: center; gap: 12px;
+}
+.rh-pill-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.rh-pill-value { font-family: "Nunito", sans-serif; font-size: 19px; font-weight: 900; color: var(--ink, #1a1a2e); line-height: 1; }
+.rh-pill-label { font-size: 10.5px; font-weight: 700; color: var(--ink-faint, #8a8aa3); margin-top: 3px; }
+ 
+/* ── SIDEBAR RESTYLE (scoped to role homes only) ─────────────────── */
+.rh-shell .sidebar {
+  background: var(--rh-accent-soft, #F5F0FA);
+  border-right: 1px solid rgba(20, 20, 43, 0.05);
+}
+.rh-shell .sidebar-role {
+  background: rgba(255, 255, 255, 0.55);
+}
+.rh-shell .sidebar-role-label { color: rgba(20, 20, 43, 0.4); }
+.rh-shell .sidebar-role-name { color: var(--ink, #1a1a2e); }
+.rh-shell .sidebar-role-type { color: var(--rh-accent, var(--teal, #009B8D)); font-weight: 800; }
+ 
+.rh-shell .nav-section-label { color: rgba(20, 20, 43, 0.35); }
+.rh-shell .nav-item {
+  color: rgba(20, 20, 43, 0.62);
+  border-radius: 14px;
+  margin: 2px 10px;
+  width: calc(100% - 20px);
+  transition: background 0.15s, color 0.15s;
+}
+.rh-shell .nav-item.active {
+  background: var(--rh-accent, var(--teal, #009B8D));
+  color: #fff;
+  box-shadow: 0 6px 16px -4px var(--rh-accent, rgba(0, 155, 141, 0.5));
+}
+.rh-shell .nav-item:not(.active):hover { background: rgba(20, 20, 43, 0.06); color: var(--ink, #1a1a2e); }
+ 
+.rh-shell .logout-btn {
+  background: rgba(232, 23, 93, 0.1);
+  color: #E8175D;
+  border: none;
+}
+.rh-shell .logout-btn:hover { background: rgba(232, 23, 93, 0.16); }
+ 
+@media (max-width: 720px) {
+  .rh-hero { padding: 24px 22px; }
+  .rh-hero-greeting { font-size: 24px; }
+  .rh-hero-rings { gap: 18px; }
+}

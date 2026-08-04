@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { db } from "../firebase";
-import { collection, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
+import { supabase } from "../supabaseClient";
+import { mapChildRow } from "../lib/mappers";
 import Sidebar from "./Sidebar";
 import Overview from "./Overview";
 import ChildrenTable from "./ChildrenTable";
 import ScreenerResults from "./ScreenerResults";
 import FlagsAlerts from "./FlagsAlerts";
 import SummaryReport from "./SummaryReport";
- 
+
 // Seed data — real screener data based on the PuzzleBox domains
 const SEED_CHILDREN = [
   { name: "Child PB-001", school: "Adelaide Primary", province: "Eastern Cape", age: 5, gender: "Female", language: "isiXhosa", cognitive: 72, motor: 85, language_score: 68, social: 60, emotion: 74, moral: 55, total: 69, status: "Progressing", flagged: false, date: "2026-02-10", examiner: "Dr. Mokoena", stage: "stage4" },
@@ -26,44 +26,88 @@ const SEED_CHILDREN = [
   { name: "Child PB-014", school: "Komani ECD", province: "Eastern Cape", age: 6, gender: "Female", language: "English", cognitive: 48, motor: 50, language_score: 46, social: 44, emotion: 49, moral: 43, total: 47, status: "Progressing", flagged: false, date: "2026-03-07", examiner: "Dr. Mokoena", stage: "stage2" },
   { name: "Child PB-015", school: "Adelaide Primary", province: "Eastern Cape", age: 5, gender: "Male", language: "isiXhosa", cognitive: 93, motor: 90, language_score: 95, social: 92, emotion: 94, moral: 88, total: 92, status: "On Track", flagged: false, date: "2026-03-10", examiner: "Dr. Mokoena", stage: "stage1" },
 ];
- 
- 
+
+
 export default function Dashboard({ user }) {
   const [activePage, setActivePage] = useState("overview");
   const [lang, setLang] = useState("en");
   const [children, setChildren] = useState([]);
   const [seeded, setSeeded] = useState(false);
- 
-  // Load from Firebase, seed if empty
+
+  // Load from Supabase, seed if empty, and stay live via Realtime.
+  //
+  // This replaces the old onSnapshot(collection(db, "children"), ...) listener.
+  // Supabase doesn't push live updates by default the way Firestore does —
+  // you fetch once, then optionally subscribe to a Realtime channel that
+  // notifies you when rows change so you can refetch (done below).
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "children"), async (snap) => {
-      if (snap.empty && !seeded) {
-        setSeeded(true);
-        for (const child of SEED_CHILDREN) {
-          await addDoc(collection(db, "children"), { ...child, createdAt: serverTimestamp() });
-        }
-      } else {
-        const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setChildren(data);
+    let isMounted = true;
+
+    const loadChildren = async () => {
+      const { data, error } = await supabase
+        .from("children")
+        .select("*")
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        console.error("Error loading children:", error);
+        return;
       }
-    });
-    return () => unsub();
+
+      if (data.length === 0 && !seeded) {
+        setSeeded(true);
+        const { error: insertError } = await supabase.from("children").insert(SEED_CHILDREN);
+        if (insertError) {
+          console.error("Error seeding children:", insertError);
+          return;
+        }
+        const { data: seededData, error: reloadError } = await supabase
+          .from("children")
+          .select("*")
+          .order("created_at", { ascending: true });
+        if (reloadError) {
+          console.error("Error reloading seeded children:", reloadError);
+          return;
+        }
+        if (isMounted) setChildren(seededData.map(mapChildRow));
+      } else if (isMounted) {
+        setChildren(data.map(mapChildRow));
+      }
+    };
+
+    loadChildren();
+
+    // Realtime: any insert/update/delete on "children" triggers a refetch,
+    // keeping this the closest equivalent to Firestore's onSnapshot.
+    // NOTE: Realtime must be enabled for this table — Supabase Dashboard →
+    // Database → Replication → toggle "children" on. See MIGRATION_GUIDE.md.
+    const channel = supabase
+      .channel("children-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "children" }, () => {
+        loadChildren();
+      })
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
   }, [seeded]);
- 
+
   const langLabels = { en: "EN", af: "AF", xh: "XH" };
- 
+
   const titles = {
     en: { overview: "Overview", children: "Student Records", results: "Screener Results", flags: "Flags & Alerts", report: "Summary Report" },
     af: { overview: "Oorsig", children: "Leerlingsrekords", results: "Sifterresultate", flags: "Vlae & Waarskuwings", report: "Opsommingsverslag" },
     xh: { overview: "Inkcazelo", children: "Iirekhodi zabaFundi", results: "Iziphumo", flags: "Izikhombisi", report: "Ingxelo Efuphi" },
   };
- 
+
   const subs = {
     en: { overview: "Eastern Cape pilot · All screened children", children: "All screened participants", results: "Latest screening sessions", flags: "Children requiring follow-up", report: "Exportable summary for funders" },
     af: { overview: "Oos-Kaap loodsprojek · Alle gesifde kinders", children: "Alle deelnemers", results: "Laaste sifsessies", flags: "Kinders wat opvolg benodig", report: "Uitvoerbare opsomming vir befondsers" },
     xh: { overview: "Umzekelo weMpuma Koloni · Bonke abantwana", children: "Bonke abathathi-nxaxheba", results: "Iiseshoni zokugqibela", flags: "Abantwana abafuna ukulandelwa", report: "Ingxelo yabaxhasi" },
   };
- 
+
   return (
     <div className="dashboard-layout">
       <Sidebar activePage={activePage} setActivePage={setActivePage} lang={lang} user={user} />
@@ -81,7 +125,7 @@ export default function Dashboard({ user }) {
             </div>
           </div>
         </div>
- 
+
         {activePage === "overview" && <Overview children={children} lang={lang} />}
         {activePage === "children" && <ChildrenTable children={children} lang={lang} />}
         {activePage === "results" && <ScreenerResults lang={lang} />}

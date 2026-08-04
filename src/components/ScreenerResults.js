@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { db } from "../firebase";
-import { collection, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc } from "firebase/firestore";
+import { supabase } from "../supabaseClient";
+import { mapSessionRow, mapFollowUpRow } from "../lib/mappers";
  
 const T = {
   en: {
@@ -130,33 +130,113 @@ const [followUpFilter, setFollowUpFilter] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [loading, setLoading] = useState(true);
  
-  // Load sessions
+  // Load sessions — replaces onSnapshot(collection(db, "screeningSessions"), ...).
+  // Fetch once, seed if empty, then stay live via a Realtime channel.
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "screeningSessions"), async (snap) => {
-      const realDocs = snap.docs.filter(d => d.data().childName);
-      if (realDocs.length === 0) {
-        for (const s of SEED_SESSIONS) {
-          await addDoc(collection(db, "screeningSessions"), { ...s, createdAt: serverTimestamp() });
+    let isMounted = true;
+    let seeding = false;
+
+    const loadSessions = async () => {
+      const { data, error } = await supabase
+        .from("screening_sessions")
+        .select("*")
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        console.error("Error loading screening sessions:", error);
+        return;
+      }
+
+      if (data.length === 0 && !seeding) {
+        seeding = true;
+        const seedRows = SEED_SESSIONS.map(s => ({
+          child_name: s.childName,
+          school: s.school,
+          age: s.age,
+          language: s.language,
+          score: s.score,
+          date: s.date,
+          examiner: s.examiner,
+          status: s.status,
+          stage: s.stage,
+          follow_up_stage: s.followUpStage,
+          cognitive: s.cognitive,
+          motor: s.motor,
+          language_score: s.language_score,
+          social: s.social,
+          emotion: s.emotion,
+          moral: s.moral,
+        }));
+        const { error: insertError } = await supabase.from("screening_sessions").insert(seedRows);
+        if (insertError) {
+          console.error("Error seeding screening sessions:", insertError);
+          return;
         }
-      } else {
-        setSessions(realDocs.map(d => ({ id: d.id, ...d.data() })));
+        const { data: seededData, error: reloadError } = await supabase
+          .from("screening_sessions")
+          .select("*")
+          .order("created_at", { ascending: true });
+        if (reloadError) {
+          console.error("Error reloading seeded sessions:", reloadError);
+          return;
+        }
+        if (isMounted) {
+          setSessions(seededData.map(mapSessionRow));
+          setLoading(false);
+        }
+      } else if (isMounted) {
+        setSessions(data.map(mapSessionRow));
         setLoading(false);
       }
-    });
-    return () => unsub();
+    };
+
+    loadSessions();
+
+    // NOTE: Realtime must be enabled for "screening_sessions" — Supabase
+    // Dashboard → Database → Replication. See MIGRATION_GUIDE.md.
+    const channel = supabase
+      .channel("screening-sessions-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "screening_sessions" }, () => {
+        loadSessions();
+      })
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
   }, []);
- 
-  // Load follow-ups in real time
+
+  // Load follow-ups in real time — replaces onSnapshot(collection(db, "followUps"), ...)
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "followUps"), (snap) => {
+    let isMounted = true;
+
+    const loadFollowUps = async () => {
+      const { data, error } = await supabase.from("follow_ups").select("*");
+      if (error) {
+        console.error("Error loading follow-ups:", error);
+        return;
+      }
       const map = {};
-      snap.docs.forEach(d => {
-        const data = d.data();
-        map[data.childName] = { ...data, docId: d.id };
+      data.forEach(row => {
+        map[row.child_name] = mapFollowUpRow(row);
       });
-      setFollowUps(map);
-    });
-    return () => unsub();
+      if (isMounted) setFollowUps(map);
+    };
+
+    loadFollowUps();
+
+    const channel = supabase
+      .channel("follow-ups-changes-results")
+      .on("postgres_changes", { event: "*", schema: "public", table: "follow_ups" }, () => {
+        loadFollowUps();
+      })
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
   }, []);
  
  const filtered = sessions.filter(s => {
@@ -185,7 +265,11 @@ const [followUpFilter, setFollowUpFilter] = useState("");
  
   const handleDeleteSession = async () => {
     if (!selected?.id) return;
-    await deleteDoc(doc(db, "screeningSessions", selected.id));
+    const { error } = await supabase.from("screening_sessions").delete().eq("id", selected.id);
+    if (error) {
+      console.error("Error deleting session:", error);
+      return;
+    }
     setSelected(null);
     setShowDeleteConfirm(false);
   };

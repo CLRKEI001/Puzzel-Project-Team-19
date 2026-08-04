@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import { db } from "../firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { supabase } from "../supabaseClient";
 
 const T = {
   en: {
@@ -174,26 +173,33 @@ const [sortOrder, setSortOrder] = useState("highest");
     if (!teacherEmail || !diagnosis) return;
     setSending(true);
     try {
-      const docRef = await addDoc(collection(db, "messages"), {
-        childName: selectedChild.name,
-        childScore: selectedChild.total,
-        childStatus: selectedChild.status,
-        school: selectedChild.school,
-        teacherEmail,
-        teacherName,
-        diagnosis,
-        language: msgLang,
-        sentAt: serverTimestamp(),
-        sentBy: "Psychologist",
-        domains: {
-          cognitive: selectedChild.cognitive,
-          motor: selectedChild.motor,
-          social: selectedChild.social,
-          emotion: selectedChild.emotion
-        }
-      });
+      const { data, error } = await supabase
+        .from("messages")
+        .insert({
+          child_id: selectedChild.id,
+          child_name: selectedChild.name,
+          child_score: selectedChild.total,
+          child_status: selectedChild.status,
+          school: selectedChild.school,
+          teacher_email: teacherEmail,
+          teacher_name: teacherName,
+          diagnosis,
+          language: msgLang,
+          sent_by: "Psychologist",
+          domains: {
+            cognitive: selectedChild.cognitive,
+            motor: selectedChild.motor,
+            social: selectedChild.social,
+            emotion: selectedChild.emotion
+          }
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
       setMessages(prev => [...prev, {
-        id: docRef.id,
+        id: data.id,
         childName: selectedChild.name,
         teacherEmail,
         teacherName,
@@ -201,7 +207,7 @@ const [sortOrder, setSortOrder] = useState("highest");
         language: msgLang,
         sentAt: new Date().toLocaleDateString()
       }]);
-      setSentId(docRef.id);
+      setSentId(data.id);
       setSuccess(t.msgSuccess);
       setShowMessages(true);
     } catch (err) {

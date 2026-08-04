@@ -4,22 +4,15 @@
 // It talks directly to Firebase Firestore for all its data operations.
 
 import React, { useState, useEffect } from "react";
-import { db } from "../firebase";  // db is our Firestore database connection from firebase.js
+import { supabase } from "../supabaseClient";  // supabase is our Postgres database connection from supabaseClient.js
+import { mapFollowUpRow } from "../lib/mappers";
 
-import { collection, addDoc, serverTimestamp, getDocs, query, where, updateDoc, deleteDoc, doc, onSnapshot } from "firebase/firestore";
-
-// TFirestore functions that component needs:
-// collection   — points to a collection/a table in the database
-// addDoc       — adds a new document/ row to a collection
-// serverTimestamp — inserts the current server time automatically
-// getDocs      — fetches all documents from a query once
-// query        — builds a database query with filters
-// where        — adds a filter condition to a query
-// updateDoc    — updates specific fields in an existing document without replacing the whole thing
-// deleteDoc    — permanently deletes a document from the database
-// doc          — points to a specific single document by its ID
-// onSnapshot   — sets up a real-time listener that fires every time data changes in Firebase,
-//                so your UI updates live without needing to refresh the page
+// Supabase functions this component needs (replacing the old Firestore ones):
+// supabase.from("table").select()   — reads rows (like getDocs/onSnapshot)
+// supabase.from("table").insert()   — adds new row(s) (like addDoc)
+// supabase.from("table").update()   — updates specific fields on matching row(s) (like updateDoc)
+// supabase.from("table").delete()   — permanently deletes matching row(s) (like deleteDoc)
+// supabase.channel(...).on("postgres_changes", ...) — realtime listener (like onSnapshot)
 
 
 
@@ -209,26 +202,44 @@ export default function ChildrenTable({ children, lang }) {
     total: 0, status: "Progressing"
   });
  
-  // REAL-TIME FIREBASE LISTENER FOR FOLLOW-UPS
-  // onSnapshot subscribes to the entire followUps collection in Firestore.
-  // Every time any follow-up document is created, updated, or deleted in Firebase
-  // this callback fires automatically with the new data 
-  // snap.docs is the array of all documents returned.
-  // We use childName so that later we can instantly check
+  // REAL-TIME SUPABASE LISTENER FOR FOLLOW-UPS
+  // We fetch all rows from follow_ups once, then subscribe to a Realtime
+  // channel so that any insert/update/delete on that table triggers a
+  // refetch — this is the closest equivalent to Firestore's onSnapshot.
+  // We key the map by childName so that later we can instantly check
   // if a child has a follow-up by doing followUps[child.name] in O(1) time.
-  
-  // The empty [] dependency array means this runs once when the component first loads.
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "followUps"), (snap) => {
+    let isMounted = true;
+
+    const loadFollowUps = async () => {
+      const { data, error } = await supabase.from("follow_ups").select("*");
+      if (error) {
+        console.error("Error loading follow-ups:", error);
+        return;
+      }
       const map = {};
-      snap.docs.forEach(d => {
-        const data = d.data();
-        map[data.childName] = { ...data, docId: d.id };  // Key the follow-up by childName so we can look it up instantly
+      data.forEach(row => {
+        map[row.child_name] = mapFollowUpRow(row); // Key the follow-up by childName so we can look it up instantly
       });
-      setFollowUps(map);
-    });
-    return () => unsub();
+      if (isMounted) setFollowUps(map);
+    };
+
+    loadFollowUps();
+
+    // NOTE: Realtime must be enabled for "follow_ups" — Supabase Dashboard →
+    // Database → Replication. See MIGRATION_GUIDE.md.
+    const channel = supabase
+      .channel("follow-ups-changes-children")
+      .on("postgres_changes", { event: "*", schema: "public", table: "follow_ups" }, () => {
+        loadFollowUps();
+      })
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
   }, []);
  
   // This useEffect watches two dependencies: selected and followUps.
@@ -303,23 +314,30 @@ export default function ChildrenTable({ children, lang }) {
   const handleAddChild = async () => {
     if (!newChild.name || !newChild.school) return;
     // Check for duplicate
-    // Build a query: SELECT * FROM children WHERE name == newChild.name
-    const q = query(collection(db, "children"), where("name", "==", newChild.name));
-    // getDocs executes the query and returns all matching documents once
-    const snap = await getDocs(q);
-    if (!snap.empty) {
-      // snap.empty is false meaning at least one child with this name exists
-      setDuplicateWarning(true);
+    // Equivalent to: SELECT id FROM children WHERE name = newChild.name
+    const { data: existing, error: checkError } = await supabase
+      .from("children")
+      .select("id")
+      .eq("name", newChild.name);
+    if (checkError) {
+      console.error("Error checking for duplicate child:", checkError);
       return;
-    }        // Stop here, dont add the duplicate
+    }
+    if (existing.length > 0) {
+      setDuplicateWarning(true);
+      return;        // Stop here, dont add the duplicate
+    }
 
-    // addDoc adds a new document to the children collection with all the form fields
-    // serverTimestamp() tells Firebase to record the exact time the document was created
-    await addDoc(collection(db, "children"), {
+    // insert() adds a new row to the children table. created_at defaults to
+    // now() in Postgres, so there's no need for a serverTimestamp() equivalent.
+    const { error: insertError } = await supabase.from("children").insert({
       ...newChild,                              // Spread all form fields in
       age: parseInt(newChild.age) || 5,         // Convert age string to a number, default 5
-      createdAt: serverTimestamp()              // Firebase records the server time automatically
     });
+    if (insertError) {
+      console.error("Error adding child:", insertError);
+      return;
+    }
 
     // Reset everything after successfully adding
     setShowAdd(false);
@@ -327,51 +345,57 @@ export default function ChildrenTable({ children, lang }) {
     setNewChild({ name: "", school: "", province: "Eastern Cape", age: "", gender: "Female", language: "English", date: "", examiner: "", stage: "stage1", flagged: false, total: 0, status: "Progressing" });
   };
  
-  // Deletes the child document from the children collection using the
-  //  Firestore doc ID.
-  // Also deletes their follow-up document if one exists, to keep the database clean.
-  // doc(db, "children", selected.id) builds a reference to the specific document
-  // that needs to be deleted — you need the collection name and the document ID.
+  // Deletes the child's row from the children table by its id.
+  // Also deletes their follow-up row if one exists, to keep the database clean.
 
   const handleDeleteChild = async () => {
     if (!selected?.id) return;   // Safety check — do nothing if no child is selected
-    await deleteDoc(doc(db, "children", selected.id));
-    // Also delete their follow-up if exists
-    if (existingFollowUp?.docId) {   // Close the modal
-      await deleteDoc(doc(db, "followUps", existingFollowUp.docId));  // Hide the confirmation panel
+    const { error } = await supabase.from("children").delete().eq("id", selected.id);
+    if (error) {
+      console.error("Error deleting child:", error);
+      return;
     }
-    setSelected(null);
-    setShowDeleteConfirm(false);
+    // Also delete their follow-up if exists
+    if (existingFollowUp?.docId) {
+      const { error: fuError } = await supabase.from("follow_ups").delete().eq("id", existingFollowUp.docId);
+      if (fuError) console.error("Error deleting follow-up:", fuError);
+    }
+    setSelected(null);   // Close the modal
+    setShowDeleteConfirm(false);  // Hide the confirmation panel
   };
  
   const handleSaveFollowUp = async () => {
     if (!followUpDate || !followUpPsych) return;
- 
+
     const followUpData = {
-      childName: selected.name,
-      childId: selected.id,
+      child_name: selected.name,
+      child_id: selected.id,
       school: selected.school,
-      followUpDate,
-      followUpPsych,
-      followUpReason,
-      followUpType,
-      updatedAt: serverTimestamp()
+      follow_up_date: followUpDate,
+      follow_up_psych: followUpPsych,
+      follow_up_reason: followUpReason,
+      follow_up_type: followUpType,
+      updated_at: new Date().toISOString(),
     };
- 
+
     // If existing follow-up, update it. Otherwise create new.
     if (existingFollowUp?.docId) {
-      await updateDoc(doc(db, "followUps", existingFollowUp.docId), followUpData);
+      const { error } = await supabase.from("follow_ups").update(followUpData).eq("id", existingFollowUp.docId);
+      if (error) { console.error("Error updating follow-up:", error); return; }
     } else {
-      await addDoc(collection(db, "followUps"), { ...followUpData, createdAt: serverTimestamp() });
+      const { error } = await supabase.from("follow_ups").insert(followUpData);
+      if (error) { console.error("Error creating follow-up:", error); return; }
     }
- 
-    // Update screeningSessions to reflect follow-up status
-    const q = query(collection(db, "screeningSessions"), where("childName", "==", selected.name));
-    const snap = await getDocs(q);
-    snap.forEach(async (docSnap) => {
-      await updateDoc(docSnap.ref, { followUpStage: followUpType });
-    });
- 
+
+    // Update screening_sessions to reflect follow-up status.
+    // This replaces the old query + getDocs + forEach(updateDoc) loop —
+    // Postgres can update every matching row in one statement.
+    const { error: sessionError } = await supabase
+      .from("screening_sessions")
+      .update({ follow_up_stage: followUpType })
+      .eq("child_name", selected.name);
+    if (sessionError) console.error("Error updating session follow-up stage:", sessionError);
+
     setFollowUpSaved(true);
     setTimeout(() => {
       setShowFollowUp(false);
@@ -382,17 +406,19 @@ export default function ChildrenTable({ children, lang }) {
       setFollowUpType("fu2");
     }, 1500);
   };
- 
+
   const handleDeleteFollowUp = async () => {
     if (!existingFollowUp?.docId) return;
-    await deleteDoc(doc(db, "followUps", existingFollowUp.docId));
- 
-    // Reset follow-up in screeningSessions
-    const q = query(collection(db, "screeningSessions"), where("childName", "==", selected.name));
-    const snap = await getDocs(q);
-    snap.forEach(async (docSnap) => {
-      await updateDoc(docSnap.ref, { followUpStage: "fu1" });
-    });
+    const { error } = await supabase.from("follow_ups").delete().eq("id", existingFollowUp.docId);
+    if (error) { console.error("Error deleting follow-up:", error); return; }
+
+    // Reset follow-up in screening_sessions (single statement, same as above)
+    const { error: sessionError } = await supabase
+      .from("screening_sessions")
+      .update({ follow_up_stage: "fu1" })
+      .eq("child_name", selected.name);
+    if (sessionError) console.error("Error resetting session follow-up stage:", sessionError);
+
     setExistingFollowUp(null);
   };
  

@@ -95,3 +95,15 @@ export function mapMessageRow(r) {
     sentAt: r.sent_at,
   };
 }
+
+export function mapUserRow(r) {
+  return {
+    id: r.id,                    // Firebase Auth UID
+    name: r.name,
+    email: r.email,
+    role: r.role,
+    staffNumber: r.staff_number,
+    isVerified: r.is_verified,
+    createdAt: r.created_at,
+  };
+}

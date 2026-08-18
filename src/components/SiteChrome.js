@@ -316,17 +316,6 @@ export function Navbar({ current, onNavigate, onLoginClick }) {
           }}>
             Login
           </button>
-          <button onClick={onLoginClick} style={{
-            background: COLORS.teal, color: COLORS.white, border: "none",
-            padding: "12px 24px", borderRadius: 10,
-            cursor: "pointer", fontWeight: 700, fontSize: 14,
-            fontFamily: "inherit", transition: "all 0.2s",
-          }}
-            onMouseEnter={e => { e.currentTarget.style.background = COLORS.tealDark; e.currentTarget.style.transform = "translateY(-1px)"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = COLORS.teal; e.currentTarget.style.transform = "translateY(0)"; }}
-          >
-            Start Screening
-          </button>
         </div>
       </div>
     </nav>

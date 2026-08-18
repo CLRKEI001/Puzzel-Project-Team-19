@@ -191,18 +191,7 @@ function Hero({ onLoginClick, onNavigate }) {
           </p>
 
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap", ...fadeUp(0.35) }}>
-            <button onClick={onLoginClick} style={{
-              padding: "14px 32px", borderRadius: 12,
-              background: COLORS.teal, color: COLORS.white,
-              border: "none", fontSize: 15, fontWeight: 800,
-              cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
-              boxShadow: "0 6px 20px rgba(0,155,141,0.25)",
-            }}
-              onMouseEnter={e => { e.currentTarget.style.background = COLORS.tealDark; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,155,141,0.35)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = COLORS.teal; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,155,141,0.25)"; }}
-            >
-              Start Screening
-            </button>
+
             <button onClick={() => onNavigate("how")} style={{
               padding: "14px 32px", borderRadius: 12,
               background: COLORS.white, color: COLORS.ink,

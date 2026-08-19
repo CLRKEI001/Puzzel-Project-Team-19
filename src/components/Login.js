@@ -8,14 +8,15 @@
 // puzzle-assembly animation plays on a verified login.
  
 import React, { useState } from "react";
-import { auth, db } from "../firebase";
+import { auth } from "../firebase";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   signOut,
 } from "firebase/auth";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { supabase } from "../supabaseClient";
+import { mapUserRow } from "../lib/mappers";
 import { PuzzlePiece, SinglePuzzlePiece } from "./puzzlePiece";
 import "./Login.css";
  
@@ -78,9 +79,10 @@ export default function Login({ onVerified }) {
     setLoading(true);
     try {
       const cred = await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
-      const profileSnap = await getDoc(doc(db, "users", cred.user.uid));
- 
-      if (!profileSnap.exists() || profileSnap.data().isVerified !== true) {
+      const { data: profileRow, error: profileError } = await supabase.from("users").select("*").eq("id", cred.user.uid).maybeSingle();
+      if (profileError) throw profileError;
+
+      if (!profileRow || profileRow.is_verified !== true) { 
         // Known account, but an admin hasn't approved the staff/teacher
         // number yet — don't let them into the dashboard.
         await signOut(auth);
@@ -91,7 +93,7 @@ export default function Login({ onVerified }) {
  
       // Verified — let the parent know so it can hold the puzzle-assembly
       // transition on screen while the dashboard mounts underneath it.
-      onVerified?.(profileSnap.data());
+     onVerified?.(mapUserRow(profileRow));
     } catch (err) {
       setError(friendlyAuthError(err));
     }
@@ -118,15 +120,16 @@ export default function Login({ onVerified }) {
  
     setLoading(true);
     try {
-      const cred = await createUserWithEmailAndPassword(auth, reg.email, reg.password);
-      await setDoc(doc(db, "users", cred.user.uid), {
+     const cred = await createUserWithEmailAndPassword(auth, reg.email, reg.password);
+      const { error: insertError } = await supabase.from("users").insert({
+        id: cred.user.uid,
         name: reg.name,
         email: reg.email,
         role: reg.role,
-        staffNumber: reg.staffNumber.trim(),
-        isVerified: false,
-        createdAt: serverTimestamp(),
+        staff_number: reg.staffNumber.trim(),
+        is_verified: false,
       });
+      if (insertError) throw insertError;
       // New accounts start unverified — sign them straight back out so
       // App.js doesn't drop them into the dashboard.
       await signOut(auth);

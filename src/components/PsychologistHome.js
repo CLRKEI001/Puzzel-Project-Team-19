@@ -7,8 +7,8 @@
 // disconnected screens.
  
 import React, { useState, useEffect, useMemo } from "react";
-import { db } from "../firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { supabase } from "../supabaseClient";
+import { mapChildRow, mapFollowUpRow } from "../lib/mappers";
 import RoleSidebar from "./RoleSidebar";
 import Dashboard from "./Dashboard";
 import RoleHero from "./RoleHero";
@@ -131,22 +131,56 @@ export default function PsychologistHome({ user, profile }) {
   const langLabels = { en: "EN", af: "AF", xh: "XH" };
  
   useEffect(() => {
-    const unsubChildren = onSnapshot(collection(db, "children"), (snap) => {
-      setChildren(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setLoading(false);
-    });
-    const unsubFollowUps = onSnapshot(collection(db, "followUps"), (snap) => {
-      const data = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => (a.followUpDate || "").localeCompare(b.followUpDate || ""));
-      setFollowUps(data);
-    });
-    const unsubMessages = onSnapshot(collection(db, "messages"), (snap) => {
-      setMessageCount(snap.size);
-    });
-    return () => { unsubChildren(); unsubFollowUps(); unsubMessages(); };
+    let isMounted = true;
+
+    const loadChildren = async () => {
+      const { data, error } = await supabase.from("children").select("*");
+      if (error) { console.error("Error loading children:", error); return; }
+      if (isMounted) {
+        setChildren(data.map(mapChildRow));
+        setLoading(false);
+      }
+    };
+    const loadFollowUps = async () => {
+      const { data, error } = await supabase.from("follow_ups").select("*");
+      if (error) { console.error("Error loading follow-ups:", error); return; }
+      if (isMounted) {
+        const mapped = data
+          .map(mapFollowUpRow)
+          .sort((a, b) => (a.followUpDate || "").localeCompare(b.followUpDate || ""));
+        setFollowUps(mapped);
+      }
+    };
+    const loadMessageCount = async () => {
+      const { count, error } = await supabase.from("messages").select("*", { count: "exact", head: true });
+      if (error) { console.error("Error loading message count:", error); return; }
+      if (isMounted) setMessageCount(count || 0);
+    };
+
+    loadChildren();
+    loadFollowUps();
+    loadMessageCount();
+
+    const childrenChannel = supabase
+      .channel("psych-children-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "children" }, () => loadChildren())
+      .subscribe();
+    const followUpsChannel = supabase
+      .channel("psych-followups-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "follow_ups" }, () => loadFollowUps())
+      .subscribe();
+    const messagesChannel = supabase
+      .channel("psych-messages-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => loadMessageCount())
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(childrenChannel);
+      supabase.removeChannel(followUpsChannel);
+      supabase.removeChannel(messagesChannel);
+    };
   }, []);
- 
   const displayName = profile?.name || user?.email?.split("@")[0] || "Psychologist";
  
   const greeting = useMemo(() => {

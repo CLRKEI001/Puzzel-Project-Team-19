@@ -7,8 +7,8 @@
 // separate, disconnected screens.
  
 import React, { useState, useEffect, useMemo } from "react";
-import { db } from "../firebase";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { supabase } from "../supabaseClient";
+import { mapMessageRow } from "../lib/mappers";
 import RoleSidebar from "./RoleSidebar";
 import Dashboard from "./Dashboard";
 import RoleHero from "./RoleHero";
@@ -122,17 +122,36 @@ export default function TeacherHome({ user, profile }) {
  
   useEffect(() => {
     if (!user?.email) return;
-    const q = query(collection(db, "messages"), where("teacherEmail", "==", user.email));
-    const unsub = onSnapshot(q, (snap) => {
-      const data = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => (b.sentAt?.seconds || 0) - (a.sentAt?.seconds || 0));
-      setMessages(data);
-      setLoading(false);
-    });
-    return () => unsub();
+    let isMounted = true;
+
+    const loadMessages = async () => {
+      const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("teacher_email", user.email);
+      if (error) { console.error("Error loading messages:", error); return; }
+      if (isMounted) {
+        const mapped = data
+          .map(mapMessageRow)
+          .sort((a, b) => new Date(b.sentAt || 0) - new Date(a.sentAt || 0));
+        setMessages(mapped);
+        setLoading(false);
+      }
+    };
+
+    loadMessages();
+
+    const channel = supabase
+      .channel("teacher-messages-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => loadMessages())
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
   }, [user?.email]);
- 
+
   const displayName = profile?.name || user?.email?.split("@")[0] || "Educator";
  
   const greeting = useMemo(() => {
@@ -149,7 +168,7 @@ export default function TeacherHome({ user, profile }) {
   const thisMonthCount = useMemo(() => {
     const now = new Date();
     return messages.filter((m) => {
-      const d = m.sentAt?.seconds ? new Date(m.sentAt.seconds * 1000) : null;
+     const d = m.sentAt ? new Date(m.sentAt) : null;
       return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     }).length;
   }, [messages]);
@@ -160,7 +179,7 @@ export default function TeacherHome({ user, profile }) {
     return m.childName?.toLowerCase().includes(s) || m.school?.toLowerCase().includes(s);
   });
  
-  const formatDate = (ts) => (ts?.seconds ? new Date(ts.seconds * 1000).toLocaleDateString() : "—");
+  const formatDate = (ts) => (ts ? new Date(ts).toLocaleDateString() : "—");
  
   const navItems = [
     { id: "home", label: t.navHome, section: t.section1, icon: NAV_ICONS.home },

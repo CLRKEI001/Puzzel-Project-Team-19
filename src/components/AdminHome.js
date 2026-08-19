@@ -5,8 +5,8 @@
 // the same link into the full analytics Dashboard the other roles have.
  
 import React, { useState, useEffect, useMemo } from "react";
-import { db } from "../firebase";
-import { collection, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { supabase } from "../supabaseClient";
+import { mapUserRow, mapChildRow } from "../lib/mappers";
 import RoleSidebar from "./RoleSidebar";
 import Dashboard from "./Dashboard";
 import RoleHero from "./RoleHero";
@@ -123,17 +123,42 @@ export default function AdminHome({ user, profile }) {
   const t = T[lang];
   const langLabels = { en: "EN", af: "AF", xh: "XH" };
  
-  useEffect(() => {
-    const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
-      setUsers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setLoading(false);
-    });
-    const unsubChildren = onSnapshot(collection(db, "children"), (snap) => {
-      setChildren(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    });
-    return () => { unsubUsers(); unsubChildren(); };
+ useEffect(() => {
+    let isMounted = true;
+
+    const loadUsers = async () => {
+      const { data, error } = await supabase.from("users").select("*");
+      if (error) { console.error("Error loading users:", error); return; }
+      if (isMounted) {
+        setUsers(data.map(mapUserRow));
+        setLoading(false);
+      }
+    };
+    const loadChildren = async () => {
+      const { data, error } = await supabase.from("children").select("*");
+      if (error) { console.error("Error loading children:", error); return; }
+      if (isMounted) setChildren(data.map(mapChildRow));
+    };
+
+    loadUsers();
+    loadChildren();
+
+    const usersChannel = supabase
+      .channel("admin-users-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "users" }, () => loadUsers())
+      .subscribe();
+    const childrenChannel = supabase
+      .channel("admin-children-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "children" }, () => loadChildren())
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(usersChannel);
+      supabase.removeChannel(childrenChannel);
+    };
   }, []);
- 
+  
   const displayName = profile?.name || user?.email?.split("@")[0] || "Administrator";
  
   const greeting = useMemo(() => {
@@ -152,14 +177,17 @@ export default function AdminHome({ user, profile }) {
     return u.name?.toLowerCase().includes(s) || u.email?.toLowerCase().includes(s);
   });
  
-  const handleApprove = async (uid) => {
-    await updateDoc(doc(db, "users", uid), { isVerified: true });
+const handleApprove = async (uid) => {
+    const { error } = await supabase.from("users").update({ is_verified: true }).eq("id", uid);
+    if (error) console.error("Error approving user:", error);
   };
   const handleRevoke = async (uid) => {
-    await updateDoc(doc(db, "users", uid), { isVerified: false });
+    const { error } = await supabase.from("users").update({ is_verified: false }).eq("id", uid);
+    if (error) console.error("Error revoking user:", error);
   };
   const handleReject = async (uid) => {
-    await deleteDoc(doc(db, "users", uid));
+    const { error } = await supabase.from("users").delete().eq("id", uid);
+    if (error) { console.error("Error rejecting user:", error); return; }
     setRejectTarget(null);
   };
  

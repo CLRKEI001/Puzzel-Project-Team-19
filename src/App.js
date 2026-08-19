@@ -6,9 +6,10 @@
 //    unchanged from before.
 
 import React, { useState, useEffect } from "react";
-import { auth, db } from "./firebase";
+import { auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { supabase } from "./supabaseClient";
+import { mapUserRow } from "./lib/mappers";
 import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
 import TeacherHome from "./components/TeacherHome";
@@ -43,12 +44,19 @@ function App() {
       setUser(u);
 
       if (u) {
-        // Mark as "loading" right away, synchronously, before the await —
-        // this is what closes the race that let Dashboard flash briefly.
         setProfile(undefined);
         try {
-          const snap = await getDoc(doc(db, "users", u.uid));
-          setProfile(snap.exists() ? snap.data() : null);
+          const { data, error } = await supabase
+            .from("users")
+            .select("*")
+            .eq("id", u.uid)
+            .maybeSingle();
+          if (error) throw error;
+          // No verification gate for now — log in with whatever profile
+          // exists (or none at all, which falls through to the generic
+          // Dashboard). Re-add an is_verified check here once real
+          // SACE/HPCSA verification is actually wired up.
+          setProfile(data ? mapUserRow(data) : null);
         } catch {
           setProfile(null);
         }

@@ -78,6 +78,33 @@ export function mapFollowUpRow(r) {
   };
 }
 
+export function mapPuzzleboxScreeningRow(r) {
+  return {
+    id: r.id,
+    childId: r.child_id,
+    childName: r.child_name,
+    school: r.school,
+    childAge: r.child_age,
+    teacherEmail: r.teacher_email,
+    teacherName: r.teacher_name,
+    contentVersion: r.content_version,
+    contentSnapshot: r.content_snapshot,
+    status: r.status,
+    responses: r.responses,
+    puzzleTimeSeconds: r.puzzle_time_seconds,
+    puzzleOverTime: r.puzzle_over_time,
+    observations: r.observations,
+    rawScore: r.raw_score,
+    interpretationBand: r.interpretation_band,
+    startedAt: r.started_at,
+    completedAt: r.completed_at,
+    reviewedAt: r.reviewed_at,
+    reviewedBy: r.reviewed_by,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
 export function mapMessageRow(r) {
   return {
     id: r.id,

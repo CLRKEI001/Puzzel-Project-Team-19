@@ -14,13 +14,16 @@ import Dashboard from "./Dashboard";
 import RoleHero from "./RoleHero";
 import StatRing from "./StatRing";
 import TodayList from "./TodayList";
+import PuzzleBoxScreener from "./PuzzleBoxScreener";
 import "./TeacherHome.css";
 import "./RoleHomeKit.css";
  
 const T = {
   en: {
     roleLabel: "Educator",
-    navHome: "My Home", navMessages: "Messages", navDashboard: "Full Analytics Dashboard", navProfile: "My Profile",
+    navHome: "My Home", navMessages: "Messages", navScreener: "PuzzleBox Screener", navDashboard: "Full Analytics Dashboard", navProfile: "My Profile",
+    screenerSub: "Start a new PuzzleBox screening for one of your children.",
+    openScreener: "Start Screening", openScreenerSub: "Begin a new PuzzleBox Screener session.",
     section1: "Overview", section2: "Reports", section3: "Account",
     goodMorning: "Good morning", goodAfternoon: "Good afternoon", goodEvening: "Good evening",
     homeSub: "Here's what's new for your class.",
@@ -44,7 +47,9 @@ const T = {
   },
   af: {
     roleLabel: "Opvoeder",
-    navHome: "My Tuisblad", navMessages: "Boodskappe", navDashboard: "Volledige Paneelbord", navProfile: "My Profiel",
+    navHome: "My Tuisblad", navMessages: "Boodskappe", navScreener: "PuzzleBox Sifter", navDashboard: "Volledige Paneelbord", navProfile: "My Profiel",
+    screenerSub: "Begin 'n nuwe PuzzleBox-sifting vir een van jou kinders.",
+    openScreener: "Begin Sifting", openScreenerSub: "Begin 'n nuwe PuzzleBox Sifter-sessie.",
     section1: "Oorsig", section2: "Verslae", section3: "Rekening",
     goodMorning: "Goeie môre", goodAfternoon: "Goeie middag", goodEvening: "Goeie naand",
     homeSub: "Hier is wat nuut is vir jou klas.",
@@ -68,7 +73,9 @@ const T = {
   },
   xh: {
     roleLabel: "Umfundisi",
-    navHome: "Ikhaya Lam", navMessages: "Imiyalezo", navDashboard: "Ideshibhodi Epheleleyo", navProfile: "Iprofayile Yam",
+    navHome: "Ikhaya Lam", navMessages: "Imiyalezo", navScreener: "Isikrini se-PuzzleBox", navDashboard: "Ideshibhodi Epheleleyo", navProfile: "Iprofayile Yam",
+    screenerSub: "Qalisa uhlolo lwe-PuzzleBox olutsha lomnye wabantwana bakho.",
+    openScreener: "Qalisa Uhlolo", openScreenerSub: "Qalisa iseshoni entsha ye-PuzzleBox Screener.",
     section1: "Uhlolo", section2: "Iingxelo", section3: "Iakhawunti",
     goodMorning: "Molo", goodAfternoon: "Molo Emini", goodEvening: "Molo Ngokuhlwa",
     homeSub: "Nazi iindaba ezintsha zeklasi yakho.",
@@ -99,6 +106,7 @@ const NAV_ICONS = {
   messages: <svg viewBox="0 0 16 16" fill="none"><rect x="1.5" y="3" width="13" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.5" /><path d="M2 4l6 5 6-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>,
   dashboard: <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5" /><rect x="9" y="1" width="6" height="6" rx="1.5" /><rect x="1" y="9" width="6" height="6" rx="1.5" /><rect x="9" y="9" width="6" height="6" rx="1.5" /></svg>,
   profile: <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" strokeWidth="1.5" /><path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>,
+  screener: <svg viewBox="0 0 16 16" fill="none"><rect x="1.5" y="1.5" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5" /><rect x="8.5" y="1.5" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5" /><rect x="1.5" y="8.5" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5" /><path d="M11.5 8.5v6M8.5 11.5h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>,
 };
  
 export default function TeacherHome({ user, profile }) {
@@ -156,6 +164,7 @@ export default function TeacherHome({ user, profile }) {
  
   const navItems = [
     { id: "home", label: t.navHome, section: t.section1, icon: NAV_ICONS.home },
+    { id: "screener", label: t.navScreener, section: t.section1, icon: NAV_ICONS.screener },
     { id: "messages", label: t.navMessages, section: t.section2, icon: NAV_ICONS.messages },
     { id: "dashboard", label: t.navDashboard, section: t.section2, icon: NAV_ICONS.dashboard },
     { id: "profile", label: t.navProfile, section: t.section3, icon: NAV_ICONS.profile },
@@ -172,6 +181,12 @@ export default function TeacherHome({ user, profile }) {
         <Dashboard user={user} />
       </div>
     );
+  }
+
+  // The PuzzleBox Screener is its own multi-step flow (child select → confirm
+  // → digital form) — render it standalone, same pattern as the Dashboard above.
+  if (activePage === "screener") {
+    return <PuzzleBoxScreener user={user} profile={profile} onExit={() => setActivePage("home")} />;
   }
  
   return (
@@ -237,6 +252,14 @@ export default function TeacherHome({ user, profile }) {
                 />
                 <div className="rh-card">
                   <div className="rh-card-head"><div className="rh-card-title">{t.quickLinks}</div></div>
+                  <button className="th-quicklink" onClick={() => setActivePage("screener")}>
+                    <div className="th-quicklink-icon">🧩</div>
+                    <div>
+                      <div className="th-quicklink-title">{t.openScreener}</div>
+                      <div className="th-quicklink-sub">{t.openScreenerSub}</div>
+                    </div>
+                    <div className="th-quicklink-arrow">→</div>
+                  </button>
                   <button className="th-quicklink" onClick={() => setActivePage("dashboard")}>
                     <div className="th-quicklink-icon">📊</div>
                     <div>

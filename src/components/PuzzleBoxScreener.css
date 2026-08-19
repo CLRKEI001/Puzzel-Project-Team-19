@@ -1,0 +1,140 @@
+/* PuzzleBoxScreener.css */
+
+.pbs-shell {
+  min-height: 100vh;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+}
+
+.pbs-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.pbs-topbar-title { font-weight: 800; font-size: 16px; color: var(--ink); }
+.pbs-topbar-sub { font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
+.pbs-topbar-right { display: flex; align-items: center; gap: 12px; }
+
+.pbs-save-indicator { font-size: 12px; font-weight: 700; color: var(--ink-faint); }
+.pbs-save-saving { color: var(--orange); }
+.pbs-save-error { color: var(--pink); }
+
+.pbs-body { padding: 24px; flex: 1; max-width: 760px; margin: 0 auto; width: 100%; }
+.pbs-body-narrow { max-width: 520px; padding-top: 40px; }
+
+.pbs-h2 { font-size: 20px; font-weight: 800; color: var(--ink); margin: 0 0 6px; }
+.pbs-sub { color: var(--ink-mid); font-size: 13px; margin: 0 0 20px; }
+.pbs-section-desc { color: var(--ink-mid); font-size: 13px; margin: 0 0 16px; line-height: 1.6; }
+
+.pbs-error {
+  background: var(--pink-lt); color: var(--pink); font-size: 13px;
+  padding: 10px 14px; border-radius: 10px; margin: 12px 0;
+}
+
+.pbs-loading { text-align: center; padding: 24px; color: var(--ink-faint); }
+
+/* Child list */
+.pbs-child-list { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+.pbs-child-row {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 12px 14px; cursor: pointer; text-align: left; width: 100%;
+  transition: border-color 0.15s ease;
+}
+.pbs-child-row:hover { border-color: var(--teal); }
+.pbs-child-avatar {
+  width: 36px; height: 36px; border-radius: 50%; background: var(--teal);
+  color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.pbs-child-avatar-lg { width: 56px; height: 56px; font-size: 22px; margin: 0 auto 12px; }
+.pbs-child-info { flex: 1; min-width: 0; }
+.pbs-child-name { font-weight: 700; color: var(--ink); }
+.pbs-child-meta { font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
+.pbs-child-arrow { color: var(--ink-faint); }
+
+/* Confirm */
+.pbs-confirm-card { text-align: center; padding: 28px 24px; }
+.pbs-confirm-name { font-size: 18px; font-weight: 800; color: var(--ink); margin-bottom: 8px; }
+.pbs-confirm-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  margin-top: 20px; text-align: left;
+}
+.pbs-confirm-label { font-size: 11px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 2px; }
+.pbs-confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+/* Progress + section tabs */
+.pbs-progress-track { height: 4px; background: var(--border); }
+.pbs-progress-fill { height: 100%; background: var(--teal); transition: width 0.2s ease; }
+
+.pbs-section-tabs {
+  display: flex; gap: 6px; padding: 10px 24px; background: var(--card);
+  border-bottom: 1px solid var(--border); overflow-x: auto;
+}
+.pbs-section-tab {
+  width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--ink-mid); font-size: 12px; font-weight: 700;
+  cursor: pointer; flex-shrink: 0;
+}
+.pbs-section-tab.active { background: var(--teal); color: #fff; border-color: var(--teal); }
+.pbs-section-tab.done:not(.active) { background: var(--teal-lt); color: var(--teal); border-color: var(--teal); }
+
+/* Questions */
+.pbs-question-list { display: flex; flex-direction: column; gap: 14px; }
+.pbs-question {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px;
+}
+.pbs-question-head { display: flex; justify-content: space-between; align-items: flex-start; }
+.pbs-question-label { font-weight: 700; color: var(--ink); font-size: 14px; }
+.pbs-question-instruction { font-size: 13px; color: var(--ink-mid); margin-top: 6px; line-height: 1.6; }
+.pbs-question-topass { font-size: 12px; color: var(--ink-faint); margin-top: 6px; }
+
+.pbs-score-row { display: flex; gap: 8px; margin-top: 12px; }
+.pbs-score-btn {
+  width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--border);
+  background: var(--surface); color: var(--ink-mid); font-weight: 800; cursor: pointer;
+  transition: all 0.15s ease;
+}
+.pbs-score-btn.active { background: var(--teal); border-color: var(--teal); color: #fff; }
+
+.pbs-time-entry { display: flex; align-items: center; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+.pbs-time-label { font-size: 12px; color: var(--ink-faint); margin-right: 4px; }
+.pbs-time-input {
+  width: 56px; padding: 8px; border-radius: 8px; border: 1px solid var(--border);
+  text-align: center; font-weight: 700;
+}
+.pbs-computed-score { font-size: 12px; font-weight: 700; color: var(--teal); margin-left: 8px; }
+.pbs-computed-score-warn { color: var(--orange); font-weight: 600; }
+.pbs-tbd-note { flex-basis: 100%; font-size: 11px; color: var(--ink-faint); font-style: italic; margin-top: 4px; }
+
+.pbs-checklist { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.pbs-checklist-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-mid); cursor: pointer; }
+.pbs-checklist-count { font-size: 12px; color: var(--ink-faint); margin-top: 4px; }
+
+.pbs-observations { margin-top: 20px; }
+.pbs-observations-input {
+  width: 100%; min-height: 100px; margin-top: 8px; padding: 12px;
+  border-radius: 10px; border: 1px solid var(--border); font-family: inherit; resize: vertical;
+}
+
+.pbs-footer {
+  display: flex; justify-content: space-between; padding: 16px 24px;
+  background: var(--card); border-top: 1px solid var(--border);
+  position: sticky; bottom: 0;
+}
+
+.pbs-submitted { text-align: center; padding-top: 60px; }
+.pbs-submitted-icon {
+  width: 56px; height: 56px; border-radius: 50%; background: var(--teal-lt); color: var(--teal);
+  font-size: 26px; font-weight: 800; display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 16px;
+}

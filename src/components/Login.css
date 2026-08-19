@@ -3,6 +3,7 @@
    tokens where they're already defined globally; falls back sensibly if not. */
  
 .pb-login-page {
+  position: relative;
   min-height: 100vh;
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -95,6 +96,39 @@
 .pb-login-card {
   width: 100%;
   max-width: 420px;
+}
+
+.pb-back-home {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--teal, #009b8d);
+  font: inherit;
+  font-size: 28px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.pb-back-home:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.25);
+}
+.pb-back-home:focus-visible {
+  outline: 2px solid var(--teal, #009b8d);
+  outline-offset: 4px;
+  border-radius: 2px;
 }
  
 .pb-login-eyebrow {

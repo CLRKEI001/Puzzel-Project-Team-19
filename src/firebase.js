@@ -1,9 +1,14 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
-// NOTE: getFirestore / db has been removed from this file. The database
-// has moved to Supabase — see src/supabaseClient.js. Firebase is now used
-// ONLY for Authentication (Login.js, Sidebar.js, App.js).
+// NOTE: screening/report data has moved to Supabase — see
+// src/supabaseClient.js. Firestore is still used for Authentication plus a
+// few read paths that haven't been migrated yet: the "users" profile
+// lookup (App.js, Login.js) and the psychologist "messages" listener
+// (TeacherHome.js, PsychologistHome.js, AdminHome.js, Sidebar.js). Restoring
+// this export un-breaks the build for those files; migrating them off
+// Firestore entirely is a separate, later task.
 
 const firebaseConfig = {
   apiKey: "AIzaSyCXC57VPWS0IokhkJax56PuLNXfQVWvW8Y",
@@ -18,5 +23,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
+export const db = getFirestore(app);
 
 export default app;

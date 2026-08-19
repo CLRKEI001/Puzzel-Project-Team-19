@@ -15,7 +15,6 @@ import { render, screen } from '@testing-library/react';
 
 import App from './App';
 
-
 // First argument — a plain English description of what this test is checking.
 // This is what gets printed in the terminal when you run npm test so you can
 // see at a glance which tests passed and which failed.

@@ -70,6 +70,11 @@ function App() {
     return () => unsub();
   }, []);
 
+  // NEW — scroll to top whenever the visitor moves between public pages
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [publicPage]);
+
   if (loading) {
     return (
       <div className="app-loading">

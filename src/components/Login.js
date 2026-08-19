@@ -1,32 +1,32 @@
 // Login.js — PuzzleBox Screener System
-// Handles: sign in, new-account registration (with staff/teacher number for
-// verification), forgot-password, and the "pending verification" state for
-// accounts an admin hasn't approved yet.
+// Handles: sign in, new-account registration (with staff/teacher number
+// captured for future verification), and forgot-password.
 //
-// Drop this in src/components/Login.js. Also add PuzzleTransition.js and the
-// small App.js changes noted in the README at the bottom of this file so the
-// puzzle-assembly animation plays on a verified login.
- 
+// NOTE: Verification against SACE/HPCSA isn't wired up yet (pending contact
+// with those organisations), so there is currently no approval gate — any
+// account that successfully authenticates with Firebase is logged straight
+// in. The "users" table and staff/teacher number are still captured on
+// registration so that gate can be added later without a data migration.
+
 import React, { useState } from "react";
 import { auth } from "../firebase";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
-  signOut,
 } from "firebase/auth";
 import { supabase } from "../supabaseClient";
 import { mapUserRow } from "../lib/mappers";
 import { PuzzlePiece, SinglePuzzlePiece } from "./puzzlePiece";
 import "./Login.css";
- 
+
 const ROLES = [
   { value: "educator", label: "Educator / Teacher", color: "var(--orange, #F26522)" },
   { value: "psychologist", label: "Psychologist", color: "var(--pink, #E8175D)" },
   { value: "analyst", label: "Data Analyst", color: "var(--teal, #009B8D)" },
   { value: "admin", label: "Administrator", color: "var(--purple, #6B2F8A)" },
 ];
- 
+
 const EMPTY_REGISTER = {
   name: "",
   email: "",
@@ -35,7 +35,7 @@ const EMPTY_REGISTER = {
   role: "educator",
   staffNumber: "",
 };
- 
+
 // A handful of jigsaw-outline pieces that drift slowly behind the form.
 // Kept purely decorative — aria-hidden and paused under reduced motion.
 const AMBIENT_PIECES = [
@@ -49,29 +49,29 @@ const AMBIENT_PIECES = [
   { top: "4%",  left: "46%", size: 120, rotate: -12, delay: "-16s", duration: "30s", color: "var(--purple, #6B2F8A)", opacity: 0.16, blur: 8 },
   { top: "60%", left: "42%", size: 140, rotate: 22,  delay: "-6s",  duration: "34s", color: "var(--teal, #009B8D)",   opacity: 0.14, blur: 10 },
 ];
- 
+
 export default function Login({ onVerified }) {
-  const [mode, setMode] = useState("login"); // login | register | forgot | pending
+  const [mode, setMode] = useState("login"); // login | register | forgot
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
- 
+
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
- 
+
   const [reg, setReg] = useState(EMPTY_REGISTER);
   const [forgotEmail, setForgotEmail] = useState("");
- 
+
   const resetMessages = () => {
     setError("");
     setInfo("");
   };
- 
+
   const switchMode = (next) => {
     resetMessages();
     setMode(next);
   };
- 
+
   // ── LOGIN ──────────────────────────────────────────────────────────────
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -82,29 +82,21 @@ export default function Login({ onVerified }) {
       const { data: profileRow, error: profileError } = await supabase.from("users").select("*").eq("id", cred.user.uid).maybeSingle();
       if (profileError) throw profileError;
 
-      if (!profileRow || profileRow.is_verified !== true) { 
-        // Known account, but an admin hasn't approved the staff/teacher
-        // number yet — don't let them into the dashboard.
-        await signOut(auth);
-        setMode("pending");
-        setLoading(false);
-        return;
-      }
- 
-      // Verified — let the parent know so it can hold the puzzle-assembly
-      // transition on screen while the dashboard mounts underneath it.
-     onVerified?.(mapUserRow(profileRow));
+      // No verification gate for now — any Firebase account that can sign
+      // in successfully gets in. Real SACE/HPCSA verification isn't wired
+      // up yet, so there's nothing meaningful to gate on until that exists.
+      onVerified?.(profileRow ? mapUserRow(profileRow) : null);
     } catch (err) {
       setError(friendlyAuthError(err));
     }
     setLoading(false);
   };
- 
+
   // ── REGISTER ───────────────────────────────────────────────────────────
   const handleRegister = async (e) => {
     e.preventDefault();
     resetMessages();
- 
+
     if (reg.password.length < 6) {
       setError("Password must be at least 6 characters.");
       return;
@@ -114,33 +106,34 @@ export default function Login({ onVerified }) {
       return;
     }
     if (!reg.staffNumber.trim()) {
-      setError("Your staff / teacher number is required so we can verify you.");
+      setError("Your staff / teacher number is required.");
       return;
     }
- 
+
     setLoading(true);
     try {
-     const cred = await createUserWithEmailAndPassword(auth, reg.email, reg.password);
-      const { error: insertError } = await supabase.from("users").insert({
+      const cred = await createUserWithEmailAndPassword(auth, reg.email, reg.password);
+      const newProfile = {
         id: cred.user.uid,
         name: reg.name,
         email: reg.email,
         role: reg.role,
         staff_number: reg.staffNumber.trim(),
-        is_verified: false,
-      });
+        is_verified: false, // captured for when verification is wired up later — not enforced yet
+      };
+      const { error: insertError } = await supabase.from("users").insert(newProfile);
       if (insertError) throw insertError;
-      // New accounts start unverified — sign them straight back out so
-      // App.js doesn't drop them into the dashboard.
-      await signOut(auth);
-      setReg(EMPTY_REGISTER);
-      setMode("pending");
+
+      // No approval gate yet — log the new account straight in, same as
+      // handleLogin, rather than sending them to a "pending" screen for a
+      // feature that isn't enforced.
+      onVerified?.(mapUserRow(newProfile));
     } catch (err) {
       setError(friendlyAuthError(err));
     }
     setLoading(false);
   };
- 
+
   // ── FORGOT PASSWORD ────────────────────────────────────────────────────
   const handleForgot = async (e) => {
     e.preventDefault();
@@ -154,7 +147,7 @@ export default function Login({ onVerified }) {
     }
     setLoading(false);
   };
- 
+
   return (
     <div className="pb-login-page">
       {/* ── LEFT: brand / ambient puzzle pieces ── */}
@@ -189,7 +182,7 @@ export default function Login({ onVerified }) {
           <p></p>
         </div>
       </div>
- 
+
       {/* ── RIGHT: form ── */}
       <div className="pb-login-panel">
         <div className="pb-login-card">
@@ -197,21 +190,19 @@ export default function Login({ onVerified }) {
             <div className="pb-login-eyebrow">The Puzzle Project · Screener System</div>
             <h2>
               {mode === "login" && "Welcome back"}
-              {mode === "register" && "Request access"}
+              {mode === "register" && "Create your account"}
               {mode === "forgot" && "Reset your password"}
-              {mode === "pending" && "Verification pending"}
             </h2>
             <p className="pb-login-sub">
-              {mode === "login" && "Sign in with your verified email and password."}
-              {mode === "register" && "Register with your staff or teacher number so an admin can verify you."}
+              {mode === "login" && "Sign in with your email and password."}
+              {mode === "register" && "Register with your staff or teacher number."}
               {mode === "forgot" && "We'll email you a link to set a new password."}
-              {mode === "pending" && "Your account has been created but is waiting on admin approval."}
             </p>
           </div>
- 
+
           {error && <div className="pb-alert pb-alert-error">{error}</div>}
           {info && <div className="pb-alert pb-alert-info">{info}</div>}
- 
+
           {mode === "login" && (
             <form onSubmit={handleLogin}>
               <label className="pb-label" htmlFor="login-email">Email address</label>
@@ -247,12 +238,12 @@ export default function Login({ onVerified }) {
               <div className="pb-switch-row">
                 Not registered yet?{" "}
                 <button type="button" className="pb-link-btn" onClick={() => switchMode("register")}>
-                  Request access
+                  Create an account
                 </button>
               </div>
             </form>
           )}
- 
+
           {mode === "register" && (
             <form onSubmit={handleRegister}>
               <label className="pb-label" htmlFor="reg-name">Full name</label>
@@ -264,7 +255,7 @@ export default function Login({ onVerified }) {
                 onChange={(e) => setReg({ ...reg, name: e.target.value })}
                 required
               />
- 
+
               <label className="pb-label">Role</label>
               <div className="pb-role-grid">
                 {ROLES.map((r) => (
@@ -279,9 +270,9 @@ export default function Login({ onVerified }) {
                   </button>
                 ))}
               </div>
- 
+
               <label className="pb-label" htmlFor="reg-staff">
-                Staff / teacher number <span className="pb-required">— used to verify you</span>
+                Staff / teacher number
               </label>
               <input
                 id="reg-staff"
@@ -291,7 +282,7 @@ export default function Login({ onVerified }) {
                 onChange={(e) => setReg({ ...reg, staffNumber: e.target.value })}
                 required
               />
- 
+
               <label className="pb-label" htmlFor="reg-email">Email address</label>
               <input
                 id="reg-email"
@@ -303,7 +294,7 @@ export default function Login({ onVerified }) {
                 required
                 autoComplete="email"
               />
- 
+
               <div className="pb-input-pair">
                 <div>
                   <label className="pb-label" htmlFor="reg-password">Password</label>
@@ -332,19 +323,19 @@ export default function Login({ onVerified }) {
                   />
                 </div>
               </div>
- 
+
               <button className="pb-submit" type="submit" disabled={loading}>
-                {loading ? "Submitting…" : "Submit for verification →"}
+                {loading ? "Creating account…" : "Create account →"}
               </button>
               <div className="pb-switch-row">
-                Already verified?{" "}
+                Already have an account?{" "}
                 <button type="button" className="pb-link-btn" onClick={() => switchMode("login")}>
                   Sign in instead
                 </button>
               </div>
             </form>
           )}
- 
+
           {mode === "forgot" && (
             <form onSubmit={handleForgot}>
               <label className="pb-label" htmlFor="forgot-email">Email address</label>
@@ -368,21 +359,7 @@ export default function Login({ onVerified }) {
               </div>
             </form>
           )}
- 
-          {mode === "pending" && (
-            <div className="pb-pending">
-              <div className="pb-pending-icon">🧩</div>
-              <p>
-                Thanks — your details are in. An administrator needs to confirm your staff or
-                teacher number before you can sign in. This is usually quick, but check back
-                later if you haven't heard anything.
-              </p>
-              <button className="pb-submit" onClick={() => switchMode("login")}>
-                ← Back to sign in
-              </button>
-            </div>
-          )}
- 
+
           <div className="pb-login-footer">
             
             <br />
@@ -393,7 +370,7 @@ export default function Login({ onVerified }) {
     </div>
   );
 }
- 
+
 function friendlyAuthError(err) {
   const code = err?.code || "";
   if (code.includes("email-already-in-use")) return "That email is already registered — try signing in instead.";
@@ -404,34 +381,19 @@ function friendlyAuthError(err) {
   if (code.includes("too-many-requests")) return "Too many attempts — please wait a moment and try again.";
   return "Something went wrong. Please try again.";
 }
- 
+
 /*
 README — wiring this in
 ========================
-1. Firestore: this expects a "users/{uid}" doc with { name, email, role,
-   staffNumber, isVerified, createdAt }. Add a small admin view (or just
-   flip isVerified to true by hand in the Firebase console for now) to
-   approve new staff/teacher numbers.
- 
-2. App.js needs two small changes so the puzzle-assembly animation can
-   play across the login → dashboard handoff:
- 
-   const [transitioning, setTransitioning] = useState(false);
-   const [profile, setProfile] = useState(null);
- 
-   ...
- 
-   return user ? (
-     <>
-       <Dashboard user={user} profile={profile} />
-       {transitioning && (
-         <PuzzleTransition onComplete={() => setTransitioning(false)} />
-       )}
-     </>
-   ) : (
-     <Login onVerified={(p) => { setProfile(p); setTransitioning(true); }} />
-   );
- 
+1. Supabase: this expects a "users" table with columns { id (Firebase UID,
+   primary key), name, email, role, staff_number, is_verified, created_at }.
+   is_verified is captured but NOT currently enforced anywhere — there's no
+   approval gate until real SACE/HPCSA verification is wired up.
+
+2. App.js's onAuthStateChanged should mirror this — load whatever profile
+   exists for the signed-in Firebase user and let them straight in, rather
+   than checking is_verified.
+
 3. Drop PuzzleTransition.js next to Login.js — it's the full-screen
    "pieces fly together" animation, self-contained and self-dismissing.
 */

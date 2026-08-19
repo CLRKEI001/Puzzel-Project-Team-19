@@ -70,23 +70,34 @@ function DomainPuzzle() {
                 left: d.col * BODY_PX, top: d.row * BODY_PX,
                 width: BODY_PX, height: BODY_PX,
                 cursor: "pointer",
-                zIndex: isHovered ? 5 : 1,
+                zIndex: isHovered ? 10 : 1,
               }}
             >
               <div style={{
-                position: "relative", width: "100%", height: "100%",
-                transition: "transform 0.25s ease, opacity 0.25s ease",
-                transform: isHovered ? "translateY(-10px) scale(1.05)" : "none",
-                opacity: hovered && !isHovered ? 0.45 : 1,
-              }}>
+  position: "relative",
+  width: "100%",
+  height: "100%",
+  transition: "transform 0.25s ease, opacity 0.25s ease, filter 0.25s ease",
+  transform: isHovered
+    ? "translateY(-12px) scale(1.08)"
+    : "translateY(0) scale(1)",
+  opacity: hovered && !isHovered ? 0.4 : 1,
+  filter: isHovered
+    ? `drop-shadow(0 14px 25px ${d.color}70)`
+    : `drop-shadow(0 8px 20px ${d.color}45)`,
+}}>
                 <svg
-                  width={SVG_PX} height={SVG_PX} viewBox={PIECE_VIEWBOX}
-                  style={{
-                    position: "absolute", left: -PAD_PX, top: -PAD_PX,
-                    overflow: "visible", pointerEvents: "none",
-                    filter: `drop-shadow(0 8px 20px ${d.color}45)`,
-                  }}
-                >
+  width={SVG_PX}
+  height={SVG_PX}
+  viewBox={PIECE_VIEWBOX}
+  style={{
+    position: "absolute",
+    left: -PAD_PX,
+    top: -PAD_PX,
+    overflow: "visible",
+    pointerEvents: "none",
+  }}
+>
                   <path d={piecePath(d.edges)} fill={d.color} />
                 </svg>
                 <span style={{
@@ -446,14 +457,15 @@ function VisionSection() {
                 }}>
                   <h3 style={{
                     fontFamily: "'Nunito', sans-serif", fontWeight: 900, color: COLORS.white,
-                    fontSize: "clamp(13px, 1.45vw, 18px)", lineHeight: 1.2, marginBottom: 8,
+                    fontSize: "clamp(11px, 1.45vw, 18px)", lineHeight: 1.2, marginBottom: 8,
                     textShadow: "0 1px 6px rgba(0,0,0,0.25)",
                   }}>
                     {item.title}
                   </h3>
                   <p style={{
-                    fontSize: "clamp(9.5px, 0.95vw, 12.5px)", lineHeight: 1.5,
+                    fontSize: "clamp(8.5px, 0.95vw, 12.5px)", lineHeight: 1.5,
                     color: "rgba(255,255,255,0.9)",
+                    maxWidth: "65%", margin: "0 auto",
                   }}>
                     {item.desc}
                   </p>

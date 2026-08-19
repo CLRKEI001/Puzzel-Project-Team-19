@@ -972,7 +972,7 @@ body {
     font-size: 11px;
   }
 
-  .top-filter-bar {
+    .top-filter-bar {
     flex-direction: column;
     align-items: stretch;
     padding: 14px 16px;
@@ -981,4 +981,86 @@ body {
   .filter-group {
     width: 100%;
   }
+
+  /* ── TABLES ──────────────────────────────────────────────────
+     Every table in the app is already wrapped in a scrollable
+     overflow-x: auto div, so columns don't force the page itself
+     to scroll horizontally — this just tightens padding/text so
+     more of the table is visible before the user has to scroll. */
+  .data-table th {
+    padding: 0 8px 10px;
+    font-size: 10.5px;
+    white-space: nowrap;
+  }
+  .data-table td {
+    padding: 10px 8px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  /* momentum scrolling for the table's horizontal-scroll wrapper on iOS */
+  div[style*="overflow"] { -webkit-overflow-scrolling: touch; }
+
+  /* ── MODALS ──────────────────────────────────────────────────── */
+  .modal {
+    padding: 22px 18px;
+    border-radius: 16px;
+    max-height: 85vh;
+  }
+  .modal-title { font-size: 17px; }
+  .modal-overlay { padding: 12px; }
+
+  /* ── FLAG ITEMS ──────────────────────────────────────────────── */
+  .flag-item {
+    padding: 12px 14px;
+    gap: 10px;
+    border-radius: 14px;
+  }
+  .flag-name { font-size: 13.5px; }
+  .flag-meta { font-size: 12px; }
+
+  /* ── SEARCH BAR ──────────────────────────────────────────────── */
+  .search-input {
+    min-width: 0;
+    width: 100%;
+    font-size: 16px; /* 16px prevents iOS Safari from auto-zooming on focus */
+  }
+  .filter-select { font-size: 16px; width: 100%; }
+
+  /* ── FORM INPUTS ─────────────────────────────────────────────── */
+  .login-input, .pb-input { font-size: 16px; }
+
+  /* ── REPORT ROWS ─────────────────────────────────────────────── */
+  .report-row {
+    font-size: 13px;
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+  .report-section-title { font-size: 12.5px; }
+
+  /* ── CARD TITLES / GENERIC TEXT ─────────────────────────────── */
+  .card { border-radius: 18px; }
+  .card-header { flex-wrap: wrap; gap: 8px; }
+
+  /* ── BAR CHART LABELS ────────────────────────────────────────── */
+  .bar-label { width: 76px; font-size: 11px; }
+  .bar-pct { width: 32px; font-size: 12px; }
+}
+
+/* ============================================================
+   SMALL PHONES — max-width: 400px
+   A second, tighter tier for narrow devices (iPhone SE and
+   similar) layered on top of the 768px rules above.
+============================================================ */
+@media (max-width: 400px) {
+  .main-content { padding: 56px 12px 20px; }
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-value { font-size: 24px !important; }
+  .modal { padding: 18px 14px; }
+  .rh-hero { padding: 20px 16px; }
+  .rh-hero-greeting { font-size: 21px !important; }
+  .rh-chip-grid { gap: 6px; }
+  .pbs-body { padding: 16px !important; }
+  .pbs-body-narrow { padding-top: 24px !important; }
+  .pbs-confirm-grid { grid-template-columns: 1fr !important; text-align: center; }
+
 }

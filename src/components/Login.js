@@ -50,7 +50,7 @@ const AMBIENT_PIECES = [
   { top: "60%", left: "42%", size: 140, rotate: 22,  delay: "-6s",  duration: "34s", color: "var(--teal, #009B8D)",   opacity: 0.14, blur: 10 },
 ];
 
-export default function Login({ onVerified }) {
+export default function Login({ onVerified, onBack }) {
   const [mode, setMode] = useState("login"); // login | register | forgot
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -186,6 +186,15 @@ export default function Login({ onVerified }) {
       {/* ── RIGHT: form ── */}
       <div className="pb-login-panel">
         <div className="pb-login-card">
+          <button
+            type="button"
+            className="pb-back-home"
+            onClick={onBack}
+            aria-label="Back to home"
+            title="Back to home"
+          >
+            <span aria-hidden="true">←</span>
+          </button>
           <div className="pb-login-card-head">
             <div className="pb-login-eyebrow">The Puzzle Project · Screener System</div>
             <h2>

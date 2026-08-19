@@ -311,11 +311,16 @@ export function Navbar({ current, onNavigate, onLoginClick }) {
 
         <div style={{ display: "flex", gap: 14, alignItems: "center", flexShrink: 0 }}>
           <button onClick={onLoginClick} style={{
-            background: "transparent", border: "none",
-            color: COLORS.ink, fontWeight: 700, cursor: "pointer", fontSize: 14, fontFamily: "inherit",
-          }}>
-            Login
-          </button>
+          background: "transparent", color: COLORS.teal,
+           border: `1.5px solid ${COLORS.teal}`, borderRadius: 10,
+           padding: "10px 22px", cursor: "pointer", fontWeight: 700, fontSize: 14,
+           fontFamily: "inherit", transition: "all 0.2s",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = COLORS.teal; e.currentTarget.style.color = COLORS.white; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = COLORS.teal; }}
+            >
+           Login
+        </button>
         </div>
       </div>
     </nav>

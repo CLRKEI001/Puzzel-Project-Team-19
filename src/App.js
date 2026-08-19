@@ -7,7 +7,7 @@
  
 import React, { useState, useEffect } from "react";
 import { auth } from "./firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { supabase } from "./supabaseClient";
 import { mapUserRow } from "./lib/mappers";
 import Login from "./components/Login";
@@ -57,6 +57,7 @@ function App() {
           setProfile(data ? mapUserRow(data) : null);
         } catch {
           setProfile(null);
+          await signOut(auth);
         }
       } else {
         setProfile(null);
@@ -95,6 +96,14 @@ function App() {
             <PuzzleTransition onComplete={() => setTransitioning(false)} />
           )}
         </>
+      );
+    }
+
+    if (profile === null) {
+      return (
+        <div className="app-loading">
+          <p>Unable to load your account profile. Please sign in again.</p>
+        </div>
       );
     }
  

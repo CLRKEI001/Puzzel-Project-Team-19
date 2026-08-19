@@ -78,9 +78,12 @@ export default function Login({ onVerified }) {
     resetMessages();
     setLoading(true);
     try {
-      const cred = await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
+      const cred = await signInWithEmailAndPassword(auth, loginEmail.trim(), loginPassword);
       const { data: profileRow, error: profileError } = await supabase.from("users").select("*").eq("id", cred.user.uid).maybeSingle();
-      if (profileError) throw profileError;
+      if (profileError) {
+        await signOut(auth);
+        throw new Error("PROFILE_LOOKUP_FAILED");
+      }
 
       if (!profileRow || profileRow.is_verified !== true) { 
         // Known account, but an admin hasn't approved the staff/teacher
@@ -396,6 +399,9 @@ export default function Login({ onVerified }) {
  
 function friendlyAuthError(err) {
   const code = err?.code || "";
+  if (err?.message === "PROFILE_LOOKUP_FAILED") {
+    return "We couldn't load your account profile. Please try again, or contact an administrator if the problem continues.";
+  }
   if (code.includes("email-already-in-use")) return "That email is already registered — try signing in instead.";
   if (code.includes("invalid-credential") || code.includes("wrong-password") || code.includes("user-not-found"))
     return "Invalid email or password. Please try again.";

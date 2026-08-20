@@ -78,6 +78,9 @@ const T = {
     duplicateWarning: "A child with this name already exists",
     duplicateDetail:
       "already exists in the database. Please check before adding.",
+    missingFieldsWarning: "Please complete all required fields.",
+    missingFieldsDetail:
+      "Please enter the child's ID, school, province, age, examiner and date of assessment before saving.",
 
     duplicateEditWarning: "Another child with this name already exists.",
     duplicateEditDetail:
@@ -168,6 +171,9 @@ const T = {
     duplicateWarning: "Hierdie kind bestaan reeds",
     duplicateDetail:
       "bestaan reeds in die databasis.",
+    missingFieldsWarning: "Voltooi asseblief al die vereiste velde.",
+    missingFieldsDetail:
+      "Vul asseblief die kind se ID, skool, provinsie, ouderdom, ondersoeker en datum van assessering in voordat jy stoor.",
 
     duplicateEditWarning: "Nog 'n kind met hierdie naam bestaan reeds.",
     duplicateEditDetail:
@@ -258,6 +264,9 @@ const T = {
     duplicateWarning: "Lo mntwana usele ukho",
     duplicateDetail:
       "usele ukho kwidatabase.",
+    missingFieldsWarning: "Nceda ugcwalise zonke iindawo ezifunekayo.",
+    missingFieldsDetail:
+      "Nceda ufake i-ID yomntwana, isikolo, isifundazwe, iminyaka, umhloli kunye nomhla wovavanyo ngaphambi kokugcina.",
 
     duplicateEditWarning:
       "Omnye umntwana onale ID sele ekhona.",
@@ -414,6 +423,7 @@ export default function ChildrenTable({ children, lang }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const [duplicateWarning, setDuplicateWarning] = useState(false);
+  const [missingFieldsWarning, setMissingFieldsWarning] = useState(false);
 
   const [followUps, setFollowUps] = useState({});
 
@@ -816,9 +826,27 @@ export default function ChildrenTable({ children, lang }) {
 
   const handleAddChild = async () => {
 
-    if (!newChild.name || !newChild.school) {
+    const requiredFields = [
+      "name",
+      "school",
+      "province",
+      "age",
+      "examiner",
+      "date",
+    ];
+
+    const hasMissingFields = requiredFields.some(
+      field =>
+        !newChild[field] ||
+        !String(newChild[field]).trim()
+    );
+
+    if (hasMissingFields) {
+      setMissingFieldsWarning(true);
       return;
     }
+
+    setMissingFieldsWarning(false);
 
 
     const { data: existing, error: checkError } =
@@ -2959,9 +2987,10 @@ export default function ChildrenTable({ children, lang }) {
 
         <div
           className="modal-overlay"
-          onClick={() =>
-            setShowAdd(false)
-          }
+          onClick={() => {
+            setShowAdd(false);
+            setMissingFieldsWarning(false);
+          }}
         >
 
           <div
@@ -2982,14 +3011,45 @@ export default function ChildrenTable({ children, lang }) {
 
               <button
                 className="modal-close"
-                onClick={() =>
-                  setShowAdd(false)
-                }
+                onClick={() => {
+                  setShowAdd(false);
+                  setMissingFieldsWarning(false);
+                }}
               >
                 ✕
               </button>
 
             </div>
+
+
+            {/* MISSING REQUIRED FIELDS WARNING */}
+
+            {missingFieldsWarning && (
+              <div
+                style={{
+                  padding: "10px 14px",
+                  background: "#FCE6EE",
+                  color: "#E8175D",
+                  borderRadius: 10,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  marginBottom: 14,
+                }}
+              >
+                <div>
+                  ⚠️ {t.missingFieldsWarning}
+                </div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    marginTop: 4,
+                    fontWeight: 600,
+                  }}
+                >
+                  {t.missingFieldsDetail}
+                </div>
+              </div>
+            )}
 
 
             {/* DUPLICATE WARNING */}
@@ -3315,9 +3375,10 @@ export default function ChildrenTable({ children, lang }) {
 
               <button
                 className="btn btn-ghost"
-                onClick={() =>
-                  setShowAdd(false)
-                }
+                onClick={() => {
+                  setShowAdd(false);
+                  setMissingFieldsWarning(false);
+                }}
               >
                 {t.cancel}
               </button>
@@ -3325,13 +3386,7 @@ export default function ChildrenTable({ children, lang }) {
 
               <button
                 className="btn btn-primary"
-                onClick={
-                  handleAddChild
-                }
-                disabled={
-                  !newChild.name ||
-                  !newChild.school
-                }
+                onClick={handleAddChild}
               >
                 {t.save}
               </button>

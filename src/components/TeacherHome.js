@@ -96,7 +96,7 @@ const T = {
     navMessages: "Messages",
     navScreener: "PuzzleBox Screener",
     navProfile: "My Profile",
-    navStudents: "Student Records",
+    navStudents: "My Students",
 
     screenerSub:
       "Start a new PuzzleBox screening for one of your children.",

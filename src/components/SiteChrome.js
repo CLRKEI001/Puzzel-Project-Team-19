@@ -323,17 +323,28 @@ export function Navbar({ current, onNavigate, onLoginClick }) {
       transition: "all 0.3s ease",
     }}>
       <div style={{
-        maxWidth: 1300, margin: "auto", height: 84,
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: isMobile ? "0 20px" : "0 40px", gap: 24,
-      }}>
+  maxWidth: 1300,
+  margin: "auto",
+  height: 120,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: isMobile ? "0 20px" : "0 40px",
+  gap: 24,
+}}>
         {/* Logo always returns to the homepage */}
         <div onClick={() => handleClick("home")}
           style={{ cursor: "pointer", display: "flex", alignItems: "center", flexShrink: 0 }}>
           <img
-  src={`${process.env.PUBLIC_URL || ""}/logo.png`}
+  
+  src={`${process.env.PUBLIC_URL || ""}/logo1.png`}
   alt="The Puzzle Project"
-  style={{ height: isMobile ? 42 : 52, width: "auto" }}
+  style={{
+    height: isMobile ? 125 : 115,
+    width: 125,
+    objectFit: "contain",
+    display: "block"
+  }}
 />
         </div>
 
@@ -492,7 +503,7 @@ export function Footer({ onNavigate, onLoginClick }) {
           marginBottom: isMobile ? 32 : 44,
         }}>
           <div>
-            <img src="/logo.png" alt="The Puzzle Project" style={{ height: 44, marginBottom: 16 }} />
+            <img src="/logo1.png" alt="The Puzzle Project" style={{ height: 94, marginBottom: 16 }} />
             <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", lineHeight: 1.75, maxWidth: 320 }}>
               Supporting early childhood development across South Africa through accessible, culturally relevant, play-based screening tools.
             </p>

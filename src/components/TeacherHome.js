@@ -110,6 +110,8 @@ const T = {
       "Register a new child in the PuzzleBox system.",
 
     addStudentTitle: "Add New Student",
+    editChild: "Edit Child",
+    deleteChild: "Delete Child Record",
 
     childNameLabel: "Child ID",
     schoolLabel: "School",
@@ -246,6 +248,8 @@ const T = {
       "Registreer 'n nuwe kind in die PuzzleBox-stelsel.",
 
     addStudentTitle: "Voeg Nuwe Student By",
+    editChild: "Wysig Kind",
+    deleteChild: "Skrap Kindrekord",
 
     childNameLabel: "Kind ID",
     schoolLabel: "Skool",
@@ -382,6 +386,8 @@ const T = {
       "Bhalisa umntwana omtsha kwinkqubo yePuzzleBox.",
 
     addStudentTitle: "Yongeza Umfundi Omtsha",
+    editChild: "Hlela Umntwana",
+    deleteChild: "Cima Irekhodi Lomntwana",
 
     childNameLabel: "ID Yomntwana",
     schoolLabel: "Isikolo",
@@ -683,6 +689,9 @@ export default function TeacherHome({ user, profile }) {
 
   const [selected, setSelected] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [addStudentError, setAddStudentError] = useState("");
+  const [editingStudentId, setEditingStudentId] = useState(null);
+  const [confirmDeleteStudent, setConfirmDeleteStudent] = useState(null);
 
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState(false);
@@ -1018,27 +1027,34 @@ export default function TeacherHome({ user, profile }) {
       return;
     }
 
-    // Check for an existing child with the same name.
+    setAddStudentError("");
 
-    const {
-      data: existing,
-      error: checkError,
-    } = await supabase
-      .from("children")
-      .select("id")
-      .eq("name", newStudent.name);
+    // Check for an existing child with the same name — only relevant
+    // when adding a brand new record, not when editing one that already
+    // exists (its own name obviously already matches itself).
 
-    if (checkError) {
-      console.error(
-        "Error checking for duplicate child:",
-        checkError
-      );
-      return;
-    }
+    if (!editingStudentId) {
+      const {
+        data: existing,
+        error: checkError,
+      } = await supabase
+        .from("children")
+        .select("id")
+        .eq("name", newStudent.name);
 
-    if (existing && existing.length > 0) {
-      setDuplicateWarning(true);
-      return;
+      if (checkError) {
+        console.error(
+          "Error checking for duplicate child:",
+          checkError
+        );
+        setAddStudentError("Could not check for duplicates — " + checkError.message);
+        return;
+      }
+
+      if (existing && existing.length > 0) {
+        setDuplicateWarning(true);
+        return;
+      }
     }
 
     const recordToInsert = {
@@ -1051,24 +1067,34 @@ export default function TeacherHome({ user, profile }) {
 
       age:
         parseInt(newStudent.age, 10) || 5,
+
+      // IMPORTANT: an empty string here is not a valid Postgres `date`
+      // value — Supabase rejects it outright and the insert/update fails
+      // silently (only a console error, nothing shown to the teacher).
+      // "Date of Assessment" is optional in this form, so send null
+      // instead of "" whenever it's left blank.
+      date: newStudent.date || null,
     };
 
-    const {
-      error: insertError,
-    } = await supabase
-      .from("children")
-      .insert(recordToInsert);
+    const { error: saveError } = editingStudentId
+      ? await supabase.from("children").update(recordToInsert).eq("id", editingStudentId)
+      : await supabase.from("children").insert(recordToInsert);
 
-    if (insertError) {
+    if (saveError) {
       console.error(
-        "Error adding student:",
-        insertError
+        editingStudentId ? "Error updating student:" : "Error adding student:",
+        saveError
+      );
+      setAddStudentError(
+        (editingStudentId ? "Could not save changes — " : "Could not add this student — ") + saveError.message
       );
       return;
     }
 
     setShowAddStudent(false);
     setDuplicateWarning(false);
+    setEditingStudentId(null);
+    setAddStudentError("");
 
     setNewStudent({
       name: "",
@@ -1084,6 +1110,40 @@ export default function TeacherHome({ user, profile }) {
       total: 0,
       status: "Progressing",
     });
+  };
+
+  const openEditStudent = (student) => {
+    setNewStudent({
+      name: student.name || "",
+      school: student.school || "",
+      province: student.province || "Eastern Cape",
+      age: student.age || "",
+      gender: student.gender || "Female",
+      language: student.language || "English",
+      date: student.date || "",
+      examiner: student.examiner || "",
+      stage: student.stage || "stage1",
+      flagged: student.flagged || false,
+      total: student.total || 0,
+      status: student.status || "Progressing",
+    });
+    setEditingStudentId(student.id);
+    setAddStudentError("");
+    setSelectedStudent(null);
+    setShowAddStudent(true);
+  };
+
+  const handleDeleteStudent = async () => {
+    if (!confirmDeleteStudent) return;
+    const { error: deleteError } = await supabase.from("children").delete().eq("id", confirmDeleteStudent.id);
+    if (deleteError) {
+      console.error("Error deleting student:", deleteError);
+      setAddStudentError("Could not delete this record — " + deleteError.message);
+      setConfirmDeleteStudent(null);
+      return;
+    }
+    setConfirmDeleteStudent(null);
+    setSelectedStudent(null);
   };
 
 
@@ -2297,9 +2357,11 @@ export default function TeacherHome({ user, profile }) {
 
         <div
           className="modal-overlay"
-          onClick={() =>
-            setShowAddStudent(false)
-          }
+          onClick={() => {
+            setShowAddStudent(false);
+            setEditingStudentId(null);
+            setAddStudentError("");
+          }}
         >
 
           <div
@@ -2315,21 +2377,37 @@ export default function TeacherHome({ user, profile }) {
             <div className="modal-header">
 
               <div className="modal-title">
-                {t.addStudentTitle}
+                {editingStudentId ? t.editChild || "Edit Student" : t.addStudentTitle}
               </div>
 
               <button
                 className="modal-close"
-                onClick={() =>
-                  setShowAddStudent(
-                    false
-                  )
-                }
+                onClick={() => {
+                  setShowAddStudent(false);
+                  setEditingStudentId(null);
+                  setAddStudentError("");
+                }}
               >
                 ✕
               </button>
 
             </div>
+
+            {addStudentError && (
+              <div
+                style={{
+                  padding: "10px 14px",
+                  background: "var(--pink-lt)",
+                  color: "var(--pink)",
+                  borderRadius: 10,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  marginBottom: 14,
+                }}
+              >
+                ⚠ {addStudentError}
+              </div>
+            )}
 
 
             {duplicateWarning && (
@@ -2596,11 +2674,11 @@ export default function TeacherHome({ user, profile }) {
 
               <button
                 className="btn btn-ghost"
-                onClick={() =>
-                  setShowAddStudent(
-                    false
-                  )
-                }
+                onClick={() => {
+                  setShowAddStudent(false);
+                  setEditingStudentId(null);
+                  setAddStudentError("");
+                }}
               >
                 {t.cancel}
               </button>
@@ -2615,7 +2693,7 @@ export default function TeacherHome({ user, profile }) {
                   !newStudent.school
                 }
               >
-                {t.save}
+                {editingStudentId ? (t.save || "Save") : t.save}
               </button>
 
             </div>
@@ -2965,20 +3043,42 @@ export default function TeacherHome({ user, profile }) {
               style={{
                 display: "flex",
                 justifyContent:
-                  "flex-end",
+                  "space-between",
+                gap: 10,
               }}
             >
 
               <button
-                className="btn btn-ghost"
+                className="btn btn-sm"
+                style={{ background: "var(--pink-lt)", color: "var(--pink)", border: "none" }}
                 onClick={() =>
-                  setSelectedStudent(
-                    null
-                  )
+                  setConfirmDeleteStudent(selectedStudent)
                 }
               >
-                {t.close}
+                🗑 {t.deleteChild || "Delete Child Record"}
               </button>
+
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  className="btn btn-ghost"
+                  onClick={() =>
+                    openEditStudent(selectedStudent)
+                  }
+                >
+                  ✏ {t.editChild || "Edit Child"}
+                </button>
+
+                <button
+                  className="btn btn-ghost"
+                  onClick={() =>
+                    setSelectedStudent(
+                      null
+                    )
+                  }
+                >
+                  {t.close}
+                </button>
+              </div>
 
             </div>
 
@@ -2986,6 +3086,26 @@ export default function TeacherHome({ user, profile }) {
 
         </div>
 
+      )}
+
+      {confirmDeleteStudent && (
+        <div className="modal-overlay" onClick={() => setConfirmDeleteStudent(null)}>
+          <div className="modal" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">Delete {confirmDeleteStudent.name}?</div>
+              <button className="modal-close" onClick={() => setConfirmDeleteStudent(null)}>✕</button>
+            </div>
+            <p style={{ fontSize: 13.5, color: "var(--ink-mid)", lineHeight: 1.6, marginBottom: 20 }}>
+              This permanently removes this child's record, including any screening history attached to it. This can't be undone.
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button className="btn btn-ghost" onClick={() => setConfirmDeleteStudent(null)}>{t.cancel}</button>
+              <button className="btn btn-sm" style={{ background: "var(--pink)", color: "#fff", border: "none", padding: "10px 18px" }} onClick={handleDeleteStudent}>
+                {t.deleteChild || "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

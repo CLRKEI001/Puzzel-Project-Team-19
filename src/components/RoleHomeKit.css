@@ -162,6 +162,13 @@
   box-shadow: 0 6px 16px -4px var(--rh-accent, rgba(0, 155, 141, 0.5));
 }
 .rh-shell .nav-item:not(.active):hover { background: rgba(20, 20, 43, 0.06); color: var(--ink, #1a1a2e); }
+
+/* Mobile nav overlay has a dark background, so its section labels and
+   inactive nav items need light text — the dark-on-light rules above are
+   for the desktop sidebar only. */
+.rh-shell .mobile-menu .nav-section-label { color: rgba(255, 255, 255, 0.5); }
+.rh-shell .mobile-menu .nav-item { color: rgba(255, 255, 255, 0.85); }
+.rh-shell .mobile-menu .nav-item:not(.active):hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
  
 .rh-shell .logout-btn {
   background: rgba(232, 23, 93, 0.1);

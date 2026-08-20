@@ -29,7 +29,7 @@ export default function RoleSidebar({
               {showSection && <div className="nav-section-label">{item.section}</div>}
               <button
                 className={`nav-item ${activePage === item.id ? "active" : ""}`}
-                onClick={() => { setActivePage(item.id); onNavigate?.(); }}
+                onClick={() => { if (item.onClick) { item.onClick(); } else { setActivePage(item.id); } onNavigate?.(); }}
               >
                 {item.icon}
                 {item.label}
@@ -78,7 +78,7 @@ export default function RoleSidebar({
       </button>
  
       {mobileOpen && (
-        <div style={{
+        <div className="mobile-menu" style={{
           position: "fixed", inset: 0, background: "var(--dark)", zIndex: 200,
           display: "flex", flexDirection: "column", padding: "24px 22px",
           overflowY: "auto", animation: "fadeIn 0.2s ease",

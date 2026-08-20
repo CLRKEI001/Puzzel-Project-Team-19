@@ -172,6 +172,32 @@ export function PuzzlePhoto({
 }
 
 /**
+ * Returns true once the viewport width drops to/below `breakpoint`, and
+ * keeps tracking it live via matchMedia (resize, rotate, devtools, etc).
+ * Shared by every page so the mobile breakpoints stay consistent site-wide.
+ */
+export function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth <= breakpoint : false
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia(`(max-width: ${breakpoint}px)`);
+    const handler = (e) => setIsMobile(e.matches);
+    setIsMobile(mq.matches);
+    if (mq.addEventListener) mq.addEventListener("change", handler);
+    else mq.addListener(handler); // Safari <14 fallback
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", handler);
+      else mq.removeListener(handler);
+    };
+  }, [breakpoint]);
+
+  return isMobile;
+}
+
+/**
  * Returns [ref, inView]. inView flips to true the first time the element
  * scrolls into the viewport, which is what drives the puzzle-assembly
  * animations. Falls back to visible if IntersectionObserver is unavailable.
@@ -201,11 +227,13 @@ export function useInView({ threshold = 0.2, rootMargin = "0px 0px -80px 0px" } 
 
 // Section heading used across pages — eyebrow label, title, optional lead paragraph
 export function SectionHeading({ eyebrow, title, lead, align = "left", maxWidth = 720 }) {
+  const isMobile = useIsMobile(640);
+  const gap = isMobile ? 30 : 44;
   return (
     <div style={{
-      marginBottom: 44, textAlign: align,
+      marginBottom: gap, textAlign: align,
       maxWidth: align === "center" ? maxWidth : "none",
-      margin: align === "center" ? `0 auto 44px` : "0 0 44px",
+      margin: align === "center" ? `0 auto ${gap}px` : `0 0 ${gap}px`,
     }}>
       {eyebrow && (
         <p style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: COLORS.teal, marginBottom: 12 }}>
@@ -244,6 +272,10 @@ const NAV_LINKS = [
  */
 export function Navbar({ current, onNavigate, onLoginClick }) {
   const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Nav needs more breathing room than the general content breakpoint since
+  // it's packing a logo, 5 links and 2 buttons into one row.
+  const isMobile = useIsMobile(880);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 30);
@@ -251,12 +283,25 @@ export function Navbar({ current, onNavigate, onLoginClick }) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Collapse the open dropdown automatically if the viewport grows back
+  // past the mobile breakpoint (e.g. rotating a tablet).
+  useEffect(() => { if (!isMobile) setMenuOpen(false); }, [isMobile]);
+
+  // Lock body scroll while the mobile menu is open so the page behind it
+  // doesn't scroll along with the dropdown's own content.
+  useEffect(() => {
+    if (!isMobile) return;
+    document.body.style.overflow = menuOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [isMobile, menuOpen]);
+
   const scrollToDonate = () => {
     const el = document.getElementById("donate");
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const handleClick = (page) => {
+    setMenuOpen(false);
     if (page === "donate") {
       if (current === "home") { scrollToDonate(); return; }
       onNavigate("home");
@@ -266,69 +311,159 @@ export function Navbar({ current, onNavigate, onLoginClick }) {
     onNavigate(page);
   };
 
+  const handleLoginClick = () => { setMenuOpen(false); onLoginClick(); };
+
   return (
     <nav style={{
       position: "fixed", top: 0, left: 0, right: 0, zIndex: 999, width: "100%",
-      background: scrolled ? "rgba(255,255,255,0.98)" : "rgba(255,255,255,0.92)",
+      background: (scrolled || menuOpen) ? "rgba(255,255,255,0.98)" : "rgba(255,255,255,0.92)",
       backdropFilter: "blur(16px)",
-      borderBottom: scrolled ? `1px solid ${COLORS.border}` : "1px solid transparent",
-      boxShadow: scrolled ? "0 8px 30px rgba(0,0,0,0.05)" : "none",
+      borderBottom: (scrolled || menuOpen) ? `1px solid ${COLORS.border}` : "1px solid transparent",
+      boxShadow: (scrolled || menuOpen) ? "0 8px 30px rgba(0,0,0,0.05)" : "none",
       transition: "all 0.3s ease",
     }}>
       <div style={{
         maxWidth: 1300, margin: "auto", height: 84,
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "0 40px", gap: 24,
+        padding: isMobile ? "0 20px" : "0 40px", gap: 24,
       }}>
         {/* Logo always returns to the homepage */}
-        <div onClick={() => onNavigate("home")}
+        <div onClick={() => handleClick("home")}
           style={{ cursor: "pointer", display: "flex", alignItems: "center", flexShrink: 0 }}>
-          <img src="/logo.png" alt="The Puzzle Project" style={{ height: 56, width: "auto" }} />
+          <img src="/logo.png" alt="The Puzzle Project" style={{ height: isMobile ? 42 : 52, width: "auto" }} />
         </div>
 
-        <div style={{ display: "flex", gap: 4, alignItems: "center", flex: 1, justifyContent: "center" }}>
-          {NAV_LINKS.map(link => {
-            const isActive = current === link.page;
-            return (
-              <button key={link.label}
-                onClick={() => handleClick(link.page)}
-                style={{
-                  background: isActive ? COLORS.tealLight : "none",
-                  border: "none", cursor: "pointer",
-                  padding: "9px 16px", borderRadius: 9,
-                  fontSize: 14, fontWeight: isActive ? 800 : 600,
-                  color: isActive ? COLORS.teal : COLORS.ink,
-                  transition: "all 0.15s", whiteSpace: "nowrap", fontFamily: "inherit",
-                }}
-                onMouseEnter={e => { e.currentTarget.style.color = COLORS.teal; e.currentTarget.style.background = COLORS.tealLight; }}
-                onMouseLeave={e => { e.currentTarget.style.color = isActive ? COLORS.teal : COLORS.ink; e.currentTarget.style.background = isActive ? COLORS.tealLight : "none"; }}
-              >
-                {link.label}
+        {!isMobile && (
+          <>
+            <div style={{ display: "flex", gap: 4, alignItems: "center", flex: 1, justifyContent: "center" }}>
+              {NAV_LINKS.map(link => {
+                const isActive = current === link.page;
+                return (
+                  <button key={link.label}
+                    onClick={() => handleClick(link.page)}
+                    style={{
+                      background: isActive ? COLORS.tealLight : "none",
+                      border: "none", cursor: "pointer",
+                      padding: "9px 16px", borderRadius: 9,
+                      fontSize: 14, fontWeight: isActive ? 800 : 600,
+                      color: isActive ? COLORS.teal : COLORS.ink,
+                      transition: "all 0.15s", whiteSpace: "nowrap", fontFamily: "inherit",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.color = COLORS.teal; e.currentTarget.style.background = COLORS.tealLight; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = isActive ? COLORS.teal : COLORS.ink; e.currentTarget.style.background = isActive ? COLORS.tealLight : "none"; }}
+                  >
+                    {link.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ display: "flex", gap: 14, alignItems: "center", flexShrink: 0 }}>
+              <button onClick={handleLoginClick} style={{
+                background: "transparent", border: "none",
+                color: COLORS.ink, fontWeight: 700, cursor: "pointer", fontSize: 14, fontFamily: "inherit",
+              }}>
+                Login
               </button>
-            );
-          })}
-        </div>
+              <button onClick={handleLoginClick} style={{
+                background: COLORS.teal, color: COLORS.white, border: "none",
+                padding: "12px 24px", borderRadius: 10,
+                cursor: "pointer", fontWeight: 700, fontSize: 14,
+                fontFamily: "inherit", transition: "all 0.2s",
+              }}
+                onMouseEnter={e => { e.currentTarget.style.background = COLORS.tealDark; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = COLORS.teal; e.currentTarget.style.transform = "translateY(0)"; }}
+              >
+                Start Screening
+              </button>
+            </div>
+          </>
+        )}
 
-        <div style={{ display: "flex", gap: 14, alignItems: "center", flexShrink: 0 }}>
-          <button onClick={onLoginClick} style={{
-          background: "transparent", color: COLORS.teal,
-           border: `1.5px solid ${COLORS.teal}`, borderRadius: 10,
-           padding: "10px 22px", cursor: "pointer", fontWeight: 700, fontSize: 14,
-           fontFamily: "inherit", transition: "all 0.2s",
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = COLORS.teal; e.currentTarget.style.color = COLORS.white; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = COLORS.teal; }}
-            >
-           Login
-        </button>
-        </div>
+        {isMobile && (
+          <button
+            onClick={() => setMenuOpen(o => !o)}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+            style={{
+              display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center",
+              gap: 5, width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+              background: menuOpen ? COLORS.tealLight : "transparent",
+              border: "none", cursor: "pointer", padding: 0,
+            }}
+          >
+            <span style={{
+              display: "block", width: 20, height: 2, borderRadius: 2, background: COLORS.ink,
+              transition: "transform 0.2s ease, opacity 0.2s ease",
+              transform: menuOpen ? "translateY(3.5px) rotate(45deg)" : "none",
+            }} />
+            <span style={{
+              display: "block", width: 20, height: 2, borderRadius: 2, background: COLORS.ink,
+              transition: "transform 0.2s ease, opacity 0.2s ease",
+              opacity: menuOpen ? 0 : 1,
+            }} />
+            <span style={{
+              display: "block", width: 20, height: 2, borderRadius: 2, background: COLORS.ink,
+              transition: "transform 0.2s ease, opacity 0.2s ease",
+              transform: menuOpen ? "translateY(-3.5px) rotate(-45deg)" : "none",
+            }} />
+          </button>
+        )}
       </div>
+
+      {/* Mobile dropdown panel — slides open below the bar, links stacked full-width */}
+      {isMobile && (
+        <div style={{
+          maxHeight: menuOpen ? 480 : 0,
+          overflow: "hidden",
+          transition: "max-height 0.28s ease",
+          background: COLORS.white,
+          borderTop: menuOpen ? `1px solid ${COLORS.border}` : "1px solid transparent",
+        }}>
+          <div style={{ padding: "10px 20px 22px", display: "flex", flexDirection: "column", gap: 4 }}>
+            {NAV_LINKS.map(link => {
+              const isActive = current === link.page;
+              return (
+                <button key={link.label}
+                  onClick={() => handleClick(link.page)}
+                  style={{
+                    background: isActive ? COLORS.tealLight : "none",
+                    border: "none", cursor: "pointer", textAlign: "left",
+                    padding: "13px 14px", borderRadius: 10,
+                    fontSize: 15.5, fontWeight: isActive ? 800 : 700,
+                    color: isActive ? COLORS.teal : COLORS.ink,
+                    fontFamily: "inherit", width: "100%",
+                  }}
+                >
+                  {link.label}
+                </button>
+              );
+            })}
+            <div style={{ height: 1, background: COLORS.border, margin: "10px 0" }} />
+            <button onClick={handleLoginClick} style={{
+              background: "none", border: `1.5px solid ${COLORS.border}`,
+              color: COLORS.ink, fontWeight: 700, cursor: "pointer", fontSize: 15,
+              fontFamily: "inherit", padding: "13px 14px", borderRadius: 10, width: "100%",
+            }}>
+              Login
+            </button>
+            <button onClick={handleLoginClick} style={{
+              background: COLORS.teal, color: COLORS.white, border: "none",
+              padding: "14px", borderRadius: 10, width: "100%",
+              cursor: "pointer", fontWeight: 700, fontSize: 15, fontFamily: "inherit",
+            }}>
+              Start Screening
+            </button>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
 
 // Full site footer — identical on every page, with working navigation links
 export function Footer({ onNavigate, onLoginClick }) {
+  const isMobile = useIsMobile(700);
   const columns = [
     {
       heading: "Platform",
@@ -349,9 +484,14 @@ export function Footer({ onNavigate, onLoginClick }) {
   ];
 
   return (
-    <footer style={{ background: COLORS.dark, padding: "52px 40px 32px" }}>
+    <footer style={{ background: COLORS.dark, padding: isMobile ? "40px 20px 24px" : "52px 40px 32px" }}>
       <div style={{ maxWidth: 1300, margin: "auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 48, marginBottom: 44 }}>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr 1fr",
+          gap: isMobile ? 32 : 48,
+          marginBottom: isMobile ? 32 : 44,
+        }}>
           <div>
             <img src="/logo.png" alt="The Puzzle Project" style={{ height: 44, marginBottom: 16 }} />
             <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", lineHeight: 1.75, maxWidth: 320 }}>
@@ -391,8 +531,9 @@ export function Footer({ onNavigate, onLoginClick }) {
 
 // Shared closing call-to-action used at the foot of every page
 export function CallToAction({ onNavigate, onLoginClick }) {
+  const isMobile = useIsMobile(640);
   return (
-    <section style={{ padding: "90px 40px", background: `linear-gradient(135deg, ${COLORS.dark} 0%, #2A1040 100%)`, position: "relative", overflow: "hidden" }}>
+    <section style={{ padding: isMobile ? "56px 22px" : "90px 40px", background: `linear-gradient(135deg, ${COLORS.dark} 0%, #2A1040 100%)`, position: "relative", overflow: "hidden" }}>
       <PuzzlePiece size={90} color={COLORS.teal} rotate={15} fillOpacity={0.25} style={{ position: "absolute", top: -30, left: -20 }} />
       <PuzzlePiece size={70} color={COLORS.pink} rotate={-20} fillOpacity={0.25} style={{ position: "absolute", bottom: -20, right: -10 }} />
       <div style={{ maxWidth: 760, margin: "auto", textAlign: "center", position: "relative", zIndex: 1 }}>

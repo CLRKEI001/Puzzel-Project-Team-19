@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   COLORS, FONT_IMPORT, PuzzlePiece, PuzzlePhoto, SectionHeading, Navbar, Footer, CallToAction,
-  piecePath, gridEdges, useInView, PIECE_BODY, PIECE_PAD, PIECE_VIEWBOX,
+  piecePath, gridEdges, useInView, useIsMobile, PIECE_BODY, PIECE_PAD, PIECE_VIEWBOX,
 } from "./SiteChrome";
 
 // The four developmental domains the screener measures, rendered as a real
@@ -39,14 +39,18 @@ const DOMAINS = [
   },
 ];
 
-const BODY_PX = 148;                                    // rendered size of one piece body
-const SCALE = BODY_PX / PIECE_BODY;
-const PAD_PX = PIECE_PAD * SCALE;                       // room the tabs need
-const SVG_PX = (PIECE_BODY + PIECE_PAD * 2) * SCALE;
-
 function DomainPuzzle() {
   const [hovered, setHovered] = useState(null);
   const active = DOMAINS.find(d => d.key === hovered);
+  const isMobile = useIsMobile(480);
+
+  // Rendered size of one piece body — shrinks on narrow phones so the
+  // 2x2 grid (BODY_PX * 2 wide) never forces horizontal scroll.
+  const BODY_PX = isMobile ? 108 : 148;
+  const SCALE = BODY_PX / PIECE_BODY;
+  const PAD_PX = PIECE_PAD * SCALE;                       // room the tabs need
+  const SVG_PX = (PIECE_BODY + PIECE_PAD * 2) * SCALE;
+  const labelSize = isMobile ? 12 : 14.5;
 
   return (
     <div style={{ position: "relative", width: "100%", maxWidth: 440, margin: "0 auto" }}>
@@ -70,42 +74,31 @@ function DomainPuzzle() {
                 left: d.col * BODY_PX, top: d.row * BODY_PX,
                 width: BODY_PX, height: BODY_PX,
                 cursor: "pointer",
-                zIndex: isHovered ? 10 : 1,
+                zIndex: isHovered ? 5 : 1,
               }}
             >
               <div style={{
-  position: "relative",
-  width: "100%",
-  height: "100%",
-  transition: "transform 0.25s ease, opacity 0.25s ease, filter 0.25s ease",
-  transform: isHovered
-    ? "translateY(-12px) scale(1.08)"
-    : "translateY(0) scale(1)",
-  opacity: hovered && !isHovered ? 0.4 : 1,
-  filter: isHovered
-    ? `drop-shadow(0 14px 25px ${d.color}70)`
-    : `drop-shadow(0 8px 20px ${d.color}45)`,
-}}>
+                position: "relative", width: "100%", height: "100%",
+                transition: "transform 0.25s ease, opacity 0.25s ease",
+                transform: isHovered ? "translateY(-10px) scale(1.05)" : "none",
+                opacity: hovered && !isHovered ? 0.45 : 1,
+              }}>
                 <svg
-  width={SVG_PX}
-  height={SVG_PX}
-  viewBox={PIECE_VIEWBOX}
-  style={{
-    position: "absolute",
-    left: -PAD_PX,
-    top: -PAD_PX,
-    overflow: "visible",
-    pointerEvents: "none",
-  }}
->
+                  width={SVG_PX} height={SVG_PX} viewBox={PIECE_VIEWBOX}
+                  style={{
+                    position: "absolute", left: -PAD_PX, top: -PAD_PX,
+                    overflow: "visible", pointerEvents: "none",
+                    filter: `drop-shadow(0 8px 20px ${d.color}45)`,
+                  }}
+                >
                   <path d={piecePath(d.edges)} fill={d.color} />
                 </svg>
                 <span style={{
                   position: "absolute", inset: 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontFamily: "'Nunito', sans-serif", fontWeight: 900,
-                  fontSize: 14.5, color: COLORS.white, textAlign: "center",
-                  lineHeight: 1.2, pointerEvents: "none", padding: "0 22px",
+                  fontSize: labelSize, color: COLORS.white, textAlign: "center",
+                  lineHeight: 1.2, pointerEvents: "none", padding: isMobile ? "0 14px" : "0 22px",
                   textShadow: "0 1px 6px rgba(0,0,0,0.3)",
                 }}>
                   {d.label}
@@ -144,6 +137,7 @@ function DomainPuzzle() {
 // Light hero — soft background, brand colours, split layout
 function Hero({ onLoginClick, onNavigate }) {
   const [visible, setVisible] = useState(false);
+  const isMobile = useIsMobile(860);
   useEffect(() => { const t = setTimeout(() => setVisible(true), 120); return () => clearTimeout(t); }, []);
 
   const fadeUp = (delay = 0) => ({
@@ -163,12 +157,16 @@ function Hero({ onLoginClick, onNavigate }) {
       <div style={{ position: "absolute", bottom: -140, left: -100, width: 480, height: 480, borderRadius: "50%", background: "radial-gradient(circle, rgba(107,47,138,0.09) 0%, transparent 70%)", pointerEvents: "none" }} />
 
       <div style={{
-        maxWidth: 1300, margin: "0 auto", padding: "72px 40px 0", width: "100%",
+        maxWidth: 1300, margin: "0 auto",
+        padding: isMobile ? "44px 20px 0" : "72px 40px 0",
+        width: "100%",
         position: "relative", zIndex: 1,
-        display: "grid", gridTemplateColumns: "1.05fr 0.95fr", gap: 56, alignItems: "center",
+        display: "grid",
+        gridTemplateColumns: isMobile ? "1fr" : "1.05fr 0.95fr",
+        gap: isMobile ? 40 : 56, alignItems: "center",
       }}>
         {/* Left — message */}
-        <div>
+        <div style={{ textAlign: isMobile ? "center" : "left" }}>
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 8,
             padding: "7px 16px", borderRadius: 20,
@@ -196,13 +194,29 @@ function Hero({ onLoginClick, onNavigate }) {
             fontSize: "clamp(15px, 1.7vw, 18px)",
             color: COLORS.inkMid,
             maxWidth: 520, lineHeight: 1.75, marginBottom: 34,
+            marginLeft: isMobile ? "auto" : 0, marginRight: isMobile ? "auto" : 0,
             ...fadeUp(0.25),
           }}>
             The Puzzle Project is a South African non-profit bringing structured early childhood developmental screening to every school — regardless of location or connectivity.
           </p>
 
-          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", ...fadeUp(0.35) }}>
-
+          <div style={{
+            display: "flex", gap: 14, flexWrap: "wrap",
+            justifyContent: isMobile ? "center" : "flex-start",
+            ...fadeUp(0.35),
+          }}>
+            <button onClick={onLoginClick} style={{
+              padding: "14px 32px", borderRadius: 12,
+              background: COLORS.teal, color: COLORS.white,
+              border: "none", fontSize: 15, fontWeight: 800,
+              cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
+              boxShadow: "0 6px 20px rgba(0,155,141,0.25)",
+            }}
+              onMouseEnter={e => { e.currentTarget.style.background = COLORS.tealDark; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,155,141,0.35)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = COLORS.teal; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,155,141,0.25)"; }}
+            >
+              Start Screening
+            </button>
             <button onClick={() => onNavigate("how")} style={{
               padding: "14px 32px", borderRadius: 12,
               background: COLORS.white, color: COLORS.ink,
@@ -223,10 +237,15 @@ function Hero({ onLoginClick, onNavigate }) {
         </div>
       </div>
 
-      {/* Impact counter strip */}
-      <div style={{ maxWidth: 1300, margin: "56px auto 0", padding: "0 40px", position: "relative", zIndex: 1, ...fadeUp(0.5) }}>
+      {/* Impact counter strip — 4-across on desktop, 2x2 grid on mobile */}
+      <div style={{
+        maxWidth: 1300, margin: isMobile ? "36px auto 0" : "56px auto 0",
+        padding: isMobile ? "0 20px" : "0 40px",
+        position: "relative", zIndex: 1, ...fadeUp(0.5),
+      }}>
         <div style={{
-          display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+          display: "grid",
+          gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(auto-fit, minmax(160px, 1fr))",
           borderTop: `1px solid ${COLORS.border}`, borderBottom: `1px solid ${COLORS.border}`,
         }}>
           {[
@@ -234,15 +253,21 @@ function Hero({ onLoginClick, onNavigate }) {
             { value: "4", label: "Partner schools" },
             { value: "3", label: "Languages" },
             { value: "4", label: "Developmental domains" },
-          ].map((s, i) => (
-            <div key={s.label} style={{
-              padding: "26px 20px", textAlign: "center",
-              borderLeft: i === 0 ? "none" : `1px solid ${COLORS.border}`,
-            }}>
-              <div style={{ fontSize: 32, fontWeight: 900, color: COLORS.teal, fontFamily: "'Nunito', sans-serif", lineHeight: 1 }}>{s.value}</div>
-              <div style={{ fontSize: 12, color: COLORS.inkFaint, marginTop: 7, fontWeight: 600 }}>{s.label}</div>
-            </div>
-          ))}
+          ].map((s, i) => {
+            const cols = isMobile ? 2 : 4;
+            const isFirstInRow = i % cols === 0;
+            const isSecondRowOrLater = isMobile && i >= cols;
+            return (
+              <div key={s.label} style={{
+                padding: isMobile ? "20px 14px" : "26px 20px", textAlign: "center",
+                borderLeft: isFirstInRow ? "none" : `1px solid ${COLORS.border}`,
+                borderTop: isSecondRowOrLater ? `1px solid ${COLORS.border}` : "none",
+              }}>
+                <div style={{ fontSize: isMobile ? 26 : 32, fontWeight: 900, color: COLORS.teal, fontFamily: "'Nunito', sans-serif", lineHeight: 1 }}>{s.value}</div>
+                <div style={{ fontSize: 12, color: COLORS.inkFaint, marginTop: 7, fontWeight: 600 }}>{s.label}</div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>
@@ -257,8 +282,9 @@ const PILLARS = [
 ];
 
 function Mission() {
+  const isMobile = useIsMobile(640);
   return (
-    <section style={{ padding: "90px 40px", background: COLORS.white }}>
+    <section style={{ padding: isMobile ? "56px 20px" : "90px 40px", background: COLORS.white }}>
       <div style={{ maxWidth: 1300, margin: "auto" }}>
         <SectionHeading
           align="center"
@@ -287,11 +313,18 @@ function Mission() {
 
 // Our story
 function OurStory({ onNavigate }) {
+  const isMobile = useIsMobile(860);
   return (
-    <section style={{ background: COLORS.surface, padding: "90px 40px", position: "relative", overflow: "hidden" }}>
-      <PuzzlePiece size={140} color={COLORS.purple} rotate={-10} style={{ position: "absolute", top: -30, left: -40 }} />
-      <div style={{ maxWidth: 1300, margin: "auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center", position: "relative" }}>
-        <div>
+    <section style={{ background: COLORS.surface, padding: isMobile ? "56px 20px" : "90px 40px", position: "relative", overflow: "hidden" }}>
+      {!isMobile && (
+        <PuzzlePiece size={140} color={COLORS.purple} rotate={-10} style={{ position: "absolute", top: -30, left: -40 }} />
+      )}
+      <div style={{
+        maxWidth: 1300, margin: "auto", display: "grid",
+        gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+        gap: isMobile ? 40 : 64, alignItems: "center", position: "relative",
+      }}>
+        <div style={{ textAlign: isMobile ? "center" : "left" }}>
           <p style={{ color: COLORS.teal, textTransform: "uppercase", fontWeight: 800, letterSpacing: "0.1em", marginBottom: 14, fontSize: 12 }}>
             Our story
           </p>
@@ -318,9 +351,12 @@ function OurStory({ onNavigate }) {
         </div>
 
         {/* Photo cluster — drop real image paths into `src` when photography is ready */}
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", position: "relative", minHeight: 400 }}>
+        <div style={{
+          display: "flex", justifyContent: "center", alignItems: "center",
+          position: "relative", minHeight: isMobile ? 260 : 400,
+        }}>
           <PuzzlePhoto
-            size={300}
+            size={isMobile ? 210 : 300}
             label="Founder photo"
             alt="Gary King, founder of The Puzzle Project"
             color={COLORS.teal}
@@ -329,12 +365,16 @@ function OurStory({ onNavigate }) {
             /* src="/images/gary-king.jpg" */
           />
           <PuzzlePhoto
-            size={185}
+            size={isMobile ? 128 : 185}
             label="Classroom"
             alt="Children using the Puzzle Box in a classroom"
             color={COLORS.purple}
             edges={{ top: -1, right: 0, bottom: 0, left: 0 }}
-            style={{ position: "absolute", right: 8, bottom: 34, filter: "drop-shadow(0 10px 26px rgba(0,0,0,0.12))" }}
+            style={{
+              position: "absolute",
+              right: isMobile ? -4 : 8, bottom: isMobile ? 14 : 34,
+              filter: "drop-shadow(0 10px 26px rgba(0,0,0,0.12))",
+            }}
             /* src="/images/classroom.jpg" */
           />
         </div>
@@ -351,8 +391,9 @@ const WHAT_WE_DO = [
 ];
 
 function WhatWeDo() {
+  const isMobile = useIsMobile(640);
   return (
-    <section style={{ padding: "90px 40px", background: COLORS.white }}>
+    <section style={{ padding: isMobile ? "56px 20px" : "90px 40px", background: COLORS.white }}>
       <div style={{ maxWidth: 1300, margin: "auto" }}>
         <SectionHeading
           eyebrow="What we do"
@@ -399,9 +440,14 @@ const VISION_ROWS = 2;
 
 function VisionSection() {
   const [ref, inView] = useInView();
+  // Below this width the 3x2 layout leaves each piece too narrow to read
+  // comfortably, so we transpose to a taller 2x3 grid instead.
+  const isMobile = useIsMobile(640);
+  const cols = isMobile ? 2 : VISION_COLS;
+  const rows = isMobile ? 3 : VISION_ROWS;
 
   return (
-    <section style={{ padding: "90px 40px 100px", background: COLORS.white, overflow: "hidden" }}>
+    <section style={{ padding: isMobile ? "56px 20px 60px" : "90px 40px 100px", background: COLORS.white, overflow: "hidden" }}>
       <div style={{ maxWidth: 1300, margin: "auto" }}>
         <SectionHeading
           align="center"
@@ -414,25 +460,25 @@ function VisionSection() {
         {/* The assembled jigsaw */}
         <div ref={ref} style={{
           position: "relative", width: "100%", maxWidth: 880,
-          margin: "0 auto", aspectRatio: `${VISION_COLS} / ${VISION_ROWS}`,
+          margin: "0 auto", aspectRatio: `${cols} / ${rows}`,
         }}>
           {VISION_ITEMS.map((item, i) => {
-            const row = Math.floor(i / VISION_COLS);
-            const col = i % VISION_COLS;
-            const edges = gridEdges(row, col, VISION_ROWS, VISION_COLS);
+            const row = Math.floor(i / cols);
+            const col = i % cols;
+            const edges = gridEdges(row, col, rows, cols);
 
             // Each piece drifts in from its own corner of the layout
-            const dx = (col - (VISION_COLS - 1) / 2) * 160;
-            const dy = (row - (VISION_ROWS - 1) / 2) * 190;
+            const dx = (col - (cols - 1) / 2) * (isMobile ? 70 : 160);
+            const dy = (row - (rows - 1) / 2) * (isMobile ? 90 : 190);
 
             return (
               <div key={item.title}
                 style={{
                   position: "absolute",
-                  left: `${(col / VISION_COLS) * 100}%`,
-                  top: `${(row / VISION_ROWS) * 100}%`,
-                  width: `${100 / VISION_COLS}%`,
-                  height: `${100 / VISION_ROWS}%`,
+                  left: `${(col / cols) * 100}%`,
+                  top: `${(row / rows) * 100}%`,
+                  width: `${100 / cols}%`,
+                  height: `${100 / rows}%`,
                   opacity: inView ? 1 : 0,
                   transform: inView ? "translate(0, 0) scale(1)" : `translate(${dx}px, ${dy}px) scale(0.82)`,
                   transition: `opacity 0.6s ease ${i * 0.09}s, transform 0.75s cubic-bezier(0.22, 1, 0.36, 1) ${i * 0.09}s`,
@@ -457,15 +503,14 @@ function VisionSection() {
                 }}>
                   <h3 style={{
                     fontFamily: "'Nunito', sans-serif", fontWeight: 900, color: COLORS.white,
-                    fontSize: "clamp(11px, 1.45vw, 18px)", lineHeight: 1.2, marginBottom: 8,
+                    fontSize: "clamp(13px, 1.45vw, 18px)", lineHeight: 1.2, marginBottom: 8,
                     textShadow: "0 1px 6px rgba(0,0,0,0.25)",
                   }}>
                     {item.title}
                   </h3>
                   <p style={{
-                    fontSize: "clamp(8.5px, 0.95vw, 12.5px)", lineHeight: 1.5,
+                    fontSize: "clamp(9.5px, 0.95vw, 12.5px)", lineHeight: 1.5,
                     color: "rgba(255,255,255,0.9)",
-                    maxWidth: "65%", margin: "0 auto",
                   }}>
                     {item.desc}
                   </p>
@@ -496,9 +541,12 @@ function TiersSection({ onNavigate }) {
     },
   ];
 
+  const isMobile = useIsMobile(640);
   return (
-    <section style={{ padding: "90px 40px", background: COLORS.surface, position: "relative", overflow: "hidden" }}>
-      <PuzzlePiece size={110} color={COLORS.teal} rotate={-15} style={{ position: "absolute", top: 40, right: -30 }} />
+    <section style={{ padding: isMobile ? "56px 20px" : "90px 40px", background: COLORS.surface, position: "relative", overflow: "hidden" }}>
+      {!isMobile && (
+        <PuzzlePiece size={110} color={COLORS.teal} rotate={-15} style={{ position: "absolute", top: 40, right: -30 }} />
+      )}
       <div style={{ maxWidth: 1300, margin: "auto", position: "relative" }}>
         <SectionHeading
           eyebrow="Who can administer"
@@ -558,10 +606,13 @@ function DonationSection() {
   const amountToGive = custom ? Number(custom) : selected;
   const sessions = amountToGive ? Math.floor(amountToGive / 50) : 0;
 
+  const isMobile = useIsMobile(640);
   return (
-    <section id="donate" style={{ padding: "90px 40px", background: COLORS.white, scrollMarginTop: 84 }}>
+    <section id="donate" style={{ padding: isMobile ? "56px 20px" : "90px 40px", background: COLORS.white, scrollMarginTop: 84 }}>
       <div style={{
-        maxWidth: 900, margin: "auto", padding: "48px 44px", borderRadius: 24,
+        maxWidth: 900, margin: "auto",
+        padding: isMobile ? "32px 24px" : "48px 44px",
+        borderRadius: 24,
         background: `linear-gradient(135deg, ${COLORS.tealLight} 0%, ${COLORS.purpleLight} 100%)`,
         border: `1px solid ${COLORS.border}`, position: "relative", overflow: "hidden",
       }}>

@@ -50,7 +50,7 @@ const AMBIENT_PIECES = [
   { top: "60%", left: "42%", size: 140, rotate: 22,  delay: "-6s",  duration: "34s", color: "var(--teal, #009B8D)",   opacity: 0.14, blur: 10 },
 ];
 
-export default function Login({ onVerified }) {
+export default function Login({ onVerified, onBack }) {
   const [mode, setMode] = useState("login"); // login | register | forgot
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -179,6 +179,11 @@ export default function Login({ onVerified }) {
             <PuzzlePiece rotate={270} fill="var(--purple, #6B2F8A)" className="pb-mark-piece" />
           </div>
           <h1>PuzzleBox</h1>
+          {onBack && (
+            <button type="button" className="pb-back-btn" onClick={onBack}>
+              Back
+            </button>
+          )}
           <p></p>
         </div>
       </div>

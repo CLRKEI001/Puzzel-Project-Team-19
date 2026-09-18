@@ -127,6 +127,7 @@ function App() {
   if (publicPage === "login") {
     return (
       <Login
+        onBack={() => setPublicPage("home")}
         onVerified={(verifiedProfile) => {
           setProfile(verifiedProfile);
           setTransitioning(true);

@@ -28,9 +28,10 @@
 .pbs-save-error { color: var(--pink); }
 
 .pbs-body { padding: 24px; flex: 1; max-width: 760px; margin: 0 auto; width: 100%; }
-.pbs-body-narrow { max-width: 520px; padding-top: 40px; }
+.pbs-body-narrow { max-width: 520px; padding-top: 40px; position: relative; }
 
-.pbs-h2 { font-size: 20px; font-weight: 800; color: var(--ink); margin: 0 0 6px; }
+.pbs-hero-piece { position: absolute; top: -18px; right: -10px; width: 90px; height: 90px; pointer-events: none; z-index: 0; }
+.pbs-h2 { position: relative; z-index: 1; font-family: 'Nunito', sans-serif; font-size: 22px; font-weight: 900; color: var(--ink); margin: 0 0 6px; }
 .pbs-sub { color: var(--ink-mid); font-size: 13px; margin: 0 0 20px; }
 .pbs-section-desc { color: var(--ink-mid); font-size: 13px; margin: 0 0 16px; line-height: 1.6; }
 
@@ -41,29 +42,52 @@
 
 .pbs-loading { text-align: center; padding: 24px; color: var(--ink-faint); }
 
+/* Search */
+.pbs-search-wrap { position: relative; }
+.pbs-search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--ink-faint); pointer-events: none; }
+.pbs-search-input { width: 100%; padding: 12px 16px 12px 40px; border-radius: 999px; font-size: 14px; }
+.pbs-search-input:focus { box-shadow: 0 0 0 3px var(--teal-lt); }
+
+/* Child avatar — a single jigsaw piece instead of a flat circle, colored
+   per child so a long list stays visually scannable. */
+.pbs-avatar-wrap { position: relative; flex-shrink: 0; }
+.pbs-avatar-piece { width: 100%; height: 100%; display: block; filter: drop-shadow(0 2px 3px rgba(26,26,46,0.15)); }
+.pbs-avatar-letter {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 800; font-family: 'Nunito', sans-serif; transform: translateY(-2px);
+}
+
 /* Child list */
-.pbs-child-list { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+.pbs-child-list { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
 .pbs-child-row {
-  display: flex; align-items: center; gap: 12px;
-  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-  padding: 12px 14px; cursor: pointer; text-align: left; width: 100%;
-  transition: border-color 0.15s ease;
+  display: flex; align-items: center; gap: 14px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+  padding: 12px 16px; cursor: pointer; text-align: left; width: 100%;
+  box-shadow: 0 1px 2px rgba(26,26,46,0.04);
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
-.pbs-child-row:hover { border-color: var(--teal); }
-.pbs-child-avatar {
-  width: 36px; height: 36px; border-radius: 50%; background: var(--teal);
-  color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
+.pbs-child-row:hover {
+  border-color: var(--teal);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0,155,141,0.12);
 }
-.pbs-child-avatar-lg { width: 56px; height: 56px; font-size: 22px; margin: 0 auto 12px; }
 .pbs-child-info { flex: 1; min-width: 0; }
-.pbs-child-name { font-weight: 700; color: var(--ink); }
-.pbs-child-meta { font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
-.pbs-child-arrow { color: var(--ink-faint); }
+.pbs-child-name { font-weight: 800; color: var(--ink); font-size: 15px; }
+.pbs-child-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.pbs-tag {
+  font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--border); white-space: nowrap;
+}
+.pbs-tag-school { background: var(--surface); color: var(--ink-mid); }
+.pbs-tag-age { background: var(--teal-lt); color: var(--teal); border-color: transparent; }
+.pbs-tag-lang { background: var(--orange-lt); color: var(--orange); border-color: transparent; }
+.pbs-child-arrow { color: var(--ink-faint); flex-shrink: 0; transition: transform 0.15s ease, color 0.15s ease; }
+.pbs-child-row:hover .pbs-child-arrow { color: var(--teal); transform: translateX(2px); }
 
 /* Confirm */
-.pbs-confirm-card { text-align: center; padding: 28px 24px; }
-.pbs-confirm-name { font-size: 18px; font-weight: 800; color: var(--ink); margin-bottom: 8px; }
+.pbs-confirm-card { text-align: center; padding: 32px 24px; }
+.pbs-confirm-card .pbs-avatar-wrap { margin: 0 auto 14px; }
+.pbs-confirm-name { font-family: 'Nunito', sans-serif; font-size: 19px; font-weight: 800; color: var(--ink); margin-bottom: 8px; }
 .pbs-confirm-grid {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
   margin-top: 20px; text-align: left;
@@ -93,8 +117,9 @@
   background: var(--card); border: 1px solid var(--border); border-radius: 12px;
   padding: 16px;
 }
-.pbs-question-head { display: flex; justify-content: space-between; align-items: flex-start; }
+.pbs-question-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
 .pbs-question-label { font-weight: 700; color: var(--ink); font-size: 14px; }
+.pbs-question-time { font-size: 11px; font-weight: 700; color: var(--ink-faint); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .pbs-question-instruction { font-size: 13px; color: var(--ink-mid); margin-top: 6px; line-height: 1.6; }
 .pbs-question-topass { font-size: 12px; color: var(--ink-faint); margin-top: 6px; }
 
@@ -112,9 +137,46 @@
   width: 56px; padding: 8px; border-radius: 8px; border: 1px solid var(--border);
   text-align: center; font-weight: 700;
 }
+.pbs-time-input:disabled { background: var(--surface); color: var(--ink-faint); cursor: not-allowed; }
+.pbs-timer-sync-note { font-size: 11px; font-weight: 700; color: var(--teal); }
 .pbs-computed-score { font-size: 12px; font-weight: 700; color: var(--teal); margin-left: 8px; }
 .pbs-computed-score-warn { color: var(--orange); font-weight: 600; }
 .pbs-tbd-note { flex-basis: 100%; font-size: 11px; color: var(--ink-faint); font-style: italic; margin-top: 4px; }
+
+/* Live puzzle timer — floats beside the form so the teacher can start,
+   pause and reset it without losing their place in the question list.
+   It writes straight into "Puzzle completion"'s min/sec fields as it runs. */
+.pbs-timer-panel {
+  position: fixed; top: 130px; right: 32px; width: 168px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+  padding: 16px; box-shadow: 0 8px 24px rgba(26,26,46,0.12); text-align: center; z-index: 5;
+}
+.pbs-timer-label { font-size: 11px; font-weight: 700; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.04em; }
+.pbs-timer-panel.running .pbs-timer-label::before {
+  content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--teal); margin-right: 5px; animation: pbs-timer-pulse 1.4s ease-in-out infinite;
+}
+@keyframes pbs-timer-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+.pbs-timer-display {
+  font-family: 'Nunito', sans-serif; font-size: 32px; font-weight: 900; color: var(--ink);
+  font-variant-numeric: tabular-nums; margin: 8px 0 12px;
+}
+.pbs-timer-panel.running .pbs-timer-display { color: var(--teal); }
+.pbs-timer-target { font-size: 11px; color: var(--ink-faint); margin: -8px 0 12px; line-height: 1.4; }
+.pbs-timer-controls { display: flex; flex-direction: column; gap: 6px; }
+.pbs-btn-orange { background: var(--orange); color: #fff; }
+.pbs-btn-orange:hover { background: #d4560f; }
+
+@media (max-width: 1180px) {
+  .pbs-timer-panel {
+    position: sticky; top: 0; right: auto; left: auto; width: auto;
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    border-radius: 0; border-width: 0 0 1px; padding: 10px 24px; text-align: left; box-shadow: none;
+  }
+  .pbs-timer-display { font-size: 22px; margin: 0; }
+  .pbs-timer-target { margin: 0; }
+  .pbs-timer-controls { flex-direction: row; }
+}
 
 .pbs-checklist { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
 .pbs-checklist-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-mid); cursor: pointer; }

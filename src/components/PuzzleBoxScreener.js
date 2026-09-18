@@ -23,7 +23,33 @@ import {
   scoreFromAgeTable,
   interpretationBands,
 } from "../data/puzzleBoxContent.v1";
+import { SinglePuzzlePiece } from "./puzzlePiece";
 import "./PuzzleBoxScreener.css";
+
+// Cycles each child's avatar through the app's own accent palette (rather
+// than one flat color for every row), keyed off the name so it's stable
+// across re-renders/searches instead of random.
+const AVATAR_COLORS = ["#009B8D", "#E8175D", "#F26522", "#6B2F8A"];
+function avatarColorFor(name) {
+  const s = name || "?";
+  let hash = 0;
+  for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+}
+
+// Puzzle-piece-shaped avatar (instead of a plain circle) carrying the
+// child's initial — a small callback to the PuzzleBox mark used elsewhere.
+function ChildAvatar({ name, size = 40 }) {
+  const color = avatarColorFor(name);
+  return (
+    <div className="pbs-avatar-wrap" style={{ width: size, height: size }}>
+      <SinglePuzzlePiece fill={color} className="pbs-avatar-piece" />
+      <span className="pbs-avatar-letter" style={{ fontSize: size * 0.4 }}>
+        {(name || "?").charAt(0).toUpperCase()}
+      </span>
+    </div>
+  );
+}
 
 const T = {
   en: {
@@ -95,6 +121,13 @@ function computeBand(age, rawScore) {
   return null;
 }
 
+function formatTimer(ms) {
+  const totalSeconds = Math.floor(ms / 1000);
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
 export default function PuzzleBoxScreener({ user, profile, onExit }) {
   const t = T.en;
   const [view, setView] = useState("select"); // select | confirm | form | submitted
@@ -113,11 +146,20 @@ export default function PuzzleBoxScreener({ user, profile, onExit }) {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [error, setError] = useState("");
 
+  // ── Live puzzle timer (section 1 only — see isPuzzleTimerSection) ───
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [timerMs, setTimerMs] = useState(0);
+  const timerIntervalRef = useRef(null);
+
   const teacherEmail = user?.email || "";
   const teacherName = profile?.name || user?.email?.split("@")[0] || "Educator";
 
   const sections = puzzleBoxContentV1.sections;
   const currentSection = sections[sectionIndex];
+  // Any section with a time-scored question (section 1's puzzle, section 7's
+  // fence sticks, and any added later) gets the timer wired to that
+  // question; every other section still gets the timer, just running free.
+  const timerQuestion = currentSection?.questions.find((q) => q.scoringType === "age_table") || null;
 
   // ── Child search ──────────────────────────────────────────────────
   useEffect(() => {
@@ -245,6 +287,70 @@ export default function PuzzleBoxScreener({ user, profile, onExit }) {
     updateResponse(q.id, { checked: next, score });
   };
 
+  // ── Live puzzle timer ────────────────────────────────────────────
+  // Stops the interval and drops back to idle whenever the teacher leaves
+  // this section, and loads any previously recorded time (e.g. resuming a
+  // saved session) as the timer's starting point.
+  useEffect(() => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+    setTimerRunning(false);
+    setTimerMs(timerQuestion ? (responses[timerQuestion.id]?.rawValueSeconds || 0) * 1000 : 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sectionIndex]);
+
+  // Clean up the interval if the component unmounts mid-timer.
+  useEffect(() => () => {
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+  }, []);
+
+  // While running, every tick updates the on-screen clock and writes the
+  // elapsed time into every question on the page — the official time-scored
+  // question (if any) gets it in its own rawValueSeconds/score fields (so
+  // scoring still works), and every other question gets a plain
+  // `timeSeconds` field, so nothing on the page is left without a saved
+  // time once the screening is submitted.
+  useEffect(() => {
+    if (!timerRunning) return;
+    const totalSeconds = Math.floor(timerMs / 1000);
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    if (timerQuestion) setTimeValue(timerQuestion, mins, secs);
+    currentSection.questions.forEach((q) => {
+      if (q.id === timerQuestion?.id) return;
+      updateResponse(q.id, { timeSeconds: totalSeconds });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timerMs, timerRunning]);
+
+  const startTimer = () => {
+    if (timerRunning) return;
+    setTimerRunning(true);
+    timerIntervalRef.current = setInterval(() => {
+      setTimerMs((ms) => ms + 1000);
+    }, 1000);
+  };
+
+  const pauseTimer = () => {
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    timerIntervalRef.current = null;
+    setTimerRunning(false);
+  };
+
+  const resetTimer = () => {
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    timerIntervalRef.current = null;
+    setTimerRunning(false);
+    setTimerMs(0);
+    if (timerQuestion) setTimeValue(timerQuestion, 0, 0);
+    currentSection.questions.forEach((q) => {
+      if (q.id === timerQuestion?.id) return;
+      updateResponse(q.id, { timeSeconds: 0 });
+    });
+  };
+
   // ── Progress ──────────────────────────────────────────────────────
   const allQuestions = useMemo(() => sections.flatMap((s) => s.questions), [sections]);
   const answeredCount = allQuestions.filter((q) => {
@@ -288,6 +394,11 @@ export default function PuzzleBoxScreener({ user, profile, onExit }) {
       <div className="pbs-question" key={q.id}>
         <div className="pbs-question-head">
           <div className="pbs-question-label">{q.label}</div>
+          {q.id !== timerQuestion?.id && r.timeSeconds != null && (
+            <span className="pbs-question-time" title="Time recorded from the page timer">
+              ⏱ {formatTimer(r.timeSeconds * 1000)}
+            </span>
+          )}
           {saveStatusBadgeFor(q.id)}
         </div>
         {q.instruction && <div className="pbs-question-instruction">{q.instruction}</div>}
@@ -328,6 +439,7 @@ export default function PuzzleBoxScreener({ user, profile, onExit }) {
               type="number" min="0" className="pbs-time-input"
               value={r.rawValueSeconds != null ? Math.floor(r.rawValueSeconds / 60) : ""}
               placeholder="0"
+              disabled={q.id === timerQuestion?.id && timerRunning}
               onChange={(e) => setTimeValue(q, Number(e.target.value), r.rawValueSeconds ? r.rawValueSeconds % 60 : 0)}
             />
             <span>{t.min}</span>
@@ -335,9 +447,13 @@ export default function PuzzleBoxScreener({ user, profile, onExit }) {
               type="number" min="0" max="59" className="pbs-time-input"
               value={r.rawValueSeconds != null ? r.rawValueSeconds % 60 : ""}
               placeholder="0"
+              disabled={q.id === timerQuestion?.id && timerRunning}
               onChange={(e) => setTimeValue(q, r.rawValueSeconds ? Math.floor(r.rawValueSeconds / 60) : 0, Number(e.target.value))}
             />
             <span>{t.sec}</span>
+            {q.id === timerQuestion?.id && (
+              <span className="pbs-timer-sync-note">Synced with the puzzle timer →</span>
+            )}
             {r.rawValueSeconds != null && (
               r.score != null
                 ? <span className="pbs-computed-score">{t.computedScore}: {r.score}</span>
@@ -384,14 +500,21 @@ export default function PuzzleBoxScreener({ user, profile, onExit }) {
           <button className="btn btn-ghost btn-sm" onClick={onExit}>{t.exit}</button>
         </div>
         <div className="pbs-body pbs-body-narrow">
+          <SinglePuzzlePiece fill="#009B8D" opacity={0.08} rotate={12} className="pbs-hero-piece" />
           <h2 className="pbs-h2">{t.selectChild}</h2>
-          <input
-            className="search-input"
-            placeholder={t.searchPlaceholder}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            autoFocus
-          />
+          <div className="pbs-search-wrap">
+            <svg className="pbs-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+              <path d="M20 20L16.5 16.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            <input
+              className="search-input pbs-search-input"
+              placeholder={t.searchPlaceholder}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              autoFocus
+            />
+          </div>
           {error && <div className="pbs-error">{error}</div>}
           <div className="pbs-child-list">
             {loadingChildren && <div className="pbs-loading">…</div>}
@@ -403,12 +526,18 @@ export default function PuzzleBoxScreener({ user, profile, onExit }) {
             )}
             {!loadingChildren && children.map((child) => (
               <button key={child.id} className="pbs-child-row" onClick={() => selectChild(child)}>
-                <div className="pbs-child-avatar">{(child.name || "?").charAt(0).toUpperCase()}</div>
+                <ChildAvatar name={child.name} />
                 <div className="pbs-child-info">
                   <div className="pbs-child-name">{child.name}</div>
-                  <div className="pbs-child-meta">{child.school} · {t.age} {child.age ?? "—"} · {child.language || "—"}</div>
+                  <div className="pbs-child-tags">
+                    <span className="pbs-tag pbs-tag-school">{child.school || "—"}</span>
+                    <span className="pbs-tag pbs-tag-age">{t.age} {child.age ?? "—"}</span>
+                    <span className="pbs-tag pbs-tag-lang">{child.language || "—"}</span>
+                  </div>
                 </div>
-                <div className="pbs-child-arrow">→</div>
+                <svg className="pbs-child-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </button>
             ))}
           </div>
@@ -428,7 +557,7 @@ export default function PuzzleBoxScreener({ user, profile, onExit }) {
           <h2 className="pbs-h2">{t.confirmChild}</h2>
           <p className="pbs-sub">{t.confirmSub}</p>
           <div className="card pbs-confirm-card">
-            <div className="pbs-child-avatar pbs-child-avatar-lg">{(selectedChild.name || "?").charAt(0).toUpperCase()}</div>
+            <ChildAvatar name={selectedChild.name} size={64} />
             <div className="pbs-confirm-name">{selectedChild.name}</div>
             {existingSession && <span className="pill pill-pink">{t.resumeBadge}</span>}
             <div className="pbs-confirm-grid">
@@ -465,6 +594,21 @@ export default function PuzzleBoxScreener({ user, profile, onExit }) {
   // view === "form"
   return (
     <div className="pbs-shell">
+      <div className={`pbs-timer-panel ${timerRunning ? "running" : ""}`}>
+        <div className="pbs-timer-label">Timer</div>
+        <div className="pbs-timer-display">{formatTimer(timerMs)}</div>
+        {timerQuestion && <div className="pbs-timer-target">for "{timerQuestion.label}"</div>}
+        <div className="pbs-timer-controls">
+          {!timerRunning ? (
+            <button className="btn btn-teal btn-sm" onClick={startTimer}>
+              {timerMs > 0 ? "Resume" : "Start"}
+            </button>
+          ) : (
+            <button className="btn pbs-btn-orange btn-sm" onClick={pauseTimer}>Pause</button>
+          )}
+          <button className="btn btn-ghost btn-sm" onClick={resetTimer} disabled={timerRunning}>Reset</button>
+        </div>
+      </div>
       <div className="pbs-topbar">
         <div>
           <div className="pbs-topbar-title">{selectedChild.name}</div>

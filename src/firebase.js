@@ -1,9 +1,6 @@
+
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-
-// NOTE: getFirestore / db has been removed from this file. The database
-// has moved to Supabase — see src/supabaseClient.js. Firebase is now used
-// ONLY for Authentication (Login.js, Sidebar.js, App.js).
 
 const firebaseConfig = {
   apiKey: "AIzaSyCXC57VPWS0IokhkJax56PuLNXfQVWvW8Y",
@@ -20,3 +17,4 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 export default app;
+

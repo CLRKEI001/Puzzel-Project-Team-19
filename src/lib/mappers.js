@@ -60,6 +60,9 @@ export function mapPuzzleboxScreeningRow(r) {
     completedAt: r.completed_at,
     reviewedAt: r.reviewed_at,
     reviewedBy: r.reviewed_by,
+    reviewVerdict: r.review_verdict,
+    reviewNotes: r.review_notes,
+    sharedWith: r.shared_with,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -119,6 +122,12 @@ export function mapMessageRow(r) {
     domains: r.domains,
     sentBy: r.sent_by,
     sentAt: r.sent_at,
+    screeningId: r.screening_id,
+    recipientRole: r.recipient_role,
+    recipientEmail: r.recipient_email,
+    recipientName: r.recipient_name,
+    messageType: r.message_type,
+    readAt: r.read_at,
   };
 }
 

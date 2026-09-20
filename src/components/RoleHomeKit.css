@@ -182,3 +182,11 @@
   .rh-hero-greeting { font-size: 24px; }
   .rh-hero-rings { gap: 18px; }
 }
+/* Small unread-count badge next to a sidebar nav label (e.g. Notifications). */
+.nav-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px; margin-left: 6px;
+  border-radius: 999px; background: #E8175D; color: #fff;
+  font-size: 10px; font-weight: 800; line-height: 1;
+}
+.nav-item.active .nav-badge { background: rgba(255, 255, 255, 0.35); }

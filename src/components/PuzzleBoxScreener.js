@@ -371,7 +371,7 @@ export default function PuzzleBoxScreener({ user, profile, onExit }) {
       .update({
         responses,
         observations,
-        status: "completed",
+        status: "awaiting_review",
         completed_at: new Date().toISOString(),
         raw_score: rawScore,
         interpretation_band: band?.band || null,
@@ -383,6 +383,28 @@ export default function PuzzleBoxScreener({ user, profile, onExit }) {
       setError("Could not submit the screening: " + submitErr.message);
       return;
     }
+
+    // Let the psychologist know there's a screening waiting on them. If
+    // this insert fails for some reason, the screening itself is already
+    // safely saved above — don't block the teacher's flow on it.
+    const { error: notifyErr } = await supabase.from("messages").insert({
+      screening_id: session.id,
+      child_id: selectedChild.id,
+      child_name: selectedChild.name,
+      child_score: rawScore,
+      school: selectedChild.school,
+      teacher_email: teacherEmail,
+      teacher_name: teacherName,
+      diagnosis:
+        `${teacherName} finished a PuzzleBox screening for ${selectedChild.name} at ${selectedChild.school || "their school"}.` +
+        (band ? ` Result: ${band.label}.` : "") +
+        " Open it to review and share the outcome.",
+      sent_by: "Teacher",
+      recipient_role: "psychologist",
+      message_type: "screening_ready_for_review",
+    });
+    if (notifyErr) console.error("Could not notify the psychologist:", notifyErr.message);
+
     setShowSubmitConfirm(false);
     setView("submitted");
   };

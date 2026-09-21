@@ -22,7 +22,7 @@ function HowHero() {
           fontWeight: 900, color: COLORS.ink, lineHeight: 1.08,
           letterSpacing: "-0.03em", marginBottom: 20,
         }}>
-          How The PuzzleBox works
+          How The Puzzle Box works
         </h1>
         <p style={{ fontSize: 17, color: COLORS.inkMid, lineHeight: 1.75, maxWidth: 760 }}>
           From registration to research — a step-by-step walkthrough of the full screening process.
@@ -42,7 +42,7 @@ const JOURNEY = [
   {
     title: "Complete training modules",
     color: COLORS.pink,
-    desc: "Before accessing screening features, users complete the digital training modules covering puzzle facilitation techniques, observation methods and how to interact with children during assessments. Quizzes ensure knowledge retention.",
+    desc: "Before accessing screening features, users unlock the digital training modules with their login and the Product number supplied with their screener, then complete modules covering puzzle facilitation techniques, observation methods and how to interact with children during assessments. Quizzes ensure knowledge retention.",
   },
   {
     title: "Facilitate the puzzle activity",
@@ -230,13 +230,13 @@ export default function HowItWorks({ onNavigateToLogin, onNavigate }) {
   return (
     <div style={{ fontFamily: "'Nunito Sans', sans-serif" }}>
       <style>{FONT_IMPORT}</style>
-      <Navbar current="how" onNavigate={go} onLoginClick={onNavigateToLogin} />
+      <Navbar site="pb" current="pb-how" onNavigate={go} onLoginClick={() => onNavigateToLogin()} />
       <HowHero />
       <JourneySection />
       <RoleAccessSection />
       <FeaturesSection />
-      <CallToAction onNavigate={go} onLoginClick={onNavigateToLogin} />
-      <Footer onNavigate={go} onLoginClick={onNavigateToLogin} />
+      <CallToAction />
+      <Footer site="pb" onNavigate={go} onLoginClick={() => onNavigateToLogin()} />
     </div>
   );
 }

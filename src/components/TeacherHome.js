@@ -671,7 +671,23 @@ const NAV_ICONS = {
 // COMPONENT
 // ============================================================
 
-export default function TeacherHome({ user, profile }) {
+
+// Sidebar shortcuts to the Puzzle Box Training / Buy pages (see MemberArea.js).
+// Labels are English-only for now — the rest of this screen is translated.
+const MEMBER_ICONS = {
+  training: <svg viewBox="0 0 16 16" fill="none"><path d="M1.5 5.5L8 2.5l6.5 3L8 8.5l-6.5-3zM4 7.2V10c0 1 1.8 2 4 2s4-1 4-2V7.2" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" /></svg>,
+  buy: <svg viewBox="0 0 16 16" fill="none"><path d="M2 2.5h1.7l1.3 7h7l1.2-4.8H4.4" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" /><circle cx="6" cy="13" r="1" fill="currentColor" /><circle cx="11" cy="13" r="1" fill="currentColor" /></svg>,
+};
+
+function memberNavItems(onOpenMember) {
+  if (!onOpenMember) return [];
+  return [
+    { id: "member-training", label: "Training", section: "The Puzzle Box", icon: MEMBER_ICONS.training, onClick: () => onOpenMember("training") },
+    { id: "member-buy", label: "Buy The Puzzle Box Screener", section: "The Puzzle Box", icon: MEMBER_ICONS.buy, onClick: () => onOpenMember("purchase") },
+  ];
+}
+
+export default function TeacherHome({ user, profile, onOpenMember }) {
   const [activePage, setActivePage] = useState("home");
 
   const [lang, setLang] = useState("en");
@@ -1015,6 +1031,8 @@ export default function TeacherHome({ user, profile }) {
       section: t.section3,
       icon: NAV_ICONS.profile,
     },
+
+    ...memberNavItems(onOpenMember),
   ];
 
 

@@ -172,7 +172,23 @@ const NAV_ICONS = {
   notifications: <svg viewBox="0 0 16 16" fill="none"><path d="M4 6a4 4 0 018 0c0 3.5 1.2 4.5 1.2 4.5H2.8S4 9.5 4 6z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><path d="M6.5 13a1.7 1.7 0 003 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>,
 };
  
-export default function PsychologistHome({ user, profile }) {
+
+// Sidebar shortcuts to the Puzzle Box Training / Buy pages (see MemberArea.js).
+// Labels are English-only for now — the rest of this screen is translated.
+const MEMBER_ICONS = {
+  training: <svg viewBox="0 0 16 16" fill="none"><path d="M1.5 5.5L8 2.5l6.5 3L8 8.5l-6.5-3zM4 7.2V10c0 1 1.8 2 4 2s4-1 4-2V7.2" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" /></svg>,
+  buy: <svg viewBox="0 0 16 16" fill="none"><path d="M2 2.5h1.7l1.3 7h7l1.2-4.8H4.4" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" /><circle cx="6" cy="13" r="1" fill="currentColor" /><circle cx="11" cy="13" r="1" fill="currentColor" /></svg>,
+};
+
+function memberNavItems(onOpenMember) {
+  if (!onOpenMember) return [];
+  return [
+    { id: "member-training", label: "Training", section: "The Puzzle Box", icon: MEMBER_ICONS.training, onClick: () => onOpenMember("training") },
+    { id: "member-buy", label: "Buy The Puzzle Box Screener", section: "The Puzzle Box", icon: MEMBER_ICONS.buy, onClick: () => onOpenMember("purchase") },
+  ];
+}
+
+export default function PsychologistHome({ user, profile, onOpenMember }) {
   const [activePage, setActivePage] = useState("home");
   const [lang, setLang] = useState("en");
   const [children, setChildren] = useState([]);
@@ -399,6 +415,7 @@ export default function PsychologistHome({ user, profile }) {
     { id: "followups", label: t.navFollowUps, section: t.section2, icon: NAV_ICONS.followUps },
     { id: "dashboard", label: t.navDashboard, section: t.section2, icon: NAV_ICONS.dashboard },
     { id: "profile", label: t.navProfile, section: t.section3, icon: NAV_ICONS.profile },
+    ...memberNavItems(onOpenMember),
   ];
  
   if (activePage === "dashboard") {

@@ -81,7 +81,7 @@ export default function PendingApproval({ user, profile, onApproved }) {
           <SinglePuzzlePiece fill="var(--orange, #F26522)" opacity={0.35} rotate={-15} />
         </span>
         <div className="pb-login-visual-copy">
-          <h1>PuzzleBox</h1>
+          <h1>The Puzzle Box</h1>
         </div>
       </div>
 

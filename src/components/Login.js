@@ -1,4 +1,4 @@
-// Login.js — PuzzleBox Screener System
+// Login.js — The Puzzle Box Screener System
 // Handles: sign in, new-account registration (with staff/teacher number
 // captured for future verification), and forgot-password.
 //
@@ -31,6 +31,25 @@ const ROLES = [
   { value: "analyst", label: "Data Analyst", color: "var(--teal, #009B8D)" },
 ];
 
+// The Puzzle Box site sends visitors here from the Tier 1 / Tier 2 cards
+// ("click to sign-up / login"). When a tier is supplied the sign-up form is
+// narrowed to the role that tier is for; with no tier (plain "Login" button)
+// every self-service role stays selectable, exactly as before.
+const TIERS = {
+  1: {
+    label: "Tier 1",
+    title: "Teachers & Primary Healthcare",
+    roles: ["educator"],
+    roleLabels: { educator: "Teacher / Primary healthcare practitioner" },
+  },
+  2: {
+    label: "Tier 2",
+    title: "Psychologists",
+    roles: ["psychologist"],
+    roleLabels: {},
+  },
+};
+
 const EMPTY_REGISTER = {
   name: "",
   email: "",
@@ -54,8 +73,11 @@ const AMBIENT_PIECES = [
   { top: "60%", left: "42%", size: 140, rotate: 22,  delay: "-6s",  duration: "34s", color: "var(--teal, #009B8D)",   opacity: 0.14, blur: 10 },
 ];
 
-export default function Login({ onVerified, onBack }) {
-  const [mode, setMode] = useState("login"); // login | register | forgot
+export default function Login({ onVerified, onBack, tier = null, initialMode = "login" }) {
+  const tierInfo = TIERS[tier] || null;
+  const visibleRoles = tierInfo ? ROLES.filter((r) => tierInfo.roles.includes(r.value)) : ROLES;
+
+  const [mode, setMode] = useState(initialMode); // login | register | forgot
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
@@ -63,7 +85,10 @@ export default function Login({ onVerified, onBack }) {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
 
-  const [reg, setReg] = useState(EMPTY_REGISTER);
+  const [reg, setReg] = useState({
+    ...EMPTY_REGISTER,
+    role: tierInfo ? tierInfo.roles[0] : EMPTY_REGISTER.role,
+  });
   const [forgotEmail, setForgotEmail] = useState("");
 
   const resetMessages = () => {
@@ -197,7 +222,7 @@ export default function Login({ onVerified, onBack }) {
             <PuzzlePiece rotate={180} fill="var(--pink, #E8175D)"   className="pb-mark-piece" />
             <PuzzlePiece rotate={270} fill="var(--purple, #6B2F8A)" className="pb-mark-piece" />
           </div>
-          <h1>PuzzleBox</h1>
+          <h1>The Puzzle Box</h1>
           <p></p>
         </div>
       </div>
@@ -215,7 +240,11 @@ export default function Login({ onVerified, onBack }) {
             <span aria-hidden="true">←</span>
           </button>
           <div className="pb-login-card-head">
-            <div className="pb-login-eyebrow">The Puzzle Project · Screener System</div>
+            <div className="pb-login-eyebrow">
+              {tierInfo
+                ? `The Puzzle Box · ${tierInfo.label} — ${tierInfo.title}`
+                : "The Puzzle Box · Screener System"}
+            </div>
             <h2>
               {mode === "login" && "Welcome back"}
               {mode === "register" && "Create your account"}
@@ -285,8 +314,8 @@ export default function Login({ onVerified, onBack }) {
               />
 
               <label className="pb-label">Role</label>
-              <div className="pb-role-grid">
-                {ROLES.map((r) => (
+              <div className="pb-role-grid" style={tierInfo ? { gridTemplateColumns: "1fr" } : undefined}>
+                {visibleRoles.map((r) => (
                   <button
                     type="button"
                     key={r.value}
@@ -294,7 +323,7 @@ export default function Login({ onVerified, onBack }) {
                     style={{ "--chip-color": r.color }}
                     onClick={() => setReg({ ...reg, role: r.value })}
                   >
-                    {r.label}
+                    {tierInfo?.roleLabels[r.value] || r.label}
                   </button>
                 ))}
               </div>

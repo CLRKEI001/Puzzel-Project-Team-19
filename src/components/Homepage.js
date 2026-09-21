@@ -4,6 +4,14 @@ import {
   piecePath, gridEdges, useInView, useIsMobile, PIECE_BODY, PIECE_PAD, PIECE_VIEWBOX,
 } from "./SiteChrome";
 
+// NOTE — site structure (sponsor feedback, Aug 2026)
+// This file is now the home page of THE PUZZLE PROJECT (the organisation).
+// The screener-specific parts that used to live here moved to their own
+// pages:  the "who can administer" tiers → PuzzleBoxHome.js,  the donation
+// form → DonatePage.js.  `Hero` (with the impact-stats strip) and the
+// assemble/float animation CSS are exported so The Puzzle Box home page can
+// reuse them with its own copy.
+
 // The four developmental domains the screener measures, rendered as a real
 // 2x2 jigsaw: each piece's tabs slot into the neighbouring piece's sockets.
 // Pieces slide in from four directions on load, then float gently.
@@ -134,8 +142,35 @@ function DomainPuzzle() {
   );
 }
 
-// Light hero — soft background, brand colours, split layout
-function Hero({ onLoginClick, onNavigate }) {
+// Animation CSS shared by every page that shows the four-domain puzzle
+export const HOME_ANIMATION_CSS = `
+  @keyframes assemble {
+    from { opacity: 0; transform: var(--from) scale(0.8); }
+    to { opacity: 1; transform: translate(0, 0) scale(1); }
+  }
+  @keyframes gentle-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-7px); }
+  }
+  .domain-piece {
+    opacity: 0;
+    animation: assemble 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+               gentle-float 5s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .domain-piece { animation: none; opacity: 1; }
+  }
+`;
+
+const TPP_HERO = {
+  badge: "South African NGO initiative",
+  lead: "The Puzzle Project is a South African non-profit bringing structured early childhood developmental screening to every school — regardless of location or connectivity.",
+};
+
+// Light hero — soft background, brand colours, split layout.
+// `badge` / `lead` / `actions` let The Puzzle Box home page reuse it with its own copy.
+// actions: [{ label, onClick, primary? }]
+export function Hero({ badge = TPP_HERO.badge, lead = TPP_HERO.lead, actions = [] }) {
   const [visible, setVisible] = useState(false);
   const isMobile = useIsMobile(860);
   useEffect(() => { const t = setTimeout(() => setVisible(true), 120); return () => clearTimeout(t); }, []);
@@ -176,7 +211,7 @@ function Hero({ onLoginClick, onNavigate }) {
             ...fadeUp(0.05),
           }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS.teal }} />
-            South African NGO initiative
+            {badge}
           </div>
 
           <h1 style={{
@@ -197,7 +232,7 @@ function Hero({ onLoginClick, onNavigate }) {
             marginLeft: isMobile ? "auto" : 0, marginRight: isMobile ? "auto" : 0,
             ...fadeUp(0.25),
           }}>
-            The Puzzle Project is a South African non-profit bringing structured early childhood developmental screening to every school — regardless of location or connectivity.
+            {lead}
           </p>
 
           <div style={{
@@ -205,19 +240,27 @@ function Hero({ onLoginClick, onNavigate }) {
             justifyContent: isMobile ? "center" : "flex-start",
             ...fadeUp(0.35),
           }}>
-          
-
-            <button onClick={() => onNavigate("how")} style={{
-              padding: "14px 32px", borderRadius: 12,
-              background: COLORS.white, color: COLORS.ink,
-              border: `1.5px solid ${COLORS.border}`, fontSize: 15, fontWeight: 700,
-              cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
-            }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = COLORS.teal; e.currentTarget.style.color = COLORS.teal; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = COLORS.border; e.currentTarget.style.color = COLORS.ink; }}
-            >
-              See how it works
-            </button>
+            {actions.map(a => (
+              <button key={a.label} onClick={a.onClick} style={{
+                padding: "14px 32px", borderRadius: 12,
+                background: a.primary ? COLORS.teal : COLORS.white,
+                color: a.primary ? COLORS.white : COLORS.ink,
+                border: a.primary ? "none" : `1.5px solid ${COLORS.border}`,
+                fontSize: 15, fontWeight: a.primary ? 800 : 700,
+                cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
+              }}
+                onMouseEnter={e => {
+                  if (a.primary) { e.currentTarget.style.background = COLORS.tealDark; }
+                  else { e.currentTarget.style.borderColor = COLORS.teal; e.currentTarget.style.color = COLORS.teal; }
+                }}
+                onMouseLeave={e => {
+                  if (a.primary) { e.currentTarget.style.background = COLORS.teal; }
+                  else { e.currentTarget.style.borderColor = COLORS.border; e.currentTarget.style.color = COLORS.ink; }
+                }}
+              >
+                {a.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -375,12 +418,12 @@ function OurStory({ onNavigate }) {
 
 // What we do — the three core modules
 const WHAT_WE_DO = [
-  { title: "Puzzle Play module", desc: "Digital lesson plans, multilingual instructional videos and training quizzes for educators to facilitate puzzle-based activities.", color: COLORS.pink },
-  { title: "Screening module", desc: "The PuzzleBox Screener — structured digital assessment forms with timers, observational input and domain-based evaluation.", color: COLORS.teal },
+  { title: "Puzzle Play module", desc: "Digital lesson plans, multilingual instructional videos and training quizzes for educators to facilitate puzzle-based activities.", color: COLORS.pink, page: "pp-home" },
+  { title: "Screening module", desc: "The Puzzle Box Screener — structured digital assessment forms with timers, observational input and domain-based evaluation.", color: COLORS.teal, page: "pb-home" },
   { title: "Research & analytics", desc: "Anonymised data dashboards and Excel export for researchers, policy makers and project sponsors.", color: COLORS.purple },
 ];
 
-function WhatWeDo() {
+function WhatWeDo({ onNavigate }) {
   const isMobile = useIsMobile(640);
   return (
     <section style={{ padding: isMobile ? "56px 20px" : "90px 40px", background: COLORS.white }}>
@@ -403,6 +446,14 @@ function WhatWeDo() {
               <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 4, background: item.color }} />
               <h3 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 18, fontWeight: 900, color: COLORS.ink, marginBottom: 10 }}>{item.title}</h3>
               <p style={{ fontSize: 14, color: COLORS.inkMid, lineHeight: 1.7 }}>{item.desc}</p>
+              {item.page && (
+                <button onClick={() => onNavigate(item.page)} style={{
+                  marginTop: 16, background: "none", border: "none", padding: 0, cursor: "pointer",
+                  fontFamily: "inherit", fontSize: 13.5, fontWeight: 800, color: item.color,
+                }}>
+                  Explore {item.page === "pb-home" ? "The Puzzle Box" : "Puzzle Play"} →
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -417,18 +468,18 @@ function WhatWeDo() {
 // container, and they fly in from their own side of the page and lock together
 // when the section scrolls into view.
 const VISION_ITEMS = [
-  { title: "The Puzzle Box", desc: "ECD developmental screening for 5 to 6 year olds.", color: COLORS.teal },
-  { title: "Puzzle Play", desc: "Nationwide puzzle development for Grades 0 to 7.", color: COLORS.pink },
-  { title: "Puzzle TV", desc: "An educational TV show taking development into homes.", color: COLORS.purple },
-  { title: "Puzzle App", desc: "Puzzles for all — a digital platform, everywhere.", color: COLORS.orange },
-  { title: "Puzzle Production", desc: "Design, production and distribution, creating jobs through printing and recycling.", color: COLORS.maroon },
-  { title: "Puzzle Data Analysis", desc: "Recording the shifts that puzzles make.", color: COLORS.teal },
+  { title: "The Puzzle Box", desc: "ECD developmental screening\nfor 5 to 6 year olds.", color: COLORS.teal, page: "pb-home", row: 0, col: 0, edges: { top: 0, right: 1, bottom: 1, left: 0 } },
+  { title: "Puzzle Play", desc: "Nationwide puzzle development\nfor Grades 0 to 7.", color: COLORS.pink, page: "pp-home", row: 0, col: 1, edges: { top: 0, right: 1, bottom: 1, left: -1 } },
+  { title: "Puzzle TV", desc: "An educational TV show\ntaking development into\nhomes.", color: COLORS.purple, row: 0, col: 2, edges: { top: 0, right: 0, bottom: 1, left: -1 } },
+  { title: "Puzzle App", desc: "Puzzles for all — a digital\nplatform, everywhere.", color: COLORS.orange, row: 1, col: 0, edges: { top: -1, right: 1, bottom: 0, left: 0 } },
+  { title: "Puzzle Production", desc: "Design, production and\ndistribution, creating jobs\nthrough printing and recycling.", color: COLORS.maroon, row: 1, col: 1, edges: { top: -1, right: 1, bottom: 0, left: -1 } },
+  { title: "Puzzle Data Analysis", desc: "Recording the shifts that\npuzzles make.", color: COLORS.teal, row: 1, col: 2, edges: { top: -1, right: 0, bottom: 0, left: -1 } },
 ];
 
 const VISION_COLS = 3;
 const VISION_ROWS = 2;
 
-function VisionSection() {
+function VisionSection({ onNavigate }) {
   const [ref, inView] = useInView();
   // Below this width the 3x2 layout leaves each piece too narrow to read
   // comfortably, so we transpose to a taller 2x3 grid instead.
@@ -449,8 +500,9 @@ function VisionSection() {
 
         {/* The assembled jigsaw */}
         <div ref={ref} style={{
-          position: "relative", width: "100%", maxWidth: 880,
-          margin: "0 auto", aspectRatio: `${cols} / ${rows}`,
+          position: "relative", width: "100%", maxWidth: 1100,
+          margin: "0 auto", aspectRatio: isMobile ? `${cols} / ${rows}` : "1.6 / 1",
+          padding: isMobile ? "0" : "0 18px",
         }}>
           {VISION_ITEMS.map((item, i) => {
             const row = Math.floor(i / cols);
@@ -463,7 +515,13 @@ function VisionSection() {
 
             return (
               <div key={item.title}
+                onClick={item.page ? () => onNavigate(item.page) : undefined}
+                onKeyDown={item.page ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNavigate(item.page); } } : undefined}
+                role={item.page ? "link" : undefined}
+                tabIndex={item.page ? 0 : undefined}
+                aria-label={item.page ? `Go to ${item.title}` : undefined}
                 style={{
+                  cursor: item.page ? "pointer" : "default",
                   position: "absolute",
                   left: `${(col / cols) * 100}%`,
                   top: `${(row / rows) * 100}%`,
@@ -472,6 +530,7 @@ function VisionSection() {
                   opacity: inView ? 1 : 0,
                   transform: inView ? "translate(0, 0) scale(1)" : `translate(${dx}px, ${dy}px) scale(0.82)`,
                   transition: `opacity 0.6s ease ${i * 0.09}s, transform 0.75s cubic-bezier(0.22, 1, 0.36, 1) ${i * 0.09}s`,
+                  padding: isMobile ? "0" : "0 6px",
                 }}
               >
                 {/* The piece itself, overflowing its cell so tabs reach into neighbours */}
@@ -487,20 +546,41 @@ function VisionSection() {
 
                 {/* Label, inset so it clears the knobs and sockets */}
                 <div style={{
-                  position: "absolute", inset: "17%",
-                  display: "flex", flexDirection: "column", justifyContent: "center",
-                  textAlign: "center", pointerEvents: "none",
+                  position: "absolute",
+                  inset: isMobile ? "18% 8% 18% 8%" : "20% 10% 18% 10%",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  textAlign: "center",
+                  pointerEvents: "none",
+                  maxWidth: "86%",
+                  margin: "0 auto",
                 }}>
                   <h3 style={{
-                    fontFamily: "'Nunito', sans-serif", fontWeight: 900, color: COLORS.white,
-                    fontSize: "clamp(13px, 1.45vw, 18px)", lineHeight: 1.2, marginBottom: 8,
+                    fontFamily: "'Nunito', sans-serif",
+                    fontWeight: 900,
+                    color: COLORS.white,
+                    fontSize: isMobile ? "clamp(12px, 2vw, 18px)" : "clamp(14px, 1.3vw, 22px)",
+                    lineHeight: 1.15,
+                    marginBottom: isMobile ? 4 : 6,
                     textShadow: "0 1px 6px rgba(0,0,0,0.25)",
+                    maxWidth: "82%",
+                    overflowWrap: "anywhere",
+                    wordBreak: "break-word",
+                    whiteSpace: "pre-line",
                   }}>
                     {item.title}
                   </h3>
                   <p style={{
-                    fontSize: "clamp(9.5px, 0.95vw, 12.5px)", lineHeight: 1.5,
-                    color: "rgba(255,255,255,0.9)",
+                    fontSize: isMobile ? "clamp(8px, 1.4vw, 11px)" : "clamp(9.5px, 0.82vw, 12.5px)",
+                    lineHeight: 1.35,
+                    color: "rgba(255,255,255,0.92)",
+                    maxWidth: "82%",
+                    margin: 0,
+                    overflowWrap: "anywhere",
+                    wordBreak: "break-word",
+                    whiteSpace: "pre-line",
                   }}>
                     {item.desc}
                   </p>
@@ -513,172 +593,34 @@ function VisionSection() {
     </section>
   );
 }
-function TiersSection({ onNavigate }) {
-  const tiers = [
-    {
-      label: "Tier 1",
-      title: "Teachers & Primary Healthcare",
-      color: COLORS.teal,
-      bg: COLORS.tealLight,
-      desc: "For preschool teachers and selected primary healthcare practitioners who have completed PuzzleBox Screener training. This level produces a single global screening score to support early identification and inform referral decisions.",
-    },
-    {
-      label: "Tier 2",
-      title: "Psychologists",
-      color: COLORS.purple,
-      bg: COLORS.purpleLight,
-      desc: "Reserved for psychologists who have completed PuzzleBox Screener training. This level supports interpretation at domain and construct level, including pattern recognition across domains and informed referral decision-making.",
-    },
-  ];
-
+// Short pointer to the dedicated Donate page (the full donation form now lives
+// in DonatePage.js — see the sponsor's "Donate" wireframe).
+function SupportBand({ onNavigate }) {
   const isMobile = useIsMobile(640);
   return (
-    <section style={{ padding: isMobile ? "56px 20px" : "90px 40px", background: COLORS.surface, position: "relative", overflow: "hidden" }}>
-      {!isMobile && (
-        <PuzzlePiece size={110} color={COLORS.teal} rotate={-15} style={{ position: "absolute", top: 40, right: -30 }} />
-      )}
-      <div style={{ maxWidth: 1300, margin: "auto", position: "relative" }}>
-        <SectionHeading
-          eyebrow="Who can administer"
-          title="A tiered system for education and clinical contexts"
-          lead="The PuzzleBox Screener is designed for children aged 5 years 0 months to 6 years 11 months, with two levels of administration to support appropriate use in clinical, educational, home-based and community outreach settings."
-        />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24 }}>
-          {tiers.map(tier => (
-            <div key={tier.label} style={{
-              padding: "32px 30px", borderRadius: 20,
-              background: COLORS.white, borderTop: `4px solid ${tier.color}`,
-              border: `1px solid ${COLORS.border}`,
-              transition: "all 0.2s",
-            }}
-              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,0,0,0.08)"; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
-            >
-              <span style={{
-                display: "inline-block", padding: "4px 14px", borderRadius: 16,
-                background: tier.bg, color: tier.color,
-                fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase",
-                marginBottom: 14,
-              }}>
-                {tier.label}
-              </span>
-              <h3 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 20, fontWeight: 900, color: COLORS.ink, marginBottom: 12 }}>{tier.title}</h3>
-              <p style={{ fontSize: 14, color: COLORS.inkMid, lineHeight: 1.75 }}>{tier.desc}</p>
-            </div>
-          ))}
-        </div>
-        <div style={{ marginTop: 28 }}>
-          <button onClick={() => onNavigate("training")} style={{
-            padding: "13px 28px", borderRadius: 12,
-            background: COLORS.teal, color: COLORS.white,
-            border: "none", fontSize: 14, fontWeight: 700,
-            cursor: "pointer", fontFamily: "inherit", transition: "all 0.18s",
-          }}
-            onMouseEnter={e => { e.currentTarget.style.background = COLORS.tealDark; e.currentTarget.style.transform = "translateY(-1px)"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = COLORS.teal; e.currentTarget.style.transform = "translateY(0)"; }}
-          >
-            View training requirements
-          </button>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// Donation section — preset amounts plus custom entry
-const AMOUNTS = [50, 150, 500, 1000];
-
-function DonationSection() {
-  const [selected, setSelected] = useState(150);
-  const [custom, setCustom] = useState("");
-
-  const chooseAmount = (amt) => { setSelected(amt); setCustom(""); };
-  const amountToGive = custom ? Number(custom) : selected;
-  const sessions = amountToGive ? Math.floor(amountToGive / 50) : 0;
-
-  const isMobile = useIsMobile(640);
-  return (
-    <section id="donate" style={{ padding: isMobile ? "56px 20px" : "90px 40px", background: COLORS.white, scrollMarginTop: 84 }}>
+    <section style={{ padding: isMobile ? "48px 20px" : "70px 40px", background: COLORS.surface }}>
       <div style={{
-        maxWidth: 900, margin: "auto",
-        padding: isMobile ? "32px 24px" : "48px 44px",
-        borderRadius: 24,
+        maxWidth: 900, margin: "auto", textAlign: "center",
+        padding: isMobile ? "32px 24px" : "44px 44px", borderRadius: 24,
         background: `linear-gradient(135deg, ${COLORS.tealLight} 0%, ${COLORS.purpleLight} 100%)`,
-        border: `1px solid ${COLORS.border}`, position: "relative", overflow: "hidden",
+        border: `1px solid ${COLORS.border}`,
       }}>
-        <PuzzlePiece size={130} color={COLORS.teal} rotate={20} fillOpacity={0.18} style={{ position: "absolute", top: -30, right: -30 }} />
-        <div style={{ position: "relative" }}>
-          <p style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: COLORS.teal, marginBottom: 12 }}>
-            Make a difference
-          </p>
-          <h2 style={{ fontFamily: "'Nunito', sans-serif", fontSize: "clamp(26px, 3vw, 38px)", fontWeight: 900, color: COLORS.ink, lineHeight: 1.12, letterSpacing: "-0.02em", marginBottom: 14 }}>
-            Support a child's future
-          </h2>
-          <p style={{ fontSize: 15.5, color: COLORS.inkMid, lineHeight: 1.75, maxWidth: 600, marginBottom: 28 }}>
-            Every donation helps us screen more children and train more educators. R50 covers one full screener session.
-          </p>
-
-          {/* Preset amounts */}
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
-            {AMOUNTS.map(amt => {
-              const isActive = !custom && selected === amt;
-              return (
-                <button key={amt} onClick={() => chooseAmount(amt)} style={{
-                  padding: "13px 28px", borderRadius: 12,
-                  background: isActive ? COLORS.teal : COLORS.white,
-                  color: isActive ? COLORS.white : COLORS.ink,
-                  border: `1.5px solid ${isActive ? COLORS.teal : COLORS.border}`,
-                  fontSize: 15, fontWeight: 800, cursor: "pointer",
-                  fontFamily: "inherit", transition: "all 0.15s",
-                }}
-                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.borderColor = COLORS.teal; }}
-                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.borderColor = COLORS.border; }}
-                >
-                  R{amt.toLocaleString("en-ZA")}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Custom amount + donate */}
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-            <input
-              type="number"
-              min="10"
-              value={custom}
-              onChange={e => setCustom(e.target.value)}
-              placeholder="Custom amount (R)"
-              style={{
-                flex: 1, minWidth: 220, padding: "14px 18px", borderRadius: 12,
-                border: `1.5px solid ${custom ? COLORS.teal : COLORS.border}`,
-                background: COLORS.white, fontSize: 15, fontFamily: "inherit",
-                color: COLORS.ink, outline: "none",
-              }}
-            />
-            <button style={{
-              padding: "14px 34px", borderRadius: 12,
-              background: COLORS.teal, color: COLORS.white,
-              border: "none", fontSize: 15, fontWeight: 800,
-              cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
-              boxShadow: "0 6px 20px rgba(0,155,141,0.25)",
-            }}
-              onMouseEnter={e => { e.currentTarget.style.background = COLORS.tealDark; e.currentTarget.style.transform = "translateY(-2px)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = COLORS.teal; e.currentTarget.style.transform = "translateY(0)"; }}
-            >
-              Donate now
-            </button>
-          </div>
-
-          {/* Live impact of the chosen amount */}
-          {sessions > 0 && (
-            <p style={{ fontSize: 13.5, color: COLORS.inkMid, marginTop: 18, fontWeight: 600 }}>
-              R{amountToGive.toLocaleString("en-ZA")} funds{" "}
-              <strong style={{ color: COLORS.teal }}>
-                {sessions} full screener session{sessions === 1 ? "" : "s"}
-              </strong>.
-            </p>
-          )}
-        </div>
+        <p style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: COLORS.teal, marginBottom: 12 }}>
+          Make a difference
+        </p>
+        <h2 style={{ fontFamily: "'Nunito', sans-serif", fontSize: "clamp(24px, 3vw, 34px)", fontWeight: 900, color: COLORS.ink, lineHeight: 1.15, letterSpacing: "-0.02em", marginBottom: 12 }}>
+          Support a child's future
+        </h2>
+        <p style={{ fontSize: 15.5, color: COLORS.inkMid, lineHeight: 1.75, maxWidth: 560, margin: "0 auto 24px" }}>
+          Donate towards The Puzzle Box Screener or Puzzle Play and help us reach more children and train more educators.
+        </p>
+        <button onClick={() => onNavigate("donate")} style={{
+          padding: "14px 34px", borderRadius: 12, background: COLORS.teal, color: COLORS.white,
+          border: "none", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "inherit",
+          boxShadow: "0 6px 20px rgba(0,155,141,0.25)",
+        }}>
+          Donate
+        </button>
       </div>
     </section>
   );
@@ -692,33 +634,20 @@ export default function Homepage({ onNavigateToLogin, onNavigate }) {
     <div style={{ fontFamily: "'Nunito Sans', sans-serif" }}>
       <style>{`
         ${FONT_IMPORT}
-        @keyframes assemble {
-          from { opacity: 0; transform: var(--from) scale(0.8); }
-          to { opacity: 1; transform: translate(0, 0) scale(1); }
-        }
-        @keyframes gentle-float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-7px); }
-        }
-        .domain-piece {
-          opacity: 0;
-          animation: assemble 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards,
-                     gentle-float 5s ease-in-out infinite;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .domain-piece { animation: none; opacity: 1; }
-        }
+        ${HOME_ANIMATION_CSS}
       `}</style>
-      <Navbar current="home" onNavigate={go} onLoginClick={onNavigateToLogin} />
-      <Hero onLoginClick={onNavigateToLogin} onNavigate={go} />
+      <Navbar site="tpp" current="home" onNavigate={go} onLoginClick={onNavigateToLogin} />
+      <Hero actions={[
+        { label: "Explore The Puzzle Box", primary: true, onClick: () => go("pb-home") },
+        { label: "Explore Puzzle Play", onClick: () => go("pp-home") },
+      ]} />
       <Mission />
       <OurStory onNavigate={go} />
-      <WhatWeDo />
-      <VisionSection />
-      <TiersSection onNavigate={go} />
-      <DonationSection />
-      <CallToAction onNavigate={go} onLoginClick={onNavigateToLogin} />
-      <Footer onNavigate={go} onLoginClick={onNavigateToLogin} />
+      <WhatWeDo onNavigate={go} />
+      <VisionSection onNavigate={go} />
+      <SupportBand onNavigate={go} />
+      <CallToAction />
+      <Footer site="tpp" onNavigate={go} onLoginClick={onNavigateToLogin} />
     </div>
   );
 }

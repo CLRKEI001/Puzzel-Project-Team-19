@@ -256,26 +256,100 @@ export function SectionHeading({ eyebrow, title, lead, align = "left", maxWidth 
   );
 }
 
-const NAV_LINKS = [
-  { label: "Home", page: "home" },
-  { label: "About", page: "about" },
-  { label: "How it works", page: "how" },
-  { label: "Training", page: "training" },
-  { label: "Donate", page: "donate" },
-];
+// ---- Brands ---------------------------------------------------------------
+// The site is really three sites that share one set of chrome:
+//   tpp — The Puzzle Project (the organisation: home, about, donate)
+//   pb  — The Puzzle Box screener (how it works, training, purchase, login)
+//   pp  — Puzzle Play (how it works, purchase, login)
+// Each has its own logo, navigation and footer links (per the sponsor's
+// wireframes). `logoSrc` is the path to a logo image in /public — while it is
+// null a colourful typographic wordmark is drawn instead, so dropping in the
+// real Puzzle Box / Puzzle Play artwork later is a one-line change here.
+export const BRANDS = {
+  tpp: { key: "tpp", name: "The Puzzle Project", home: "home", logoSrc: "/logo1.png" },
+  pb:  { key: "pb",  name: "The Puzzle Box",      home: "pb-home", logoSrc: null, // e.g. "/logo-puzzlebox.png"
+         wordmark: { small: "the", big: "PUZZLE", tail: "BOX" } },
+  pp:  { key: "pp",  name: "Puzzle Play",         home: "home", logoSrc: null, // e.g. "/logo-puzzleplay.png"
+         wordmark: { small: "", big: "PUZZLE", tail: "PLAY" } },
+};
+
+const WORDMARK_COLORS = [COLORS.teal, COLORS.pink, COLORS.orange, COLORS.purple, COLORS.teal, COLORS.pink];
 
 /**
- * Site navigation. Used identically on every public page.
- * `current` highlights the active page. `onNavigate(page)` handles routing.
- * "Donate" scrolls to the donation block on the homepage, navigating there first
- * if the visitor is on another page.
+ * Logo for whichever site the visitor is on. The Puzzle Project uses its
+ * image; The Puzzle Box and Puzzle Play fall back to a wordmark until their
+ * own logo files exist (see BRANDS above).
  */
-export function Navbar({ current, onNavigate, onLoginClick }) {
+export function BrandLogo({ site = "tpp", height = 115, width = 125, onDark = false, style = {} }) {
+  const brand = BRANDS[site] || BRANDS.tpp;
+
+  if (brand.logoSrc) {
+    return (
+      <img
+        src={`${process.env.PUBLIC_URL || ""}${brand.logoSrc}`}
+        alt={brand.name}
+        style={{ height, width, objectFit: "contain", display: "block", ...style }}
+      />
+    );
+  }
+
+  const { small, big, tail } = brand.wordmark;
+  const size = Math.max(22, Math.round(height * 0.3));
+  return (
+    <div role="img" aria-label={brand.name}
+      style={{ display: "inline-flex", flexDirection: "column", lineHeight: 1, userSelect: "none", ...style }}>
+      {small && (
+        <span style={{
+          fontFamily: "'Nunito', sans-serif", fontWeight: 900, fontSize: Math.round(size * 0.42),
+          color: onDark ? "rgba(255,255,255,0.7)" : COLORS.maroon, textTransform: "lowercase",
+          letterSpacing: "0.04em", marginBottom: 2,
+        }}>{small}</span>
+      )}
+      <span style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 900, fontSize: size, letterSpacing: "-0.02em", whiteSpace: "nowrap" }}>
+        {big.split("").map((ch, i) => (
+          <span key={i} style={{ color: WORDMARK_COLORS[i % WORDMARK_COLORS.length] }}>{ch}</span>
+        ))}
+        <span style={{ color: onDark ? COLORS.white : COLORS.maroon }}>{tail}</span>
+      </span>
+    </div>
+  );
+}
+
+// Which pages appear in the navigation bar of each site (Login is always the
+// button on the right). Page keys are handled in App.js.
+const NAV_BY_SITE = {
+  tpp: [
+    { label: "Home", page: "home" },
+    { label: "About", page: "about" },
+    { label: "The Puzzle Box", page: "pb-home" },
+    { label: "Puzzle Play", page: "pp-home" },
+    { label: "Donate", page: "donate" },
+  ],
+  pb: [
+    { label: "How it works", page: "pb-how" },
+    { label: "Training", page: "pb-training" },
+    { label: "Purchase", page: "pb-purchase" },
+  ],
+  pp: [
+    { label: "Home", page: "home" },
+    { label: "How it works", page: "pp-how" },
+    { label: "Purchase", page: "pp-purchase" },
+  ],
+};
+
+/**
+ * Site navigation. Used identically on every public page of a site.
+ * `site` picks the logo + links ("tpp" | "pb" | "pp"), `current` highlights
+ * the active page and `onNavigate(page)` handles routing.
+ */
+export function Navbar({ site = "tpp", current, onNavigate, onLoginClick }) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   // Nav needs more breathing room than the general content breakpoint since
-  // it's packing a logo, 5 links and 2 buttons into one row.
+  // it's packing a logo, links and buttons into one row.
   const isMobile = useIsMobile(880);
+  const brand = BRANDS[site] || BRANDS.tpp;
+  const links = NAV_BY_SITE[site] || NAV_BY_SITE.tpp;
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 30);
@@ -295,19 +369,8 @@ export function Navbar({ current, onNavigate, onLoginClick }) {
     return () => { document.body.style.overflow = ""; };
   }, [isMobile, menuOpen]);
 
-  const scrollToDonate = () => {
-    const el = document.getElementById("donate");
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
   const handleClick = (page) => {
     setMenuOpen(false);
-    if (page === "donate") {
-      if (current === "home") { scrollToDonate(); return; }
-      onNavigate("home");
-      setTimeout(scrollToDonate, 200);
-      return;
-    }
     onNavigate(page);
   };
 
@@ -323,35 +386,25 @@ export function Navbar({ current, onNavigate, onLoginClick }) {
       transition: "all 0.3s ease",
     }}>
       <div style={{
-  maxWidth: 1300,
-  margin: "auto",
-  height: 120,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  padding: isMobile ? "0 20px" : "0 40px",
-  gap: 24,
-}}>
-        {/* Logo always returns to the homepage */}
-        <div onClick={() => handleClick("home")}
+        maxWidth: 1300,
+        margin: "auto",
+        height: 120,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: isMobile ? "0 20px" : "0 40px",
+        gap: 24,
+      }}>
+        {/* Logo always returns to this site's home page */}
+        <div onClick={() => handleClick(brand.home)}
           style={{ cursor: "pointer", display: "flex", alignItems: "center", flexShrink: 0 }}>
-          <img
-  
-  src={`${process.env.PUBLIC_URL || ""}/logo1.png`}
-  alt="The Puzzle Project"
-  style={{
-    height: isMobile ? 125 : 115,
-    width: 125,
-    objectFit: "contain",
-    display: "block"
-  }}
-/>
+          <BrandLogo site={site} height={isMobile ? 125 : 115} width={125} />
         </div>
 
         {!isMobile && (
           <>
             <div style={{ display: "flex", gap: 4, alignItems: "center", flex: 1, justifyContent: "center" }}>
-              {NAV_LINKS.map(link => {
+              {links.map(link => {
                 const isActive = current === link.page;
                 return (
                   <button key={link.label}
@@ -374,18 +427,17 @@ export function Navbar({ current, onNavigate, onLoginClick }) {
             </div>
 
             <div style={{ display: "flex", gap: 14, alignItems: "center", flexShrink: 0 }}>
-              <button onClick={onLoginClick} style={{
-  background: "transparent", color: COLORS.teal,
-  border: `1.5px solid ${COLORS.teal}`, borderRadius: 10,
-  padding: "10px 22px", cursor: "pointer", fontWeight: 700, fontSize: 14,
-  fontFamily: "inherit", transition: "all 0.2s",
-}}
-  onMouseEnter={e => { e.currentTarget.style.background = COLORS.teal; e.currentTarget.style.color = COLORS.white; }}
-  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = COLORS.teal; }}
->
-  Login
-</button>
-              
+              <button onClick={() => onLoginClick()} style={{
+                background: "transparent", color: COLORS.teal,
+                border: `1.5px solid ${COLORS.teal}`, borderRadius: 10,
+                padding: "10px 22px", cursor: "pointer", fontWeight: 700, fontSize: 14,
+                fontFamily: "inherit", transition: "all 0.2s",
+              }}
+                onMouseEnter={e => { e.currentTarget.style.background = COLORS.teal; e.currentTarget.style.color = COLORS.white; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = COLORS.teal; }}
+              >
+                Login
+              </button>
             </div>
           </>
         )}
@@ -431,7 +483,7 @@ export function Navbar({ current, onNavigate, onLoginClick }) {
           borderTop: menuOpen ? `1px solid ${COLORS.border}` : "1px solid transparent",
         }}>
           <div style={{ padding: "10px 20px 22px", display: "flex", flexDirection: "column", gap: 4 }}>
-            {NAV_LINKS.map(link => {
+            {links.map(link => {
               const isActive = current === link.page;
               return (
                 <button key={link.label}
@@ -451,18 +503,11 @@ export function Navbar({ current, onNavigate, onLoginClick }) {
             })}
             <div style={{ height: 1, background: COLORS.border, margin: "10px 0" }} />
             <button onClick={handleLoginClick} style={{
-              background: "none", border: `1.5px solid ${COLORS.border}`,
-              color: COLORS.ink, fontWeight: 700, cursor: "pointer", fontSize: 15,
-              fontFamily: "inherit", padding: "13px 14px", borderRadius: 10, width: "100%",
-            }}>
-              Login
-            </button>
-            <button onClick={handleLoginClick} style={{
               background: COLORS.teal, color: COLORS.white, border: "none",
               padding: "14px", borderRadius: 10, width: "100%",
               cursor: "pointer", fontWeight: 700, fontSize: 15, fontFamily: "inherit",
             }}>
-              Start Screening
+              Login
             </button>
           </div>
         </div>
@@ -471,27 +516,51 @@ export function Navbar({ current, onNavigate, onLoginClick }) {
   );
 }
 
-// Full site footer — identical on every page, with working navigation links
-export function Footer({ onNavigate, onLoginClick }) {
+// Full site footer — identical on every page of a site, with working navigation links
+export function Footer({ site = "tpp", onNavigate, onLoginClick }) {
   const isMobile = useIsMobile(700);
-  const columns = [
-    {
-      heading: "Platform",
+
+  const organisation = {
+    heading: "Organisation",
+    links: [
+      ...(site !== "tpp" ? [{ label: "The Puzzle Project", action: () => onNavigate("home") }] : []),
+      { label: "About Us", action: () => onNavigate("about") },
+      { label: "Support Our Work", action: () => onNavigate("donate") },
+      { label: "Contact", action: () => onNavigate("about") },
+    ],
+  };
+
+  const platform = {
+    tpp: {
+      heading: "Our products",
       links: [
-        { label: "How it works", action: () => onNavigate("how") },
-        { label: "Training Modules", action: () => onNavigate("training") },
+        { label: "The Puzzle Box", action: () => onNavigate("pb-home") },
+        { label: "Puzzle Play", action: () => onNavigate("pp-home") },
         { label: "Login", action: onLoginClick },
       ],
     },
-    {
-      heading: "Organisation",
+    pb: {
+      heading: "Platform",
       links: [
-        { label: "About Us", action: () => onNavigate("about") },
-        { label: "Support Our Work", action: () => onNavigate("home") },
-        { label: "Contact", action: () => onNavigate("about") },
+        { label: "How it works", action: () => onNavigate("pb-how") },
+        { label: "Training Modules", action: () => onNavigate("pb-training") },
+        { label: "Purchase", action: () => onNavigate("pb-purchase") },
+        { label: "Login", action: onLoginClick },
       ],
     },
-  ];
+    pp: {
+      heading: "Platform",
+      links: [
+        { label: "Home", action: () => onNavigate("home") },
+        { label: "How it works", action: () => onNavigate("pp-how") },
+        { label: "Purchase", action: () => onNavigate("pp-purchase") },
+        { label: "Login", action: onLoginClick },
+      ],
+    },
+  }[site] || null;
+
+  const columns = [platform, organisation].filter(Boolean);
+  const brand = BRANDS[site] || BRANDS.tpp;
 
   return (
     <footer style={{ background: COLORS.dark, padding: isMobile ? "40px 20px 24px" : "52px 40px 32px" }}>
@@ -503,7 +572,9 @@ export function Footer({ onNavigate, onLoginClick }) {
           marginBottom: isMobile ? 32 : 44,
         }}>
           <div>
-            <img src="/logo1.png" alt="The Puzzle Project" style={{ height: 94, marginBottom: 16 }} />
+            <div style={{ marginBottom: 16 }}>
+              <BrandLogo site={site} height={94} width={130} onDark />
+            </div>
             <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", lineHeight: 1.75, maxWidth: 320 }}>
               Supporting early childhood development across South Africa through accessible, culturally relevant, play-based screening tools.
             </p>
@@ -531,7 +602,7 @@ export function Footer({ onNavigate, onLoginClick }) {
           ))}
         </div>
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 24, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.22)" }}>© 2026 The Puzzle Project. All rights reserved.</p>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.22)" }}>© 2026 {brand.key === "tpp" ? "The Puzzle Project" : `${brand.name} · The Puzzle Project`}. All rights reserved.</p>
           <p style={{ fontSize: 12, color: "rgba(255,255,255,0.22)" }}>Intellectual property of Dr R. Marais &amp; Dr J. Jansen (2025)</p>
         </div>
       </div>
@@ -539,8 +610,14 @@ export function Footer({ onNavigate, onLoginClick }) {
   );
 }
 
-// Shared closing call-to-action used at the foot of every page
-export function CallToAction({ onNavigate, onLoginClick }) {
+// Shared closing call-to-action used at the foot of every page.
+// Sponsor feedback: the "Start Training" button was removed — training is now
+// reached from the Puzzle Box site (nav / login), so only "Contact Us" remains.
+// (Contact Us used to open the login screen; it now opens an email to the
+// project contact shown in the footer.)
+export const CONTACT_EMAIL = "gary@picturetree.co.za";
+
+export function CallToAction() {
   const isMobile = useIsMobile(640);
   return (
     <section style={{ padding: isMobile ? "56px 22px" : "90px 40px", background: `linear-gradient(135deg, ${COLORS.dark} 0%, #2A1040 100%)`, position: "relative", overflow: "hidden" }}>
@@ -554,23 +631,13 @@ export function CallToAction({ onNavigate, onLoginClick }) {
           Whether you are an educator, therapist, school, researcher or partner organisation, your involvement helps us create brighter futures for children across South Africa.
         </p>
         <div style={{ display: "flex", justifyContent: "center", gap: 14, flexWrap: "wrap" }}>
-          <button onClick={() => onNavigate("training")} style={{
+          <button onClick={() => { window.location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Enquiry — The Puzzle Project")}`; }} style={{
             padding: "14px 32px", background: COLORS.teal, color: COLORS.white,
             border: "none", borderRadius: 12, cursor: "pointer",
             fontWeight: 800, fontSize: 15, fontFamily: "inherit", transition: "all 0.2s",
           }}
             onMouseEnter={e => { e.currentTarget.style.background = COLORS.tealDark; e.currentTarget.style.transform = "translateY(-2px)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = COLORS.teal; e.currentTarget.style.transform = "translateY(0)"; }}
-          >
-            Start Training
-          </button>
-          <button onClick={onLoginClick} style={{
-            padding: "14px 32px", background: "rgba(255,255,255,0.08)", color: COLORS.white,
-            border: "1.5px solid rgba(255,255,255,0.2)", borderRadius: 12, cursor: "pointer",
-            fontWeight: 700, fontSize: 15, fontFamily: "inherit", transition: "all 0.2s",
-          }}
-            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.14)"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
           >
             Contact Us
           </button>

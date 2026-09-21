@@ -1,7 +1,9 @@
 // App.js — now hosts two separate flows:
-// 1) Logged OUT: the public marketing site (Homepage/About/HowItWorks/
-//    TrainingPage) with its own internal navigation, landing on Login only
-//    when the visitor clicks "Login" or "Start Screening".
+// 1) Logged OUT: the public sites, each with its own navigation:
+//      The Puzzle Project  home · about · donate
+//      The Puzzle Box      pb-home · pb-how · pb-training · pb-purchase
+//      Puzzle Play         pp-home · pp-how · pp-purchase · pp-login
+//    Login opens when the visitor clicks "Login" or a tier's Sign up / Log in.
 // 2) Logged IN: the existing role-based dashboards + puzzle transition,
 //    unchanged from before.
 
@@ -24,8 +26,30 @@ import Homepage from "./components/Homepage";
 import About from "./components/About";
 import HowItWorks from "./components/HowItWorks";
 import TrainingPage from "./components/Trainingpage";
+import DonatePage from "./components/DonatePage";
+import PuzzleBoxHome from "./components/PuzzleBoxHome";
+import PuzzleBoxPurchase from "./components/PuzzleBoxPurchase";
+import MemberArea from "./components/MemberArea";
+import {
+  PuzzlePlayHome, PuzzlePlayHow, PuzzlePlayPurchase, PuzzlePlayLogin,
+} from "./components/PuzzlePlayPages";
 
 import "./App.css";
+
+// Tier 1 (educator) and Tier 2 (psychologist) users first land on a page with
+// the "Training" and "Buy The Puzzle Box Screener" buttons (sponsor wireframe
+// TPB p4) before continuing to their dashboard. Kept in sessionStorage so a
+// page refresh doesn't bounce someone back to it mid-session.
+const MEMBER_VIEW_KEY = "pb_member_view";
+const readMemberView = () => {
+  try { return sessionStorage.getItem(MEMBER_VIEW_KEY) || "landing"; } catch { return "landing"; }
+};
+const writeMemberView = (v) => {
+  try { sessionStorage.setItem(MEMBER_VIEW_KEY, v || "dashboard"); } catch { /* storage unavailable */ }
+};
+
+// Older code paths used these page names; map them onto the new sites.
+const LEGACY_PAGES = { how: "pb-how", training: "pb-training" };
 
 function App() {
   const [user, setUser] = useState(null);
@@ -36,9 +60,26 @@ function App() {
   // brief Dashboard-fallback flash while the profile fetch is in flight.
   const [profile, setProfile] = useState(undefined);
 
-  // NEW — which public-site page a signed-out visitor is looking at.
-  // "home" | "about" | "how" | "training" | "login"
-  const [publicPage, setPublicPage] = useState("home");
+  // Which public-site page a signed-out visitor is looking at:
+  // "home" | "about" | "donate" | "pb-home" | "pb-how" | "pb-training" |
+  // "pb-purchase" | "pp-home" | "pp-how" | "pp-purchase" | "pp-login"
+  const [publicPage, setPublicPageRaw] = useState("home");
+  const setPublicPage = (page) => setPublicPageRaw(LEGACY_PAGES[page] || page);
+
+  // The Puzzle Box login screen sits on top of whatever page opened it.
+  // loginCtx = { tier: 1 | 2 | null, mode: "login" | "register" } or null.
+  const [showLogin, setShowLogin] = useState(false);
+  const [loginCtx, setLoginCtx] = useState(null);
+  const openLogin = (ctx) => {
+    // Navbar buttons can hand us a click event — only accept a real context.
+    const valid = ctx && typeof ctx === "object" && ("tier" in ctx || "mode" in ctx) ? ctx : null;
+    setLoginCtx(valid);
+    setShowLogin(true);
+  };
+
+  // "landing" | "training" | "purchase" | "dashboard" — see MEMBER_VIEW_KEY above
+  const [memberView, setMemberViewState] = useState(readMemberView);
+  const setMemberView = (v) => { writeMemberView(v); setMemberViewState(v || "dashboard"); };
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -63,6 +104,10 @@ function App() {
       } else {
         setProfile(null);
         setTransitioning(false);
+        setShowLogin(false);
+        setLoginCtx(null);
+        writeMemberView("landing");      // next login starts at the landing page again
+        setMemberViewState("landing");
       }
 
       setLoading(false);
@@ -105,6 +150,23 @@ function App() {
       );
     }
 
+    const isMember = profile?.isVerified && (profile.role === "educator" || profile.role === "psychologist");
+
+    // Verified Tier 1 / Tier 2 users see the Training / Buy page until they
+    // choose to continue to their dashboard.
+    if (isMember && memberView !== "dashboard") {
+      return (
+        <>
+          <MemberArea user={user} profile={profile} view={memberView} onView={setMemberView} />
+          {transitioning && (
+            <PuzzleTransition onComplete={() => setTransitioning(false)} />
+          )}
+        </>
+      );
+    }
+
+    const openMember = (view) => setMemberView(view);
+
     return (
       <>
         {!profile || !profile.isVerified ? (
@@ -121,9 +183,9 @@ function App() {
             }}
           />
         ) : profile.role === "educator" ? (
-          <TeacherHome user={user} profile={profile} />
+          <TeacherHome user={user} profile={profile} onOpenMember={openMember} />
         ) : profile.role === "psychologist" ? (
-          <PsychologistHome user={user} profile={profile} />
+          <PsychologistHome user={user} profile={profile} onOpenMember={openMember} />
         ) : profile.role === "admin" ? (
           <AdminHome user={user} profile={profile} />
         ) : (
@@ -136,13 +198,16 @@ function App() {
     );
   }
 
-  // ── LOGGED OUT: public marketing site, or Login once they click through ──
-  if (publicPage === "login") {
+  // ── LOGGED OUT: the public sites, or Login once they click through ────
+  if (showLogin) {
     return (
       <Login
-        onBack={() => setPublicPage("home")}
+        tier={loginCtx?.tier || null}
+        initialMode={loginCtx?.mode || "login"}
+        onBack={() => setShowLogin(false)}
         onVerified={(verifiedProfile) => {
           setProfile(verifiedProfile);
+          setMemberView("landing");
           // Only play the "welcome in" transition for an already-approved
           // account — a fresh signup lands on PendingApproval instead,
           // where a celebratory animation would be misleading.
@@ -152,18 +217,36 @@ function App() {
     );
   }
 
+  const isPlay = publicPage.startsWith("pp-");
   const publicPageProps = {
     onNavigate: setPublicPage,
-    onNavigateToLogin: () => setPublicPage("login"),
+    // Puzzle Play has its own (not yet built) login page; everything else
+    // uses The Puzzle Box login.
+    onNavigateToLogin: isPlay ? () => setPublicPage("pp-login") : openLogin,
+    onAccess: (tier, mode) => openLogin({ tier, mode }),
   };
 
   switch (publicPage) {
     case "about":
       return <About {...publicPageProps} />;
-    case "how":
+    case "donate":
+      return <DonatePage {...publicPageProps} />;
+    case "pb-home":
+      return <PuzzleBoxHome {...publicPageProps} />;
+    case "pb-how":
       return <HowItWorks {...publicPageProps} />;
-    case "training":
+    case "pb-training":
       return <TrainingPage {...publicPageProps} />;
+    case "pb-purchase":
+      return <PuzzleBoxPurchase {...publicPageProps} />;
+    case "pp-home":
+      return <PuzzlePlayHome {...publicPageProps} />;
+    case "pp-how":
+      return <PuzzlePlayHow {...publicPageProps} />;
+    case "pp-purchase":
+      return <PuzzlePlayPurchase {...publicPageProps} />;
+    case "pp-login":
+      return <PuzzlePlayLogin {...publicPageProps} />;
     case "home":
     default:
       return <Homepage {...publicPageProps} />;

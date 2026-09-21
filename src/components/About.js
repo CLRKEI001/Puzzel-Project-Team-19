@@ -247,15 +247,15 @@ export default function About({ onNavigateToLogin, onNavigate }) {
   return (
     <div style={{ fontFamily: "'Nunito Sans', sans-serif" }}>
       <style>{FONT_IMPORT}</style>
-      <Navbar current="about" onNavigate={go} onLoginClick={onNavigateToLogin} />
+      <Navbar site="tpp" current="about" onNavigate={go} onLoginClick={() => onNavigateToLogin()} />
       <AboutHero />
       <ProblemSection />
       <FoundingStory />
       <TeamSection />
       <ResearchSection />
       <PartnersSection />
-      <CallToAction onNavigate={go} onLoginClick={onNavigateToLogin} />
-      <Footer onNavigate={go} onLoginClick={onNavigateToLogin} />
+      <CallToAction />
+      <Footer site="tpp" onNavigate={go} onLoginClick={() => onNavigateToLogin()} />
     </div>
   );
 }

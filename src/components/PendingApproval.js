@@ -117,14 +117,14 @@ export default function PendingApproval({ user, profile, onApproved }) {
             </div>
           )}
 
-          {notifyState === "on" && <div className="pb-alert pb-alert-info">🔔 We'll send you a notification as soon as you're approved.</div>}
+          {notifyState === "on" && <div className="pb-alert pb-alert-info"> We'll send you a notification as soon as you're approved.</div>}
           {notifyState === "denied" && <div className="pb-alert pb-alert-error">Notifications are blocked in your browser settings — you can still check back here.</div>}
           {notifyState === "unsupported" && <div className="pb-alert pb-alert-error">This browser doesn't support push notifications — you can still check back here.</div>}
           {notifyState === "error" && <div className="pb-alert pb-alert-error">Couldn't turn on notifications — please try again.</div>}
 
           {!missingRow && notifyState !== "on" && (
             <button className="pb-submit" type="button" onClick={handleEnablePush} disabled={notifyState === "requesting"}>
-              {notifyState === "requesting" ? "Requesting…" : "🔔 Notify me when I'm approved"}
+              {notifyState === "requesting" ? "Requesting…" : " Notify me when I'm approved"}
             </button>
           )}
 

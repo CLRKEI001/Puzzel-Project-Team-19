@@ -438,6 +438,38 @@ export default function AdminHome({ user, profile }) {
 
     if (error) {
       console.error("Error approving user:", error);
+      return;
+    }
+
+    // Let them know — an in-app message (they'll see it the moment their
+    // PendingApproval screen's realtime listener picks up is_verified, or
+    // next time they open the app) plus a best-effort push notification if
+    // they opted in. Neither should block the approval itself if it fails.
+    const approvedUser = users.find((u) => u.id === uid);
+    if (approvedUser) {
+      supabase
+        .from("messages")
+        .insert({
+          recipient_email: approvedUser.email,
+          recipient_role: approvedUser.role,
+          recipient_name: approvedUser.name,
+          message_type: "account_approved",
+          sent_by: "Admin",
+          diagnosis: `Your PuzzleBox account has been approved. You can sign in now as ${roleLabel(approvedUser.role)}.`,
+        })
+        .then(({ error: msgErr }) => {
+          if (msgErr) console.error("Could not send approval message:", msgErr.message);
+        });
+
+      supabase.functions
+        .invoke("send-push", {
+          body: {
+            userId: uid,
+            title: "You're approved! 🎉",
+            body: "Your PuzzleBox account is ready — you can sign in now.",
+          },
+        })
+        .catch((err) => console.error("Could not send push notification:", err.message));
     }
   };
 

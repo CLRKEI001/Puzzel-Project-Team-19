@@ -11,6 +11,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { supabase } from "./supabaseClient";
 import { mapUserRow } from "./lib/mappers";
 import Login from "./components/Login";
+import PendingApproval from "./components/PendingApproval";
 import Dashboard from "./components/Dashboard";
 import TeacherHome from "./components/TeacherHome";
 import PsychologistHome from "./components/PsychologistHome";
@@ -52,10 +53,9 @@ function App() {
             .eq("id", u.uid)
             .maybeSingle();
           if (error) throw error;
-          // No verification gate for now — log in with whatever profile
-          // exists (or none at all, which falls through to the generic
-          // Dashboard). Re-add an is_verified check here once real
-          // SACE/HPCSA verification is actually wired up.
+          // Load whatever profile exists (or none at all) — App.js's render
+          // below is what actually gates access: PendingApproval renders
+          // instead of a dashboard unless profile.isVerified is true.
           setProfile(data ? mapUserRow(data) : null);
         } catch {
           setProfile(null);
@@ -107,11 +107,24 @@ function App() {
 
     return (
       <>
-        {profile?.role === "educator" ? (
+        {!profile || !profile.isVerified ? (
+          // The safety gate: signing up creates the account but NOT access.
+          // Anything without a verified profile — including a rejected
+          // account, whose row is deleted rather than left visible — lands
+          // here instead of any dashboard.
+          <PendingApproval
+            user={user}
+            profile={profile}
+            onApproved={(approvedProfile) => {
+              setProfile(approvedProfile);
+              setTransitioning(true);
+            }}
+          />
+        ) : profile.role === "educator" ? (
           <TeacherHome user={user} profile={profile} />
-        ) : profile?.role === "psychologist" ? (
+        ) : profile.role === "psychologist" ? (
           <PsychologistHome user={user} profile={profile} />
-        ) : profile?.role === "admin" ? (
+        ) : profile.role === "admin" ? (
           <AdminHome user={user} profile={profile} />
         ) : (
           <Dashboard user={user} profile={profile} />
@@ -130,7 +143,10 @@ function App() {
         onBack={() => setPublicPage("home")}
         onVerified={(verifiedProfile) => {
           setProfile(verifiedProfile);
-          setTransitioning(true);
+          // Only play the "welcome in" transition for an already-approved
+          // account — a fresh signup lands on PendingApproval instead,
+          // where a celebratory animation would be misleading.
+          if (verifiedProfile?.isVerified) setTransitioning(true);
         }}
       />
     );

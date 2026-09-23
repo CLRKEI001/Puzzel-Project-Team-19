@@ -9,9 +9,17 @@ import { mapUserRow, mapChildRow } from "../lib/mappers";
 import RoleSidebar from "./RoleSidebar";
 import RoleHero from "./RoleHero";
 import StatRing from "./StatRing";
+import ChildrenTable from "./ChildrenTable";
+import FlagsAlerts from "./FlagsAlerts";
+import SummaryReport from "./SummaryReport";
 import "./TeacherHome.css";
 import "./AdminHome.css";
 import "./RoleHomeKit.css";
+
+// Roles an admin can hand out. "admin" is deliberately left out of the
+// reassignment dropdown — promoting/demoting other admins from this list
+// is easy to fat-finger, so that stays a database-level action for now.
+const ASSIGNABLE_ROLES = ["educator", "psychologist", "analyst"];
 
 const T = {
   en: {
@@ -19,6 +27,9 @@ const T = {
 
     navHome: "My Home",
     navUsers: "User Management",
+    navChildren: "All Children",
+    navFlags: "Flags & Alerts",
+    navReports: "Reports",
     navProfile: "My Profile",
 
     section1: "Overview",
@@ -31,16 +42,22 @@ const T = {
 
     heroSub: "System-wide overview for the PuzzleBox pilot.",
     usersSub: "Approve new accounts and manage roles across the platform.",
+    childrenSub: "Every child registered across every teacher and school, not just one class.",
+    flagsSub: "Flags and open follow-ups across the whole program.",
+    reportsSub: "Export summary reports across the whole program.",
     profileSub: "Your account details and verification status.",
 
     statUsers: "Total Users",
     statPending: "Pending Approval",
-    statChildren: "Children Screened",
-    statFlagged: "Flagged",
+    statChildren: "Children Registered",
+    statScreened: "Screened This Period",
+    statFlagged: "Open Flags",
 
     total: "total",
     needsAction: "needs action",
     allTime: "all time",
+    thisMonth: "this month",
+    unresolved: "unresolved",
 
     pendingApprovals: "Pending Approvals",
     noPending: "All caught up",
@@ -72,11 +89,24 @@ const T = {
 
     manageUsers: "Manage User Accounts",
     manageUsersSub: "Approve staff, assign roles, review access.",
+    viewChildren: "View All Children",
+    viewChildrenSub: "Search and filter every registered child.",
+    viewFlags: "View Flags & Alerts",
+    viewFlagsSub: "See who needs a follow-up right now.",
 
     role_educator: "Educator",
     role_psychologist: "Psychologist",
     role_analyst: "Data Analyst",
     role_admin: "Administrator",
+    filterAllRoles: "All Roles",
+
+    deactivate: "Deactivate",
+    reactivate: "Reactivate",
+    active: "Active",
+    inactive: "Deactivated",
+
+    addAccountNote:
+      "New Teacher and Psychologist accounts are created when staff register themselves — approve them below, then use the role dropdown to assign or correct their role. Ask your engineering team to wire up admin-created accounts if you'd like to skip self-registration entirely.",
 
     profileName: "Full Name",
     profileEmail: "Email Address",
@@ -92,6 +122,9 @@ const T = {
 
     navHome: "My Tuisblad",
     navUsers: "Gebruikerbestuur",
+    navChildren: "Alle Kinders",
+    navFlags: "Vlae & Waarskuwings",
+    navReports: "Verslae",
     navProfile: "My Profiel",
 
     section1: "Oorsig",
@@ -105,16 +138,22 @@ const T = {
     heroSub: "Stelselwye oorsig vir die PuzzleBox loodsprojek.",
     usersSub:
       "Keur nuwe rekeninge goed en bestuur rolle regoor die platform.",
+    childrenSub: "Elke kind wat geregistreer is, regoor alle onderwysers en skole.",
+    flagsSub: "Vlae en oop opvolgings regoor die hele program.",
+    reportsSub: "Voer opsommingsverslae regoor die hele program uit.",
     profileSub: "Jou rekeningbesonderhede en verifikasiestatus.",
 
     statUsers: "Totale Gebruikers",
     statPending: "Wag op Goedkeuring",
-    statChildren: "Kinders Gesif",
-    statFlagged: "Gevlag",
+    statChildren: "Kinders Geregistreer",
+    statScreened: "Gesif Vanjaar Maand",
+    statFlagged: "Oop Vlae",
 
     total: "totaal",
     needsAction: "aksie nodig",
     allTime: "nog altyd",
+    thisMonth: "hierdie maand",
+    unresolved: "onopgelos",
 
     pendingApprovals: "Hangende Goedkeurings",
     noPending: "Alles op datum",
@@ -146,11 +185,24 @@ const T = {
 
     manageUsers: "Bestuur Gebruikerrekeninge",
     manageUsersSub: "Keur personeel goed, wys rolle toe.",
+    viewChildren: "Bekyk Alle Kinders",
+    viewChildrenSub: "Soek en filtreer elke geregistreerde kind.",
+    viewFlags: "Bekyk Vlae & Waarskuwings",
+    viewFlagsSub: "Sien wie nou opvolging benodig.",
 
     role_educator: "Opvoeder",
     role_psychologist: "Sielkundige",
     role_analyst: "Data-ontleder",
     role_admin: "Administrateur",
+    filterAllRoles: "Alle Rolle",
+
+    deactivate: "Deaktiveer",
+    reactivate: "Heraktiveer",
+    active: "Aktief",
+    inactive: "Gedeaktiveer",
+
+    addAccountNote:
+      "Nuwe Opvoeder- en Sielkundige-rekeninge word geskep wanneer personeel self registreer — keur hulle hieronder goed en gebruik dan die rol-afrolkieslys om hul rol toe te wys of reg te stel.",
 
     profileName: "Volle Naam",
     profileEmail: "E-pos",
@@ -166,6 +218,9 @@ const T = {
 
     navHome: "Ikhaya Lam",
     navUsers: "Ulawulo Lwabasebenzisi",
+    navChildren: "Bonke Abantwana",
+    navFlags: "Izikhombisi",
+    navReports: "Iingxelo",
     navProfile: "Iprofayile Yam",
 
     section1: "Uhlolo",
@@ -179,17 +234,23 @@ const T = {
     heroSub: "Uhlolo lwenkqubo iphela lwePuzzleBox.",
     usersSub:
       "Vumela iiakhawunti ezintsha kwaye ulawule iindima kwiplatform.",
+    childrenSub: "Wonke umntwana obhalisiweyo kubo bonke ootitshala nezikolo.",
+    flagsSub: "Izikhombisi nokulandelwa okuvulekileyo kwinkqubo iphela.",
+    reportsSub: "Khuphela iingxelo ezishwankathelweyo kwinkqubo iphela.",
     profileSub:
       "Iinkcukacha zeakhawunti yakho nemeko yokuqinisekiswa.",
 
     statUsers: "Bonke Abasebenzisi",
     statPending: "Kulindele Ukuvunywa",
-    statChildren: "Abantwana Abahloliweyo",
-    statFlagged: "Abakhonjiweyo",
+    statChildren: "Abantwana Ababhalisiweyo",
+    statScreened: "Abahloliweyo Kule Nyanga",
+    statFlagged: "Izikhombisi Ezivulekileyo",
 
     total: "iyonke",
     needsAction: "kufuna isenzo",
     allTime: "sonke isihlandlo",
+    thisMonth: "le nyanga",
+    unresolved: "engasombululwanga",
 
     pendingApprovals: "Ezilindele Ukuvunywa",
     noPending: "Konke kulungile",
@@ -223,11 +284,24 @@ const T = {
     manageUsers: "Lawula Iiakhawunti Zabasebenzisi",
     manageUsersSub:
       "Vumela abasebenzi, wabele iindima.",
+    viewChildren: "Jonga Bonke Abantwana",
+    viewChildrenSub: "Khangela kwaye uhlungе wonke umntwana obhalisiweyo.",
+    viewFlags: "Jonga Izikhombisi",
+    viewFlagsSub: "Bona ukuba ngubani ofuna ukulandelwa ngoku.",
 
     role_educator: "Umfundisi",
     role_psychologist: "Isazi Sengqondo",
     role_analyst: "Umhluzi Wedatha",
     role_admin: "Umlawuli",
+    filterAllRoles: "Zonke Iindima",
+
+    deactivate: "Cima",
+    reactivate: "Vula Kwakhona",
+    active: "Iyasebenza",
+    inactive: "Icinyiwe",
+
+    addAccountNote:
+      "Iiakhawunti ezintsha zoMfundisi neSazi Sengqondo zenziwa xa abasebenzi bezibhalisa — bavumele ngezantsi, uze usebenzise imenyu yendima ukuwabela indima.",
 
     profileName: "Igama Elipheleleyo",
     profileEmail: "I-imeyile",
@@ -282,6 +356,28 @@ const NAV_ICONS = {
     </svg>
   ),
 
+  children: (
+    <svg viewBox="0 0 16 16" fill="none">
+      <rect x="1.5" y="3" width="13" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M1.5 6h13" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M4 9.5h4M4 11.5h2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  ),
+
+  flags: (
+    <svg viewBox="0 0 16 16" fill="none">
+      <path d="M3 1.5v13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M3 2.5h8.5l-2 2.75 2 2.75H3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+    </svg>
+  ),
+
+  reports: (
+    <svg viewBox="0 0 16 16" fill="none">
+      <path d="M4 1.5h6l3 3v10a1 1 0 01-1 1H4a1 1 0 01-1-1v-12a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M5.5 8.5h5M5.5 11h3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  ),
+
   profile: (
     <svg viewBox="0 0 16 16" fill="none">
       <circle
@@ -315,6 +411,7 @@ export default function AdminHome({ user, profile }) {
   const [children, setChildren] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
   const [rejectTarget, setRejectTarget] = useState(null);
 
   const t = T[lang];
@@ -414,12 +511,33 @@ export default function AdminHome({ user, profile }) {
     [users]
   );
 
-  const flaggedChildren = useMemo(
-    () => children.filter((c) => c.flagged),
+  // "Open" mirrors the definition FlagsAlerts already uses: flagged and
+  // not yet resolved. This is what the sidebar badge and the overview
+  // stat ring both count.
+  const openFlaggedChildren = useMemo(
+    () => children.filter((c) => c.flagged && !c.resolved),
     [children]
   );
 
+  // Screenings completed this period = assessment date falls within the
+  // current calendar month. Falls back to 0 rather than throwing on a
+  // missing/malformed date.
+  const screenedThisPeriod = useMemo(() => {
+    const now = new Date();
+    return children.filter((c) => {
+      if (!c.date) return false;
+      const d = new Date(c.date);
+      if (Number.isNaN(d.getTime())) return false;
+      return (
+        d.getFullYear() === now.getFullYear() &&
+        d.getMonth() === now.getMonth()
+      );
+    }).length;
+  }, [children]);
+
   const filteredUsers = users.filter((u) => {
+    if (roleFilter && u.role !== roleFilter) return false;
+
     if (!search) return true;
 
     const s = search.toLowerCase();
@@ -484,6 +602,17 @@ export default function AdminHome({ user, profile }) {
     }
   };
 
+  const handleRoleChange = async (uid, newRole) => {
+    const { error } = await supabase
+      .from("users")
+      .update({ role: newRole })
+      .eq("id", uid);
+
+    if (error) {
+      console.error("Error updating role:", error);
+    }
+  };
+
   const handleReject = async (uid) => {
     const { error } = await supabase
       .from("users")
@@ -515,6 +644,24 @@ export default function AdminHome({ user, profile }) {
       icon: NAV_ICONS.users,
     },
     {
+      id: "children",
+      label: t.navChildren,
+      section: t.section2,
+      icon: NAV_ICONS.children,
+    },
+    {
+      id: "flags",
+      label: t.navFlags,
+      section: t.section2,
+      icon: NAV_ICONS.flags,
+    },
+    {
+      id: "reports",
+      label: t.navReports,
+      section: t.section2,
+      icon: NAV_ICONS.reports,
+    },
+    {
       id: "profile",
       label: t.navProfile,
       section: t.section3,
@@ -543,11 +690,17 @@ export default function AdminHome({ user, profile }) {
           <div className="topbar-left">
             <div className="page-title">
               {activePage === "users" && t.navUsers}
+              {activePage === "children" && t.navChildren}
+              {activePage === "flags" && t.navFlags}
+              {activePage === "reports" && t.navReports}
               {activePage === "profile" && t.navProfile}
             </div>
 
             <div className="page-sub">
               {activePage === "users" && t.usersSub}
+              {activePage === "children" && t.childrenSub}
+              {activePage === "flags" && t.flagsSub}
+              {activePage === "reports" && t.reportsSub}
               {activePage === "profile" && t.profileSub}
             </div>
           </div>
@@ -599,7 +752,14 @@ export default function AdminHome({ user, profile }) {
               />
 
               <StatRing
-                value={flaggedChildren.length}
+                value={screenedThisPeriod}
+                max={30}
+                color="#fff"
+                label={t.statScreened}
+              />
+
+              <StatRing
+                value={openFlaggedChildren.length}
                 max={10}
                 color="#fff"
                 label={t.statFlagged}
@@ -790,7 +950,6 @@ export default function AdminHome({ user, profile }) {
                     onClick={() =>
                       setActivePage("users")
                     }
-                    style={{ marginBottom: 0 }}
                   >
                     <div className="th-quicklink-icon">
                       🛡
@@ -810,6 +969,57 @@ export default function AdminHome({ user, profile }) {
                       →
                     </div>
                   </button>
+
+                  <button
+                    className="th-quicklink"
+                    onClick={() =>
+                      setActivePage("children")
+                    }
+                  >
+                    <div className="th-quicklink-icon">
+                      👧
+                    </div>
+
+                    <div>
+                      <div className="th-quicklink-title">
+                        {t.viewChildren}
+                      </div>
+
+                      <div className="th-quicklink-sub">
+                        {t.viewChildrenSub}
+                      </div>
+                    </div>
+
+                    <div className="th-quicklink-arrow">
+                      →
+                    </div>
+                  </button>
+
+                  <button
+                    className="th-quicklink"
+                    onClick={() =>
+                      setActivePage("flags")
+                    }
+                    style={{ marginBottom: 0 }}
+                  >
+                    <div className="th-quicklink-icon">
+                      🚩
+                    </div>
+
+                    <div>
+                      <div className="th-quicklink-title">
+                        {t.viewFlags}
+                      </div>
+
+                      <div className="th-quicklink-sub">
+                        {t.viewFlagsSub}
+                      </div>
+                    </div>
+
+                    <div className="th-quicklink-arrow">
+                      →
+                    </div>
+                  </button>
                 </div>
               </div>
             </div>
@@ -818,6 +1028,18 @@ export default function AdminHome({ user, profile }) {
 
         {activePage === "users" && (
           <>
+            <div
+              className="card"
+              style={{
+                marginBottom: 16,
+                fontSize: 12.5,
+                lineHeight: 1.6,
+                color: "var(--ink-mid)",
+              }}
+            >
+              {t.addAccountNote}
+            </div>
+
             <div className="search-bar">
               <input
                 className="search-input"
@@ -827,6 +1049,26 @@ export default function AdminHome({ user, profile }) {
                   setSearch(e.target.value)
                 }
               />
+
+              <select
+                className="search-input"
+                style={{ maxWidth: 180, flex: "0 0 auto" }}
+                value={roleFilter}
+                onChange={(e) =>
+                  setRoleFilter(e.target.value)
+                }
+              >
+                <option value="">
+                  {t.filterAllRoles}
+                </option>
+                {ASSIGNABLE_ROLES.concat("admin").map(
+                  (r) => (
+                    <option key={r} value={r}>
+                      {roleLabel(r)}
+                    </option>
+                  )
+                )}
+              </select>
 
               <span
                 style={{
@@ -884,24 +1126,59 @@ export default function AdminHome({ user, profile }) {
                         </td>
 
                         <td>
-                          <span
-                            style={{
-                              display: "inline-block",
-                              padding: "4px 10px",
-                              borderRadius: 20,
-                              fontSize: 11,
-                              fontWeight: 700,
-                              background: `${
-                                ROLE_COLORS[u.role] ||
-                                "#8888a8"
-                              }1a`,
-                              color:
-                                ROLE_COLORS[u.role] ||
-                                "#8888a8",
-                            }}
-                          >
-                            {roleLabel(u.role)}
-                          </span>
+                          {u.role === "admin" ? (
+                            <span
+                              style={{
+                                display: "inline-block",
+                                padding: "4px 10px",
+                                borderRadius: 20,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                background: `${ROLE_COLORS.admin}1a`,
+                                color: ROLE_COLORS.admin,
+                              }}
+                            >
+                              {roleLabel(u.role)}
+                            </span>
+                          ) : (
+                            <select
+                              value={u.role || ""}
+                              onChange={(e) =>
+                                handleRoleChange(
+                                  u.id,
+                                  e.target.value
+                                )
+                              }
+                              style={{
+                                border: `1.5px solid ${
+                                  ROLE_COLORS[u.role] ||
+                                  "#8888a8"
+                                }55`,
+                                borderRadius: 20,
+                                padding: "3px 8px",
+                                fontSize: 11,
+                                fontWeight: 700,
+                                color:
+                                  ROLE_COLORS[u.role] ||
+                                  "#8888a8",
+                                background: `${
+                                  ROLE_COLORS[u.role] ||
+                                  "#8888a8"
+                                }1a`,
+                              }}
+                            >
+                              {ASSIGNABLE_ROLES.map(
+                                (r) => (
+                                  <option
+                                    key={r}
+                                    value={r}
+                                  >
+                                    {roleLabel(r)}
+                                  </option>
+                                )
+                              )}
+                            </select>
+                          )}
                         </td>
 
                         <td
@@ -951,7 +1228,7 @@ export default function AdminHome({ user, profile }) {
                                 handleRevoke(u.id)
                               }
                             >
-                              {t.revoke}
+                              {t.deactivate}
                             </button>
                           ) : (
                             <button
@@ -971,6 +1248,18 @@ export default function AdminHome({ user, profile }) {
               </div>
             </div>
           </>
+        )}
+
+        {activePage === "children" && (
+          <ChildrenTable children={children} lang={lang} />
+        )}
+
+        {activePage === "flags" && (
+          <FlagsAlerts children={children} lang={lang} />
+        )}
+
+        {activePage === "reports" && (
+          <SummaryReport children={children} lang={lang} />
         )}
 
         {activePage === "profile" && (

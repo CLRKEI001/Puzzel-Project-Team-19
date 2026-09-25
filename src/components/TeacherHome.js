@@ -22,7 +22,7 @@ import {
   where,
 } from "firebase/firestore";
 import { supabase } from "../supabaseClient";
-import { mapChildRow } from "../lib/mappers";
+import { mapChildRow, mapPuzzleboxScreeningRow } from "../lib/mappers";
 
 import RoleSidebar from "./RoleSidebar";
 import RoleHero from "./RoleHero";
@@ -55,6 +55,12 @@ const stageColors = {
     bg: "#E0F5F3",
     color: "#009B8D",
   },
+};
+
+const sessionStatusColors = {
+  in_progress: { bg: "#FEF0E7", color: "#F26522" },
+  awaiting_review: { bg: "#F0EDF8", color: "#6B2F8A" },
+  reviewed: { bg: "#E0F5F3", color: "#009B8D" },
 };
 
 
@@ -97,9 +103,39 @@ const T = {
     navScreener: "PuzzleBox Screener",
     navProfile: "My Profile",
     navStudents: "My Students",
+    navHistory: "Screening History",
 
     screenerSub:
       "Start a new PuzzleBox screening for one of your children.",
+
+    historySub:
+      "Your completed and in-progress PuzzleBox screenings.",
+
+    statInProgress: "In Progress",
+    statCompleted: "Completed",
+
+    screen: "Screen",
+    resume: "Resume",
+    startResume: "Start / Resume Screening",
+
+    statusInProgress: "In progress",
+    statusAwaitingReview: "Awaiting review",
+    statusReviewed: "Reviewed",
+    startedOn: "Started",
+
+    historyEmptyTitle: "No screenings yet",
+    historyEmptySub:
+      "Screenings you start or complete for your class will show up here.",
+
+    viewHistory: "Screening History",
+    viewHistorySub:
+      "See what's done and what's still open.",
+
+    flagsTitle: "Flags in My Class",
+    flagsCardSub: "Children flagged for follow-up.",
+    flagsEmptyTitle: "No flags right now",
+    flagsEmptySub:
+      "Flagged children from your class will appear here.",
 
     openScreener: "Start Screening",
     openScreenerSub:
@@ -136,13 +172,13 @@ const T = {
     duplicateDetail:
       "already exists in the database. Please check before adding.",
 
-    viewStudents: "Student Records",
+    viewStudents: "My Class",
     viewStudentsSub:
-      "View student records available to you.",
+      "View and screen the children in your own class.",
 
-    myStudents: "Student Records",
+    myStudents: "My Class",
     myStudentsSub:
-      "View student records currently stored on the PuzzleBox platform.",
+      "Children added or screened by you — not the full PuzzleBox dataset.",
 
     filterStatus: "All Stages",
 
@@ -235,9 +271,39 @@ const T = {
     navScreener: "PuzzleBox Sifter",
     navProfile: "My Profiel",
     navStudents: "Studentrekords",
+    navHistory: "Siftingsgeskiedenis",
 
     screenerSub:
       "Begin 'n nuwe PuzzleBox-sifting vir een van jou kinders.",
+
+    historySub:
+      "Jou voltooide en aan-die-gang PuzzleBox-siftings.",
+
+    statInProgress: "Aan die Gang",
+    statCompleted: "Voltooi",
+
+    screen: "Sif",
+    resume: "Hervat",
+    startResume: "Begin / Hervat Sifting",
+
+    statusInProgress: "Aan die gang",
+    statusAwaitingReview: "Wag vir Hersiening",
+    statusReviewed: "Hersien",
+    startedOn: "Begin",
+
+    historyEmptyTitle: "Nog geen siftings nie",
+    historyEmptySub:
+      "Siftings wat jy vir jou klas begin of voltooi, sal hier verskyn.",
+
+    viewHistory: "Siftingsgeskiedenis",
+    viewHistorySub:
+      "Sien wat klaar is en wat nog oop is.",
+
+    flagsTitle: "Vlae in My Klas",
+    flagsCardSub: "Kinders gevlag vir opvolging.",
+    flagsEmptyTitle: "Geen vlae op die oomblik nie",
+    flagsEmptySub:
+      "Gevlagde kinders uit jou klas sal hier verskyn.",
 
     openScreener: "Begin Sifting",
     openScreenerSub:
@@ -274,13 +340,13 @@ const T = {
     duplicateDetail:
       "bestaan reeds in die databasis. Maak asseblief seker voor jy byvoeg.",
 
-    viewStudents: "Studentrekords",
+    viewStudents: "My Klas",
     viewStudentsSub:
-      "Sien studentrekords wat vir jou beskikbaar is.",
+      "Sien en sif die kinders in jou eie klas.",
 
-    myStudents: "Studentrekords",
+    myStudents: "My Klas",
     myStudentsSub:
-      "Sien studentrekords wat tans op die PuzzleBox-platform gestoor is.",
+      "Kinders wat deur jou bygevoeg of gesif is — nie die volle PuzzleBox-datastel nie.",
 
     filterStatus: "Alle Stadiums",
 
@@ -373,9 +439,39 @@ const T = {
     navScreener: "Isikrini se-PuzzleBox",
     navProfile: "Iprofayile Yam",
     navStudents: "Iirekhodi Zabafundi",
+    navHistory: "Imbali Yokuhlolwa",
 
     screenerSub:
       "Qalisa uhlolo lwe-PuzzleBox olutsha lomnye wabantwana bakho.",
+
+    historySub:
+      "Uhlolo lwakho olugqityiweyo nolusaqhubekayo lwe-PuzzleBox.",
+
+    statInProgress: "Iyaqhubeka",
+    statCompleted: "Igqityiwe",
+
+    screen: "Hlola",
+    resume: "Qhubeka",
+    startResume: "Qalisa / Qhubeka Uhlolo",
+
+    statusInProgress: "Iyaqhubeka",
+    statusAwaitingReview: "Ilinde Ukuhlolwa",
+    statusReviewed: "Ihloliwe",
+    startedOn: "Kuqalisiwe",
+
+    historyEmptyTitle: "Akukho zohlolo okwangoku",
+    historyEmptySub:
+      "Uhlolo oluqalisayo okanye oluqgibayo lweklasi yakho luya kubonakala apha.",
+
+    viewHistory: "Imbali Yokuhlolwa",
+    viewHistorySub:
+      "Bona okugqityiweyo nokusavulekileyo.",
+
+    flagsTitle: "Izikhombisi Kwiklasi Yam",
+    flagsCardSub: "Abantwana abakhonjiweyo ukuze balandelwe.",
+    flagsEmptyTitle: "Akukho zikhombisi okwangoku",
+    flagsEmptySub:
+      "Abantwana abakhonjiweyo kwiklasi yakho baya kubonakala apha.",
 
     openScreener: "Qalisa Uhlolo",
     openScreenerSub:
@@ -412,13 +508,13 @@ const T = {
     duplicateDetail:
       "sele ekhona kwidatabase. Nceda ujonge phambi kokongeza.",
 
-    viewStudents: "Iirekhodi Zabafundi",
+    viewStudents: "Iklasi Yam",
     viewStudentsSub:
-      "Jonga iirekhodi zabafundi ezikhoyo kuwe.",
+      "Jonga uze uhlole abantwana abakwiklasi yakho.",
 
-    myStudents: "Iirekhodi Zabafundi",
+    myStudents: "Iklasi Yam",
     myStudentsSub:
-      "Jonga iirekhodi zabafundi ezigcinwe kwiplatfomu yePuzzleBox.",
+      "Abantwana abongezwe okanye abahlolwe nguwe — hayi yonke idatha yePuzzleBox.",
 
     filterStatus: "Onke Amanqanaba",
 
@@ -572,6 +668,31 @@ const NAV_ICONS = {
     </svg>
   ),
 
+  history: (
+    <svg viewBox="0 0 16 16" fill="none">
+      <path
+        d="M2.5 8a5.5 5.5 0 1 1 1.7 3.97"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M1.5 5.5v3h3"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8 4.75V8l2.5 1.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+
   screener: (
     <svg viewBox="0 0 16 16" fill="none">
       <rect
@@ -712,6 +833,16 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState(false);
 
+  // Which child (if any) the "Screen" button on a row/modal was clicked
+  // for — handed straight into PuzzleBoxScreener so it skips its own
+  // search step and goes right to confirm/resume for that child.
+  const [screenerChild, setScreenerChild] = useState(null);
+
+  // This teacher's own PuzzleBox screening sessions (in_progress /
+  // awaiting_review / reviewed), for the Screening History tab.
+  const [sessions, setSessions] = useState([]);
+  const [loadingSessions, setLoadingSessions] = useState(true);
+
   const [newStudent, setNewStudent] = useState({
     name: "",
     school: "",
@@ -783,17 +914,16 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
   // ============================================================
   // SUPABASE — STUDENT RECORDS
   //
-  // IMPORTANT FIX:
-  //
-  // We intentionally DO NOT use:
-  //
-  // .eq("examiner", displayName)
-  //
-  // because existing children may have been created by a
-  // psychologist/admin or have a different examiner value.
-  //
-  // Instead, teachers receive the existing student records from
-  // the shared `children` table.
+  // We still load every row from `children` here (this list also
+  // backs the duplicate-name check in handleAddStudent, which should
+  // catch a clash against the whole dataset, not just this teacher's
+  // slice of it). What's shown in the "My Class" tab and the Home
+  // widgets is the scoped `myStudents` below, filtered client-side to
+  // rows whose `examiner` matches this teacher's display name — the
+  // same value the Add Student form stamps onto new records by
+  // default. Older records with no examiner set, or one that doesn't
+  // match, won't show up here even though they're still in the shared
+  // table; that's the tradeoff of scoping by a free-text name field.
   // ============================================================
 
   useEffect(() => {
@@ -859,6 +989,63 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
 
 
   // ============================================================
+  // SUPABASE — THIS TEACHER'S SCREENING SESSIONS
+  // ============================================================
+
+  useEffect(() => {
+    if (!user?.email) return;
+    let isMounted = true;
+
+    const loadSessions = async () => {
+      setLoadingSessions(true);
+
+      const { data, error } = await supabase
+        .from("puzzlebox_screenings")
+        .select("*")
+        .eq("teacher_email", user.email)
+        .order("updated_at", { ascending: false });
+
+      if (error) {
+        console.error("Error loading screening sessions:", error);
+        if (isMounted) {
+          setSessions([]);
+          setLoadingSessions(false);
+        }
+        return;
+      }
+
+      if (isMounted) {
+        setSessions((data || []).map(mapPuzzleboxScreeningRow));
+        setLoadingSessions(false);
+      }
+    };
+
+    loadSessions();
+
+    const channel = supabase
+      .channel("teacher-screening-sessions")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "puzzlebox_screenings",
+          filter: `teacher_email=eq.${user.email}`,
+        },
+        () => {
+          loadSessions();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, [user?.email]);
+
+
+  // ============================================================
   // GREETING
   // ============================================================
 
@@ -875,16 +1062,6 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
   // ============================================================
   // MESSAGE STATISTICS
   // ============================================================
-
-  const flaggedCount = useMemo(
-    () =>
-      new Set(
-        messages
-          .map((m) => m.childName)
-          .filter(Boolean)
-      ).size,
-    [messages]
-  );
 
   const thisMonthCount = useMemo(() => {
     const now = new Date();
@@ -926,11 +1103,60 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
 
 
   // ============================================================
+  // MY CLASS — scope the shared `children` table down to this
+  // teacher's own students (see the comment on the loadStudents
+  // effect above for why this is a client-side name match rather
+  // than a query filter).
+  // ============================================================
+
+  const myStudents = useMemo(() => {
+    const mine = displayName.trim().toLowerCase();
+    return students.filter(
+      (s) => (s.examiner || "").trim().toLowerCase() === mine
+    );
+  }, [students, displayName]);
+
+  // Flags raised on this teacher's own children — flagged and not
+  // yet resolved, same definition FlagsAlerts/AdminHome use elsewhere.
+  const openFlaggedStudents = useMemo(
+    () => myStudents.filter((s) => s.flagged && !s.resolved),
+    [myStudents]
+  );
+
+  // Screening sessions, split the way the Screening History tab
+  // presents them: still open vs. done on this teacher's end
+  // (submitted, whether or not the psychologist has reviewed it yet).
+  const inProgressSessions = useMemo(
+    () => sessions.filter((s) => s.status === "in_progress"),
+    [sessions]
+  );
+
+  const completedSessions = useMemo(
+    () =>
+      sessions.filter(
+        (s) =>
+          s.status === "awaiting_review" ||
+          s.status === "reviewed"
+      ),
+    [sessions]
+  );
+
+  // Fastest way to answer "does this child already have an
+  // in-progress session?" from the row-level Screen/Resume button,
+  // without a network round-trip — PuzzleBoxScreener re-confirms this
+  // itself once it opens, so this is just for the button's label.
+  const inProgressChildIds = useMemo(
+    () => new Set(inProgressSessions.map((s) => s.childId)),
+    [inProgressSessions]
+  );
+
+
+  // ============================================================
   // STUDENT SEARCH + FILTER
   // ============================================================
 
   const filteredStudents = useMemo(() => {
-    return students.filter((student) => {
+    return myStudents.filter((student) => {
       const searchValue =
         studentSearch.trim().toLowerCase();
 
@@ -951,7 +1177,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
       return matchesSearch && matchesStage;
     });
   }, [
-    students,
+    myStudents,
     studentSearch,
     studentStageFilter,
   ]);
@@ -1008,6 +1234,13 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
       label: t.navStudents,
       section: t.section2,
       icon: NAV_ICONS.students,
+    },
+
+    {
+      id: "history",
+      label: t.navHistory,
+      section: t.section2,
+      icon: NAV_ICONS.history,
     },
 
     {
@@ -1174,10 +1407,24 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
       <PuzzleBoxScreener
         user={user}
         profile={profile}
-        onExit={() => setActivePage("home")}
+        initialChild={screenerChild}
+        onExit={() => {
+          setScreenerChild(null);
+          setActivePage("home");
+        }}
       />
     );
   }
+
+
+  // ============================================================
+  // START/RESUME SCREENING FOR A SPECIFIC CHILD
+  // ============================================================
+
+  const handleScreenChild = (child) => {
+    setScreenerChild(child);
+    setActivePage("screener");
+  };
 
 
   // ============================================================
@@ -1228,6 +1475,9 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
               {activePage === "students" &&
                 t.navStudents}
 
+              {activePage === "history" &&
+                t.navHistory}
+
               {activePage === "profile" &&
                 t.navProfile}
 
@@ -1243,6 +1493,9 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
 
               {activePage === "students" &&
                 t.myStudentsSub}
+
+              {activePage === "history" &&
+                t.historySub}
 
             </div>
 
@@ -1303,7 +1556,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
               />
 
               <StatRing
-                value={flaggedCount}
+                value={openFlaggedStudents.length}
                 max={10}
                 color="#fff"
                 label={t.statFlagged}
@@ -1322,6 +1575,36 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
             <div className="rh-home-grid">
 
               <div>
+
+                {/* FLAGS ON MY CLASS */}
+
+                <TodayList
+                  title={t.flagsTitle}
+                  actionLabel={t.viewAll}
+                  onAction={() =>
+                    setActivePage("students")
+                  }
+                  emptyIcon=""
+                  emptyTitle={t.flagsEmptyTitle}
+                  emptySub={t.flagsEmptySub}
+                  onItemClick={(f) =>
+                    setSelectedStudent(f.child)
+                  }
+                  items={
+                    loadingStudents
+                      ? null
+                      : openFlaggedStudents
+                          .slice(0, 5)
+                          .map((c) => ({
+                            icon: "🚩",
+                            color: "#E8175D",
+                            title: c.name,
+                            meta: c.school || t.flagsCardSub,
+                            child: c,
+                          }))
+                  }
+                />
+
 
                 {/* RECENT MESSAGES */}
 
@@ -1463,6 +1746,38 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                   </button>
 
 
+                  {/* SCREENING HISTORY */}
+
+                  <button
+                    className="th-quicklink"
+                    onClick={() =>
+                      setActivePage(
+                        "history"
+                      )
+                    }
+                  >
+
+                    <div className="th-quicklink-icon">
+                      🕘
+                    </div>
+
+                    <div>
+                      <div className="th-quicklink-title">
+                        {t.viewHistory}
+                      </div>
+
+                      <div className="th-quicklink-sub">
+                        {t.viewHistorySub}
+                      </div>
+                    </div>
+
+                    <div className="th-quicklink-arrow">
+                      →
+                    </div>
+
+                  </button>
+
+
                   {/* MESSAGES */}
 
                   <button
@@ -1546,7 +1861,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                     <div className="rh-chip">
 
                       <div className="rh-chip-value">
-                        {students.length}
+                        {myStudents.length}
                       </div>
 
                       <div className="rh-chip-label">
@@ -1659,7 +1974,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                 {t.showing}{" "}
                 {filteredStudents.length}{" "}
                 {t.of}{" "}
-                {students.length}{" "}
+                {myStudents.length}{" "}
                 {t.childrenCountWord}
               </span>
 
@@ -1713,8 +2028,8 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                   </div>
 
                   <div className="empty-state-sub">
-                    {students.length === 0
-                      ? "No student records were found in the children database."
+                    {myStudents.length === 0
+                      ? "No children are registered under your name yet — add one, or ask your admin to check the examiner name on existing records."
                       : t.noResultsSub}
                   </div>
 
@@ -1855,6 +2170,24 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                                   {t.view}
                                 </button>
 
+                                <button
+                                  className="btn btn-primary btn-sm"
+                                  style={{
+                                    marginLeft: 6,
+                                  }}
+                                  onClick={() =>
+                                    handleScreenChild(
+                                      child
+                                    )
+                                  }
+                                >
+                                  {inProgressChildIds.has(
+                                    child.id
+                                  )
+                                    ? t.resume
+                                    : t.screen}
+                                </button>
+
                               </td>
 
                             </tr>
@@ -1862,6 +2195,217 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                         }
                       )}
 
+                    </tbody>
+
+                  </table>
+
+                </div>
+
+              )}
+
+            </div>
+
+          </>
+        )}
+
+
+        {/* ====================================================
+            SCREENING HISTORY
+        ==================================================== */}
+
+        {activePage === "history" && (
+          <>
+
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                marginBottom: 16,
+                flexWrap: "wrap",
+              }}
+            >
+
+              <div
+                className="card"
+                style={{ flex: "1 1 160px" }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--ink-faint)",
+                    fontWeight: 600,
+                    marginBottom: 4,
+                  }}
+                >
+                  {t.statInProgress}
+                </div>
+                <div
+                  style={{
+                    fontSize: 26,
+                    fontWeight: 800,
+                    color: "#F26522",
+                  }}
+                >
+                  {inProgressSessions.length}
+                </div>
+              </div>
+
+              <div
+                className="card"
+                style={{ flex: "1 1 160px" }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--ink-faint)",
+                    fontWeight: 600,
+                    marginBottom: 4,
+                  }}
+                >
+                  {t.statCompleted}
+                </div>
+                <div
+                  style={{
+                    fontSize: 26,
+                    fontWeight: 800,
+                    color: "#009B8D",
+                  }}
+                >
+                  {completedSessions.length}
+                </div>
+              </div>
+
+            </div>
+
+            <div
+              className="card"
+              style={{
+                padding: 0,
+                overflow: "hidden",
+              }}
+            >
+
+              {loadingSessions ? (
+
+                <div className="empty-state">
+                  <div
+                    className="empty-state-icon"
+                    style={{ fontSize: 28 }}
+                  >
+                    ⏳
+                  </div>
+                  <div className="empty-state-title">
+                    Loading screening history...
+                  </div>
+                </div>
+
+              ) : sessions.length === 0 ? (
+
+                <div className="empty-state">
+                  <div className="empty-state-icon">
+                    🧩
+                  </div>
+                  <div className="empty-state-title">
+                    {t.historyEmptyTitle}
+                  </div>
+                  <div className="empty-state-sub">
+                    {t.historyEmptySub}
+                  </div>
+                </div>
+
+              ) : (
+
+                <div style={{ overflowX: "auto" }}>
+
+                  <table className="data-table">
+
+                    <thead>
+                      <tr>
+                        <th>{t.childNameCol}</th>
+                        <th>{t.school}</th>
+                        <th>{t.status}</th>
+                        <th>{t.startedOn}</th>
+                        <th>{t.actions}</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {sessions.map((s) => {
+                        const sc =
+                          sessionStatusColors[s.status] ||
+                          sessionStatusColors.in_progress;
+
+                        const statusLabel =
+                          s.status === "reviewed"
+                            ? t.statusReviewed
+                            : s.status === "awaiting_review"
+                            ? t.statusAwaitingReview
+                            : t.statusInProgress;
+
+                        return (
+                          <tr key={s.id}>
+                            <td>
+                              <div
+                                style={{
+                                  fontWeight: 800,
+                                  fontSize: 13,
+                                }}
+                              >
+                                {s.childName || "—"}
+                              </div>
+                            </td>
+
+                            <td>{s.school || "—"}</td>
+
+                            <td>
+                              <span
+                                style={{
+                                  display: "inline-block",
+                                  padding: "5px 12px",
+                                  borderRadius: 20,
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  background: sc.bg,
+                                  color: sc.color,
+                                }}
+                              >
+                                {statusLabel}
+                              </span>
+                            </td>
+
+                            <td
+                              style={{
+                                fontSize: 12,
+                                color: "var(--ink-mid)",
+                              }}
+                            >
+                              {s.startedAt
+                                ? new Date(
+                                    s.startedAt
+                                  ).toLocaleDateString()
+                                : "—"}
+                            </td>
+
+                            <td>
+                              {s.status === "in_progress" && (
+                                <button
+                                  className="btn btn-primary btn-sm"
+                                  onClick={() =>
+                                    handleScreenChild({
+                                      id: s.childId,
+                                      name: s.childName,
+                                      school: s.school,
+                                      age: s.childAge,
+                                    })
+                                  }
+                                >
+                                  {t.resume}
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
 
                   </table>
@@ -3077,6 +3621,20 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
               </button>
 
               <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() =>
+                    handleScreenChild(selectedStudent)
+                  }
+                >
+                  🧩{" "}
+                  {inProgressChildIds.has(
+                    selectedStudent.id
+                  )
+                    ? t.resume
+                    : t.startResume}
+                </button>
+
                 <button
                   className="btn btn-ghost"
                   onClick={() =>

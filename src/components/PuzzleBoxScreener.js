@@ -128,13 +128,15 @@ function formatTimer(ms) {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-export default function PuzzleBoxScreener({ user, profile, onExit }) {
+export default function PuzzleBoxScreener({ user, profile, onExit, initialChild }) {
   const t = T.en;
-  const [view, setView] = useState("select"); // select | confirm | form | submitted
+  // When a caller (e.g. the "Screen" button on a specific child's row)
+  // hands us a child up front, skip straight past the search/select step.
+  const [view, setView] = useState(initialChild ? "confirm" : "select"); // select | confirm | form | submitted
   const [search, setSearch] = useState("");
   const [children, setChildren] = useState([]);
   const [loadingChildren, setLoadingChildren] = useState(false);
-  const [selectedChild, setSelectedChild] = useState(null);
+  const [selectedChild, setSelectedChild] = useState(initialChild || null);
   const [existingSession, setExistingSession] = useState(null);
 
   const [session, setSession] = useState(null); // the puzzlebox_screenings row
@@ -184,6 +186,27 @@ export default function PuzzleBoxScreener({ user, profile, onExit }) {
     const debounce = setTimeout(run, 250);
     return () => { active = false; clearTimeout(debounce); };
   }, [search, view]);
+
+  // ── Deep link: caller handed us a specific child directly ───────────
+  // Mirrors the lookup half of selectChild() below, just without the
+  // "which child did they pick" step since that's already decided.
+  useEffect(() => {
+    if (!initialChild) return;
+    let active = true;
+    (async () => {
+      const { data } = await supabase
+        .from("puzzlebox_screenings")
+        .select("*")
+        .eq("child_id", initialChild.id)
+        .eq("status", "in_progress")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (active) setExistingSession(data || null);
+    })();
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Selecting a child → check for an in-progress screening to resume ──
   const selectChild = async (child) => {

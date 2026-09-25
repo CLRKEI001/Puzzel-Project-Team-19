@@ -51,6 +51,25 @@ const writeMemberView = (v) => {
 // Older code paths used these page names; map them onto the new sites.
 const LEGACY_PAGES = { how: "pb-how", training: "pb-training" };
 
+// Teachers (role "educator") skip the landing page entirely: if they've
+// already redeemed a Product number (training_access has a row for them),
+// they go straight to their dashboard; otherwise they land straight in
+// Training — never on the "Training / Buy Screener" choice screen.
+async function resolveEducatorMemberView(uid) {
+  try {
+    const { data, error } = await supabase
+      .from("training_access")
+      .select("user_id")
+      .eq("user_id", uid)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? "dashboard" : "training";
+  } catch {
+    // Can't tell — fall back to Training rather than silently skipping it.
+    return "training";
+  }
+}
+
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -80,6 +99,10 @@ function App() {
   // "landing" | "training" | "purchase" | "dashboard" — see MEMBER_VIEW_KEY above
   const [memberView, setMemberViewState] = useState(readMemberView);
   const setMemberView = (v) => { writeMemberView(v); setMemberViewState(v || "dashboard"); };
+  // While an educator's training status is being resolved, hold off rendering
+  // MemberArea at all — otherwise the "landing" choice screen would flash on
+  // screen for a moment before we swap it for training/dashboard.
+  const [memberViewReady, setMemberViewReady] = useState(true);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -97,7 +120,19 @@ function App() {
           // Load whatever profile exists (or none at all) — App.js's render
           // below is what actually gates access: PendingApproval renders
           // instead of a dashboard unless profile.isVerified is true.
-          setProfile(data ? mapUserRow(data) : null);
+          const mapped = data ? mapUserRow(data) : null;
+          setProfile(mapped);
+
+          // Teachers only: replace the "landing" choice screen with a direct
+          // route based on training status. Only do this the first time this
+          // session lands on "landing" — a view the person has since chosen
+          // themselves (training/purchase/dashboard) is left alone.
+          if (mapped?.isVerified && mapped.role === "educator" && readMemberView() === "landing") {
+            setMemberViewReady(false);
+            const resolved = await resolveEducatorMemberView(u.uid);
+            setMemberView(resolved);
+            setMemberViewReady(true);
+          }
         } catch {
           setProfile(null);
         }
@@ -108,6 +143,7 @@ function App() {
         setLoginCtx(null);
         writeMemberView("landing");      // next login starts at the landing page again
         setMemberViewState("landing");
+        setMemberViewReady(true);
       }
 
       setLoading(false);
@@ -136,6 +172,23 @@ function App() {
     // puzzle transition will cover anyway on a fresh login) instead of
     // letting the Dashboard fallback render prematurely.
     if (profile === undefined) {
+      return (
+        <>
+          <div className="app-loading">
+            <img src="/logo.png" alt="The Puzzle Project" className="loading-logo" />
+            <div className="loading-spinner"></div>
+            <p>Loading...</p>
+          </div>
+          {transitioning && (
+            <PuzzleTransition onComplete={() => setTransitioning(false)} />
+          )}
+        </>
+      );
+    }
+
+    // Still resolving a teacher's Training-vs-dashboard route — hold on the
+    // loading screen rather than flashing the landing choice screen first.
+    if (!memberViewReady) {
       return (
         <>
           <div className="app-loading">
@@ -205,9 +258,18 @@ function App() {
         tier={loginCtx?.tier || null}
         initialMode={loginCtx?.mode || "login"}
         onBack={() => setShowLogin(false)}
-        onVerified={(verifiedProfile) => {
+        onVerified={async (verifiedProfile) => {
           setProfile(verifiedProfile);
-          setMemberView("landing");
+          // Teachers: resolve straight to Training or the dashboard, never
+          // the "landing" choice screen (see resolveEducatorMemberView).
+          if (verifiedProfile?.isVerified && verifiedProfile.role === "educator") {
+            setMemberViewReady(false);
+            const resolved = await resolveEducatorMemberView(verifiedProfile.id || auth.currentUser?.uid);
+            setMemberView(resolved);
+            setMemberViewReady(true);
+          } else {
+            setMemberView("landing");
+          }
           // Only play the "welcome in" transition for an already-approved
           // account — a fresh signup lands on PendingApproval instead,
           // where a celebratory animation would be misleading.

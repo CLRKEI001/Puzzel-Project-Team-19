@@ -18,6 +18,7 @@ import {
 import { supabase } from "../supabaseClient";
 import { mapUserRow } from "../lib/mappers";
 import { PuzzlePiece, SinglePuzzlePiece } from "./puzzlePiece";
+import ThemeToggle from "../theme/ThemeToggle";
 import "./Login.css";
 
 // Administrator is deliberately NOT self-registerable here — letting anyone
@@ -239,6 +240,9 @@ export default function Login({ onVerified, onBack, tier = null, initialMode = "
           >
             <span aria-hidden="true">←</span>
           </button>
+          <div style={{ position: "absolute", top: 24, right: 24, zIndex: 2 }}>
+            <ThemeToggle />
+          </div>
           <div className="pb-login-card-head">
             <div className="pb-login-eyebrow">
               {tierInfo

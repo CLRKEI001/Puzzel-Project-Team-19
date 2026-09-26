@@ -5,6 +5,7 @@ import { supabase } from "../supabaseClient";
 import { COLORS, FONT_IMPORT, BrandLogo, useIsMobile } from "./SiteChrome";
 import { PurchaseContent } from "./PuzzleBoxPurchase";
 import { MODULES } from "./Trainingpage";
+import ThemeToggle from "../theme/ThemeToggle";
 
 // ---------------------------------------------------------------------------
 // Logged-in area for Tier 1 (educator) and Tier 2 (psychologist) users.
@@ -44,6 +45,7 @@ function Shell({ profile, onBack, backLabel, children }) {
               border: `1.5px solid ${COLORS.teal}`, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit",
             }}>{backLabel}</button>
           )}
+          <ThemeToggle />
           <button onClick={() => signOut(auth)} style={{
             padding: "9px 16px", borderRadius: 10, background: "none", color: COLORS.inkMid,
             border: `1.5px solid ${COLORS.border}`, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit",

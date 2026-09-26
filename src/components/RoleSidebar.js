@@ -7,6 +7,7 @@
 import React, { useState } from "react";
 import { auth } from "../firebase";
 import { signOut } from "firebase/auth";
+import ThemeToggle from "../theme/ThemeToggle";
  
 export default function RoleSidebar({
   navItems,
@@ -56,6 +57,7 @@ export default function RoleSidebar({
           <NavContent />
         </div>
         <div className="sidebar-footer">
+          <ThemeToggle style={{ width: "100%", justifyContent: "center", marginBottom: 8 }} />
           <button className="logout-btn" onClick={() => signOut(auth)}>
             Sign Out
           </button>
@@ -95,7 +97,8 @@ export default function RoleSidebar({
           <div className="sidebar-nav" style={{ flex: 1 }}>
             <NavContent onNavigate={() => setMobileOpen(false)} />
           </div>
-          <button className="logout-btn" onClick={() => { setMobileOpen(false); signOut(auth); }} style={{ marginTop: 24 }}>
+          <ThemeToggle variant="dark" style={{ width: "100%", justifyContent: "center", marginTop: 24 }} />
+          <button className="logout-btn" onClick={() => { setMobileOpen(false); signOut(auth); }} style={{ marginTop: 10 }}>
             Sign Out
           </button>
         </div>

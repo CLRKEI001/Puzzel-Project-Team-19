@@ -1,29 +1,34 @@
 import React, { useState, useEffect, useRef } from "react";
+import ThemeToggle from "../theme/ThemeToggle";
 
 // Shared design tokens and page chrome for every public-facing page.
 // Homepage, About, HowItWorks and Trainingpage all import from here so the
 // navigation, logo and footer stay identical across the site.
 
+// These read from the CSS custom properties defined in App.css (:root and
+// its [data-theme="dark"] override) rather than hardcoded hex, so every
+// public page built from COLORS re-themes automatically when ThemeContext
+// flips data-theme on <html> — no per-page changes needed.
 export const COLORS = {
-  teal: "#009B8D",
-  tealDark: "#007f74",
-  tealLight: "#E0F5F3",
-  pink: "#E8175D",
-  pinkLight: "#FCE6EE",
-  purple: "#6B2F8A",
-  purpleLight: "#F0E8F7",
-  orange: "#F26522",
-  orangeLight: "#FEF0E7",
+  teal: "var(--teal)",
+  tealDark: "var(--teal-dark)",
+  tealLight: "var(--teal-lt)",
+  pink: "var(--pink)",
+  pinkLight: "var(--pink-lt)",
+  purple: "var(--purple)",
+  purpleLight: "var(--purple-lt)",
+  orange: "var(--orange)",
+  orangeLight: "var(--orange-lt)",
   // Deep berry maroon — the colour the Puzzle Project wordmark is set in
-  maroon: "#7B2B3F",
-  maroonLight: "#F7EAEE",
-  dark: "#1A1A2E",
-  ink: "#1a1a2e",
-  inkMid: "#444460",
-  inkFaint: "#8888a8",
-  surface: "#F7F6FF",
-  white: "#ffffff",
-  border: "rgba(100,80,160,0.12)",
+  maroon: "var(--maroon)",
+  maroonLight: "var(--maroon-lt)",
+  dark: "var(--dark)",
+  ink: "var(--ink)",
+  inkMid: "var(--ink-mid)",
+  inkFaint: "var(--ink-faint)",
+  surface: "var(--surface)",
+  white: "var(--white)",
+  border: "var(--border)",
 };
 
 export const FONT_IMPORT = `
@@ -379,7 +384,7 @@ export function Navbar({ site = "tpp", current, onNavigate, onLoginClick }) {
   return (
     <nav style={{
       position: "fixed", top: 0, left: 0, right: 0, zIndex: 999, width: "100%",
-      background: (scrolled || menuOpen) ? "rgba(255,255,255,0.98)" : "rgba(255,255,255,0.92)",
+      background: (scrolled || menuOpen) ? "var(--nav-bg-scrolled)" : "var(--nav-bg)",
       backdropFilter: "blur(16px)",
       borderBottom: (scrolled || menuOpen) ? `1px solid ${COLORS.border}` : "1px solid transparent",
       boxShadow: (scrolled || menuOpen) ? "0 8px 30px rgba(0,0,0,0.05)" : "none",
@@ -427,6 +432,7 @@ export function Navbar({ site = "tpp", current, onNavigate, onLoginClick }) {
             </div>
 
             <div style={{ display: "flex", gap: 14, alignItems: "center", flexShrink: 0 }}>
+              <ThemeToggle />
               <button onClick={() => onLoginClick()} style={{
                 background: "transparent", color: COLORS.teal,
                 border: `1.5px solid ${COLORS.teal}`, borderRadius: 10,
@@ -443,33 +449,36 @@ export function Navbar({ site = "tpp", current, onNavigate, onLoginClick }) {
         )}
 
         {isMobile && (
-          <button
-            onClick={() => setMenuOpen(o => !o)}
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={menuOpen}
-            style={{
-              display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center",
-              gap: 5, width: 40, height: 40, borderRadius: 10, flexShrink: 0,
-              background: menuOpen ? COLORS.tealLight : "transparent",
-              border: "none", cursor: "pointer", padding: 0,
-            }}
-          >
-            <span style={{
-              display: "block", width: 20, height: 2, borderRadius: 2, background: COLORS.ink,
-              transition: "transform 0.2s ease, opacity 0.2s ease",
-              transform: menuOpen ? "translateY(3.5px) rotate(45deg)" : "none",
-            }} />
-            <span style={{
-              display: "block", width: 20, height: 2, borderRadius: 2, background: COLORS.ink,
-              transition: "transform 0.2s ease, opacity 0.2s ease",
-              opacity: menuOpen ? 0 : 1,
-            }} />
-            <span style={{
-              display: "block", width: 20, height: 2, borderRadius: 2, background: COLORS.ink,
-              transition: "transform 0.2s ease, opacity 0.2s ease",
-              transform: menuOpen ? "translateY(-3.5px) rotate(-45deg)" : "none",
-            }} />
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+            <ThemeToggle style={{ padding: "8px 10px" }} />
+            <button
+              onClick={() => setMenuOpen(o => !o)}
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={menuOpen}
+              style={{
+                display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center",
+                gap: 5, width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                background: menuOpen ? COLORS.tealLight : "transparent",
+                border: "none", cursor: "pointer", padding: 0,
+              }}
+            >
+              <span style={{
+                display: "block", width: 20, height: 2, borderRadius: 2, background: COLORS.ink,
+                transition: "transform 0.2s ease, opacity 0.2s ease",
+                transform: menuOpen ? "translateY(3.5px) rotate(45deg)" : "none",
+              }} />
+              <span style={{
+                display: "block", width: 20, height: 2, borderRadius: 2, background: COLORS.ink,
+                transition: "transform 0.2s ease, opacity 0.2s ease",
+                opacity: menuOpen ? 0 : 1,
+              }} />
+              <span style={{
+                display: "block", width: 20, height: 2, borderRadius: 2, background: COLORS.ink,
+                transition: "transform 0.2s ease, opacity 0.2s ease",
+                transform: menuOpen ? "translateY(-3.5px) rotate(-45deg)" : "none",
+              }} />
+            </button>
+          </div>
         )}
       </div>
 

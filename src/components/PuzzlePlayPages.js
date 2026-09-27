@@ -1,7 +1,6 @@
 import React from "react";
 import {
-  COLORS, FONT_IMPORT, PuzzlePiece, PuzzlePhoto, SectionHeading, Navbar, Footer, CallToAction,
-  CONTACT_EMAIL, useIsMobile,
+  COLORS, FONTS, PUBLIC_FONT_IMPORT, PuzzlePiece, PuzzlePhoto, SectionHeading, Navbar, Footer, CallToAction, CONTACT_EMAIL, useIsMobile,
 } from "./SiteChrome";
 
 // ---------------------------------------------------------------------------
@@ -28,8 +27,8 @@ function PlayShell({ current, onNavigate, onNavigateToLogin, children }) {
   const go = onNavigate || (() => console.warn("No onNavigate handler passed to a Puzzle Play page"));
   const login = onNavigateToLogin || (() => go("pp-login"));
   return (
-    <div style={{ fontFamily: "'Nunito Sans', sans-serif" }}>
-      <style>{FONT_IMPORT}</style>
+    <div style={{ fontFamily: FONTS.body }}>
+      <style>{PUBLIC_FONT_IMPORT}</style>
       <Navbar site="pp" current={current} onNavigate={go} onLoginClick={() => login()} />
       {children(go)}
       <CallToAction />
@@ -56,7 +55,7 @@ function PlayHero({ badge, title, lead, children, accent = COLORS.pink }) {
           {badge}
         </span>
         <h1 style={{
-          fontFamily: "'Nunito', sans-serif", fontSize: "clamp(34px, 4.4vw, 56px)",
+          fontFamily: FONTS.heading, fontSize: "clamp(34px, 4.4vw, 56px)",
           fontWeight: 900, color: COLORS.ink, lineHeight: 1.08, letterSpacing: "-0.03em", marginBottom: 20,
         }}>
           {title}
@@ -112,7 +111,7 @@ function PuzzleGrid({ onEnquire }) {
           }}>
             Term {pz.term}
           </span>
-          <h3 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 20, fontWeight: 900, color: COLORS.ink, marginBottom: 6 }}>{pz.name}</h3>
+          <h3 style={{ fontFamily: FONTS.heading, fontSize: 20, fontWeight: 900, color: COLORS.ink, marginBottom: 6 }}>{pz.name}</h3>
           <p style={{ fontSize: 14, color: COLORS.inkMid, lineHeight: 1.65, marginBottom: 18, flex: 1 }}>
             {pz.pieces} piece puzzle + lesson plan
           </p>
@@ -198,8 +197,8 @@ export function PuzzlePlayHow(props) {
             <div style={{ maxWidth: 1300, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
               {steps.map(st => (
                 <div key={st.n} style={{ padding: "26px 24px", borderRadius: 16, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderTop: `4px solid ${st.color}` }}>
-                  <div style={{ width: 38, height: 38, borderRadius: 10, background: st.color, color: COLORS.white, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontFamily: "'Nunito', sans-serif", marginBottom: 14 }}>{st.n}</div>
-                  <h3 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 16, fontWeight: 900, color: COLORS.ink, marginBottom: 8 }}>{st.title}</h3>
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: st.color, color: COLORS.white, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontFamily: FONTS.heading, marginBottom: 14 }}>{st.n}</div>
+                  <h3 style={{ fontFamily: FONTS.heading, fontSize: 16, fontWeight: 900, color: COLORS.ink, marginBottom: 8 }}>{st.title}</h3>
                   <p style={{ fontSize: 13.5, color: COLORS.inkMid, lineHeight: 1.65 }}>{st.desc}</p>
                 </div>
               ))}
@@ -267,7 +266,7 @@ export function PuzzlePlayLogin(props) {
               }}>
                 To be developed
               </span>
-              <h2 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 26, fontWeight: 900, color: COLORS.ink, marginBottom: 12 }}>
+              <h2 style={{ fontFamily: FONTS.heading, fontSize: 26, fontWeight: 900, color: COLORS.ink, marginBottom: 12 }}>
                 Coming soon
               </h2>
               <p style={{ fontSize: 15, color: COLORS.inkMid, lineHeight: 1.75, marginBottom: 28 }}>

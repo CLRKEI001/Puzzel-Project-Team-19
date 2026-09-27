@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  COLORS, FONT_IMPORT, PuzzlePiece, PuzzlePhoto, Navbar, Footer, CallToAction, CONTACT_EMAIL, useIsMobile,
+  COLORS, FONTS, PUBLIC_FONT_IMPORT, PuzzlePiece, PuzzlePhoto, Navbar, Footer, CallToAction, CONTACT_EMAIL, useIsMobile,
 } from "./SiteChrome";
 
 // ---------------------------------------------------------------------------
@@ -48,7 +48,7 @@ export function PurchaseContent() {
           <p style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: COLORS.teal, marginBottom: 12 }}>
             What you receive
           </p>
-          <h2 style={{ fontFamily: "'Nunito', sans-serif", fontSize: "clamp(24px, 3vw, 36px)", fontWeight: 900, color: COLORS.ink, lineHeight: 1.12, letterSpacing: "-0.02em", marginBottom: 20 }}>
+          <h2 style={{ fontFamily: FONTS.heading, fontSize: "clamp(24px, 3vw, 36px)", fontWeight: 900, color: COLORS.ink, lineHeight: 1.12, letterSpacing: "-0.02em", marginBottom: 20 }}>
             One screener, everything you need to get certified
           </h2>
           <div style={{ display: "grid", gap: 14, marginBottom: 28 }}>
@@ -57,7 +57,7 @@ export function PurchaseContent() {
                 padding: "16px 18px", borderRadius: 14, background: COLORS.white,
                 border: `1px solid ${COLORS.border}`, borderLeft: `4px solid ${item.color}`,
               }}>
-                <h3 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 15.5, fontWeight: 900, color: COLORS.ink, marginBottom: 4 }}>{item.title}</h3>
+                <h3 style={{ fontFamily: FONTS.heading, fontSize: 15.5, fontWeight: 900, color: COLORS.ink, marginBottom: 4 }}>{item.title}</h3>
                 <p style={{ fontSize: 13.5, color: COLORS.inkMid, lineHeight: 1.65 }}>{item.desc}</p>
               </div>
             ))}
@@ -69,7 +69,7 @@ export function PurchaseContent() {
             border: `1px solid ${COLORS.border}`,
           }}>
             <p style={{ fontSize: 11.5, fontWeight: 800, color: COLORS.teal, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Price</p>
-            <p style={{ fontFamily: "'Nunito', sans-serif", fontSize: 20, fontWeight: 900, color: COLORS.ink }}>To be confirmed</p>
+            <p style={{ fontFamily: FONTS.heading, fontSize: 20, fontWeight: 900, color: COLORS.ink }}>To be confirmed</p>
           </div>
 
           <a href={mailto} style={{
@@ -94,8 +94,8 @@ export default function PuzzleBoxPurchase({ onNavigate, onNavigateToLogin }) {
   const isMobile = useIsMobile(640);
 
   return (
-    <div style={{ fontFamily: "'Nunito Sans', sans-serif" }}>
-      <style>{FONT_IMPORT}</style>
+    <div style={{ fontFamily: FONTS.body }}>
+      <style>{PUBLIC_FONT_IMPORT}</style>
       <Navbar site="pb" current="pb-purchase" onNavigate={go} onLoginClick={() => onNavigateToLogin()} />
 
       <section style={{
@@ -113,7 +113,7 @@ export default function PuzzleBoxPurchase({ onNavigate, onNavigateToLogin }) {
             Purchase
           </span>
           <h1 style={{
-            fontFamily: "'Nunito', sans-serif", fontSize: "clamp(34px, 4.4vw, 56px)",
+            fontFamily: FONTS.heading, fontSize: "clamp(34px, 4.4vw, 56px)",
             fontWeight: 900, color: COLORS.ink, lineHeight: 1.08, letterSpacing: "-0.03em", marginBottom: 20,
           }}>
             Buy The Puzzle Box Screener

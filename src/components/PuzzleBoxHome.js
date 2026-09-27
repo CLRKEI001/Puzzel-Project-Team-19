@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  COLORS, FONT_IMPORT, PuzzlePiece, SectionHeading, Navbar, Footer, CallToAction, useIsMobile,
+  COLORS, FONTS, PUBLIC_FONT_IMPORT, PuzzlePiece, SectionHeading, Navbar, Footer, CallToAction, useIsMobile,
 } from "./SiteChrome";
 import { Hero, HOME_ANIMATION_CSS } from "./Homepage";
 
@@ -69,7 +69,7 @@ function TiersSection({ onNavigate, onAccess }) {
               }}>
                 {t.label}
               </span>
-              <h3 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 20, fontWeight: 900, color: COLORS.ink, marginBottom: 12 }}>{t.title}</h3>
+              <h3 style={{ fontFamily: FONTS.heading, fontSize: 20, fontWeight: 900, color: COLORS.ink, marginBottom: 12 }}>{t.title}</h3>
               <p style={{ fontSize: 14, color: COLORS.inkMid, lineHeight: 1.75, marginBottom: 24, flex: 1 }}>{t.desc}</p>
 
               {/* Sponsor feedback: each tier card is the entry point to sign-up / login */}
@@ -123,16 +123,19 @@ export default function PuzzleBoxHome({ onNavigate, onNavigateToLogin, onAccess 
   const access = onAccess || ((tier, mode) => onNavigateToLogin && onNavigateToLogin({ tier, mode }));
 
   return (
-    <div style={{ fontFamily: "'Nunito Sans', sans-serif" }}>
+    <div style={{ fontFamily: FONTS.body }}>
       <style>{`
-        ${FONT_IMPORT}
+        ${PUBLIC_FONT_IMPORT}
         ${HOME_ANIMATION_CSS}
       `}</style>
       <Navbar site="pb" current="pb-home" onNavigate={go} onLoginClick={() => onNavigateToLogin()} />
       <Hero
         badge="The Puzzle Box Screener"
         lead="A structured, play-based developmental screener for children aged 5 to 6 years — administered by trained teachers, primary healthcare practitioners and psychologists, regardless of location or connectivity."
-        actions={[{ label: "See how it works", onClick: () => go("pb-how") }]}
+        actions={[
+          { label: "See how it works", primary: true, onClick: () => go("pb-how") },
+          { label: "Purchase", onClick: () => go("pb-purchase") },
+        ]}
       />
       <TiersSection onNavigate={go} onAccess={access} />
       <CallToAction />

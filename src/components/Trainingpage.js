@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { COLORS, FONT_IMPORT, PuzzlePiece, SectionHeading, Navbar, Footer, CallToAction, useIsMobile } from "./SiteChrome";
+import {
+  COLORS, FONTS, PUBLIC_FONT_IMPORT, PuzzlePiece, SectionHeading, Navbar, Footer, CallToAction, useIsMobile,
+} from "./SiteChrome";
 
 function TrainingHero() {
   const [visible, setVisible] = useState(false);
@@ -29,7 +31,7 @@ function TrainingHero() {
             Training programme
           </span>
           <h1 style={{
-            fontFamily: "'Nunito', sans-serif", fontSize: "clamp(32px, 4.2vw, 52px)",
+            fontFamily: FONTS.heading, fontSize: "clamp(32px, 4.2vw, 52px)",
             fontWeight: 900, color: COLORS.ink, lineHeight: 1.08,
             letterSpacing: "-0.03em", marginBottom: 18,
           }}>
@@ -58,7 +60,7 @@ function TrainingHero() {
           }}>
             Restricted access
           </span>
-          <p style={{ fontFamily: "'Nunito', sans-serif", fontSize: 16, fontWeight: 900, color: COLORS.ink, marginBottom: 8 }}>
+          <p style={{ fontFamily: FONTS.heading, fontSize: 16, fontWeight: 900, color: COLORS.ink, marginBottom: 8 }}>
             Access requires a login and a Product number
           </p>
           <p style={{ fontSize: 13.5, color: COLORS.inkMid, lineHeight: 1.7 }}>
@@ -162,7 +164,7 @@ function TierTrainingSection({ onAccess }) {
           }}>
             {tier.label}
           </span>
-          <h3 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 22, fontWeight: 900, color: COLORS.ink, marginBottom: 22 }}>
+          <h3 style={{ fontFamily: FONTS.heading, fontSize: 22, fontWeight: 900, color: COLORS.ink, marginBottom: 22 }}>
             {tier.title}
           </h3>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 22 }}>
@@ -211,8 +213,8 @@ function HowToAccessSection() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
           {steps.map(st => (
             <div key={st.n} style={{ padding: "26px 24px", borderRadius: 16, background: COLORS.white, border: `1px solid ${COLORS.border}`, borderTop: `4px solid ${st.color}` }}>
-              <div style={{ width: 38, height: 38, borderRadius: 10, background: st.color, color: COLORS.white, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontFamily: "'Nunito', sans-serif", marginBottom: 14 }}>{st.n}</div>
-              <h3 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 16, fontWeight: 900, color: COLORS.ink, marginBottom: 8 }}>{st.title}</h3>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: st.color, color: COLORS.white, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontFamily: FONTS.heading, marginBottom: 14 }}>{st.n}</div>
+              <h3 style={{ fontFamily: FONTS.heading, fontSize: 16, fontWeight: 900, color: COLORS.ink, marginBottom: 8 }}>{st.title}</h3>
               <p style={{ fontSize: 13.5, color: COLORS.inkMid, lineHeight: 1.65 }}>{st.desc}</p>
             </div>
           ))}
@@ -238,7 +240,7 @@ function RequirementsSection({ onApply }) {
             <p style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: COLORS.teal, marginBottom: 12 }}>
               Who can apply
             </p>
-            <h2 style={{ fontFamily: "'Nunito', sans-serif", fontSize: "clamp(26px, 3.2vw, 40px)", fontWeight: 900, color: COLORS.ink, lineHeight: 1.12, letterSpacing: "-0.02em" }}>
+            <h2 style={{ fontFamily: FONTS.heading, fontSize: "clamp(26px, 3.2vw, 40px)", fontWeight: 900, color: COLORS.ink, lineHeight: 1.12, letterSpacing: "-0.02em" }}>
               Requirements
             </h2>
           </div>
@@ -266,7 +268,7 @@ function RequirementsSection({ onApply }) {
               onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.08)"; }}
               onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 12px rgba(0,0,0,0.04)"; }}
             >
-              <h3 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 15, fontWeight: 900, color: COLORS.ink, marginBottom: 8 }}>{req.title}</h3>
+              <h3 style={{ fontFamily: FONTS.heading, fontSize: 15, fontWeight: 900, color: COLORS.ink, marginBottom: 8 }}>{req.title}</h3>
               <p style={{ fontSize: 13, color: COLORS.inkMid, lineHeight: 1.65 }}>{req.desc}</p>
             </div>
           ))}
@@ -311,11 +313,11 @@ function ModulesSection() {
                 width: 48, height: 48, borderRadius: 12, background: mod.bg,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 16, fontWeight: 900, color: mod.color,
-                fontFamily: "'Nunito', sans-serif", flexShrink: 0,
+                fontFamily: FONTS.heading, flexShrink: 0,
               }}>
                 {mod.number}
               </div>
-              <h3 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 15, fontWeight: 800, color: COLORS.ink, lineHeight: 1.35 }}>
+              <h3 style={{ fontFamily: FONTS.heading, fontSize: 15, fontWeight: 800, color: COLORS.ink, lineHeight: 1.35 }}>
                 {mod.title}
               </h3>
             </div>
@@ -378,7 +380,7 @@ function TrainingModesSection({ onStartOnline }) {
               </div>
 
               <div style={{ padding: "28px 28px 32px" }}>
-                <h3 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 20, fontWeight: 900, color: COLORS.ink, marginBottom: 12 }}>
+                <h3 style={{ fontFamily: FONTS.heading, fontSize: 20, fontWeight: 900, color: COLORS.ink, marginBottom: 12 }}>
                   {mode.type}
                 </h3>
                 <p style={{ fontSize: 14, color: COLORS.inkMid, lineHeight: 1.7, marginBottom: 20 }}>
@@ -429,8 +431,8 @@ export default function TrainingPage(props) {
   const access = props.onAccess || ((tier, mode) => goLogin({ tier, mode }));
 
   return (
-    <div style={{ fontFamily: "'Nunito Sans', sans-serif" }}>
-      <style>{FONT_IMPORT}</style>
+    <div style={{ fontFamily: FONTS.body }}>
+      <style>{PUBLIC_FONT_IMPORT}</style>
       <Navbar site="pb" current="pb-training" onNavigate={go} onLoginClick={() => goLogin()} />
       <TrainingHero />
       <TierTrainingSection onAccess={access} />

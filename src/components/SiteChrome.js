@@ -77,7 +77,7 @@ const activeTheme = FONT_THEMES[ACTIVE_FONT_THEME] || FONT_THEMES.friendly;
 export const PUBLIC_FONT_IMPORT = `
   @import url('${activeTheme.url}');
   @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&display=swap');
-  :root { --font-heading: ${activeTheme.heading}; --font-body: ${activeTheme.body}; --cream: #FBF6EE; }
+  :root { --font-heading: ${activeTheme.heading}; --font-body: ${activeTheme.body}; --cream: #FFFFFF; }
   [data-theme="dark"] { --cream: #17172A; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: var(--font-body); }
@@ -735,7 +735,7 @@ export function CallToAction() {
 }
 
 // ---- Shared warm look for public pages (home, about, how it works) -------
-export const CREAM = "var(--cream, #FBF6EE)";
+export const CREAM = "var(--cream, #FFFFFF)";
 export const WARM_YELLOW = "#FFD27A";
 
 // Fades a block up the first time it scrolls into view

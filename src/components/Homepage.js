@@ -607,13 +607,26 @@ function WhatWeDo({ onNavigate }) {
 // The pieces are laid out as percentages so the whole puzzle scales with the
 // container, and they fly in from their own side of the page and lock together
 // when the section scrolls into view.
+//
+// Only The Puzzle Box is live. The other pieces are flagged `inDevelopment`:
+// they use a lighter tint of their colour, dark text, and show an
+// "In Development" tooltip on hover.
+
+// Mixes a hex colour with white. amount 0 = original, 1 = white.
+const lighten = (hex, amount = 0.55) => {
+  const n = parseInt(hex.replace("#", ""), 16);
+  const mix = (c) => Math.round(c + (255 - c) * amount);
+  const r = mix((n >> 16) & 255), g = mix((n >> 8) & 255), b = mix(n & 255);
+  return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
+};
+
 const VISION_ITEMS = [
   { title: "The Puzzle Box", desc: "ECD developmental screening\nfor 5 to 6 year olds.", color: COLORS.teal, page: "pb-home", row: 0, col: 0, edges: { top: 0, right: 1, bottom: 1, left: 0 } },
-  { title: "Puzzle Play", desc: "Nationwide puzzle development\nfor Grades 0 to 7.", color: COLORS.pink, page: "pp-home", row: 0, col: 1, edges: { top: 0, right: 1, bottom: 1, left: -1 } },
-  { title: "Puzzle TV", desc: "An educational TV show\ntaking development into\nhomes.", color: COLORS.purple, row: 0, col: 2, edges: { top: 0, right: 0, bottom: 1, left: -1 } },
-  { title: "Puzzle App", desc: "Puzzles for all — a digital\nplatform, everywhere.", color: COLORS.orange, row: 1, col: 0, edges: { top: -1, right: 1, bottom: 0, left: 0 } },
-  { title: "Puzzle Production", desc: "Design, production and\ndistribution, creating jobs\nthrough printing and recycling.", color: COLORS.maroon, row: 1, col: 1, edges: { top: -1, right: 1, bottom: 0, left: -1 } },
-  { title: "Puzzle Data Analysis", desc: "Recording the shifts that\npuzzles make.", color: COLORS.teal, row: 1, col: 2, edges: { top: -1, right: 0, bottom: 0, left: -1 } },
+   {title: "Puzzle Play", desc: "Nationwide puzzle development\nfor Grades 0 to 7.", color: COLORS.pink, page: "pp-home", row: 0, col: 1, edges: { top: 0, right: 1, bottom: 1, left: -1 } },
+  { title: "Puzzle TV", desc: "An educational TV show\ntaking development into\nhomes.", color: lighten(COLORS.purple), inDevelopment: true, row: 0, col: 2, edges: { top: 0, right: 0, bottom: 1, left: -1 } },
+  { title: "Puzzle App", desc: "Puzzles for all — a digital\nplatform, everywhere.", color: lighten(COLORS.orange), inDevelopment: true, row: 1, col: 0, edges: { top: -1, right: 1, bottom: 0, left: 0 } },
+  { title: "Puzzle Production", desc: "Design, production and\ndistribution, creating jobs\nthrough printing and recycling.", color: lighten(COLORS.maroon), inDevelopment: true, row: 1, col: 1, edges: { top: -1, right: 1, bottom: 0, left: -1 } },
+  { title: "Puzzle Data Analysis", desc: "Recording the shifts that\npuzzles make.", color: lighten(COLORS.teal), inDevelopment: true, row: 1, col: 2, edges: { top: -1, right: 0, bottom: 0, left: -1 } },
 ];
 
 const VISION_COLS = 3;
@@ -655,6 +668,7 @@ function VisionSection({ onNavigate }) {
 
             return (
               <div key={item.title}
+                title={item.inDevelopment ? "In Development" : undefined}
                 onClick={item.page ? () => onNavigate(item.page) : undefined}
                 onKeyDown={item.page ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNavigate(item.page); } } : undefined}
                 role={item.page ? "link" : undefined}
@@ -700,11 +714,11 @@ function VisionSection({ onNavigate }) {
                   <h3 style={{
                     fontFamily: FONTS.heading,
                     fontWeight: 900,
-                    color: ON_DARK,
+                    color: item.inDevelopment ? COLORS.ink : ON_DARK,
                     fontSize: isMobile ? "clamp(12px, 2vw, 18px)" : "clamp(14px, 1.3vw, 22px)",
                     lineHeight: 1.15,
                     marginBottom: isMobile ? 4 : 6,
-                    textShadow: "0 1px 6px rgba(0,0,0,0.25)",
+                    textShadow: item.inDevelopment ? "none" : "0 1px 6px rgba(0,0,0,0.25)",
                     maxWidth: "82%",
                     overflowWrap: "anywhere",
                     wordBreak: "break-word",
@@ -715,7 +729,7 @@ function VisionSection({ onNavigate }) {
                   <p style={{
                     fontSize: isMobile ? "clamp(8px, 1.4vw, 11px)" : "clamp(9.5px, 0.82vw, 12.5px)",
                     lineHeight: 1.35,
-                    color: "rgba(255,255,255,0.92)",
+                    color: item.inDevelopment ? COLORS.inkMid : "rgba(255,255,255,0.92)",
                     maxWidth: "82%",
                     margin: 0,
                     overflowWrap: "anywhere",

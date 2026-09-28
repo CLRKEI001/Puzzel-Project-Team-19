@@ -164,12 +164,12 @@ function FoundingStory() {
 
 // ---- Team: faces (initials for now), no card borders ---------------------
 const TEAM = [
-  { initials: "GK", name: "Gary King", role: "Founder & project sponsor", color: COLORS.teal, bg: COLORS.tealLight },
+  { initials: "GK", name: "Gary King", role: "Founder & project sponsor", color: COLORS.teal, bg: COLORS.tealLight, image: "/gary-king.jpg", imageAlt: "Gary King", imageFit: "cover" },
   { initials: "RM", name: "Dr Rivca Marais", role: "Lead psychologist & clinical advisor", color: COLORS.pink, bg: COLORS.pinkLight },
   { initials: "JJ", name: "Dr Jennifer Jansen", role: "Research & development", color: COLORS.purple, bg: COLORS.purpleLight },
   { initials: "SF", name: "Ms Satara Ferreira", role: "Education", color: COLORS.maroon, bg: COLORS.maroonLight },
-  { initials: "T19", name: "UCT Group 19", role: "Platform design & development", color: COLORS.teal, bg: COLORS.tealLight },
-  { initials: "UCT", name: "UCT INF3011F", role: "Academic supervisors & advisors", color: COLORS.purple, bg: COLORS.purpleLight },
+  { initials: "T19", name: "UCT INF3003W Team 19", role: "Platform design & development", color: COLORS.teal, bg: COLORS.tealLight, image: "/uct-seal.jpg", imageAlt: "University of Cape Town seal", imageFit: "contain" },
+  { initials: "UCT", name: "UCT INF3011F Team 11 and Team 18 ", role: "Academic supervisors & advisors", color: COLORS.purple, bg: COLORS.purpleLight, image: "/uct-seal.jpg", imageAlt: "University of Cape Town seal", imageFit: "contain" },
 ];
 
 function TeamSection() {
@@ -185,12 +185,19 @@ function TeamSection() {
             <Reveal key={member.name} delay={(i % 3) * 0.1} style={{ textAlign: "center" }}>
               <div className="wiggle" style={{
                 width: isMobile ? 84 : 104, height: isMobile ? 84 : 104, borderRadius: "50%", background: member.bg,
+                position: "relative", overflow: "hidden",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 margin: "0 auto 16px", fontFamily: FONTS.heading,
                 fontSize: member.initials.length > 2 ? 20 : 28, fontWeight: 900, color: member.color,
                 border: `3px solid ${COLORS.white}`, boxShadow: `0 0 0 3px ${member.bg}`,
               }}>
                 {member.initials}
+                {member.image && <img
+                  src={member.image}
+                  alt={member.imageAlt}
+                  onError={(event) => { event.currentTarget.style.display = "none"; }}
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: member.imageFit, background: COLORS.white }}
+                />}
               </div>
               <h3 style={{ fontFamily: FONTS.heading, fontSize: 17, fontWeight: 800, color: COLORS.ink, marginBottom: 4 }}>{member.name}</h3>
               <p style={{ fontSize: 14, color: COLORS.inkMid, lineHeight: 1.5 }}>{member.role}</p>

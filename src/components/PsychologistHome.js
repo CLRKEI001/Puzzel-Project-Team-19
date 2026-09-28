@@ -183,9 +183,9 @@ const MEMBER_ICONS = {
 function memberNavItems(onOpenMember) {
   if (!onOpenMember) return [];
   return [
-    { id: "member-training", label: "Training", section: "The Puzzle Box", icon: MEMBER_ICONS.training, onClick: () => onOpenMember("training") },
     { id: "member-buy", label: "Buy The Puzzle Box Screener", section: "The Puzzle Box", icon: MEMBER_ICONS.buy, onClick: () => onOpenMember("purchase") },
-  ];
+    { id: "member-training", label: "Training", section: "The Puzzle Box", icon: MEMBER_ICONS.training, onClick: () => onOpenMember("training") },
+    ];
 }
 
 export default function PsychologistHome({ user, profile, onOpenMember }) {

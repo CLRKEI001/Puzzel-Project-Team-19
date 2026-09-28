@@ -87,15 +87,15 @@ function Landing({ profile, onView }) {
         Welcome{first ? `, ${first}` : ""}
       </h1>
       <p style={{ fontSize: 16, color: COLORS.inkMid, lineHeight: 1.75, maxWidth: 620, marginBottom: 36 }}>
-        Start your training, or get a Puzzle Box Screener. Already trained? Go straight to your dashboard.
+        Get a Puzzle Box Screener, or start your training. Already trained? Go straight to your dashboard.
       </p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 22, marginBottom: 32 }}>
-        <BigButton color={COLORS.teal} title="Training"
-          desc="Unlock the certification modules with your Product number."
-          onClick={() => onView("training")} />
         <BigButton color={COLORS.pink} title="Buy The Puzzle Box Screener"
           desc="See what's included and request a screener."
           onClick={() => onView("purchase")} />
+        <BigButton color={COLORS.teal} title="Training"
+          desc="Unlock the certification modules with your Product number."
+          onClick={() => onView("training")} />
       </div>
       <button onClick={() => onView(null)} style={{
         background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit",

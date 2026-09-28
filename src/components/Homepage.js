@@ -612,13 +612,10 @@ function WhatWeDo({ onNavigate }) {
 // they use a lighter tint of their colour, dark text, and show an
 // "In Development" tooltip on hover.
 
-// Mixes a hex colour with white. amount 0 = original, 1 = white.
-const lighten = (hex, amount = 0.55) => {
-  const n = parseInt(hex.replace("#", ""), 16);
-  const mix = (c) => Math.round(c + (255 - c) * amount);
-  const r = mix((n >> 16) & 255), g = mix((n >> 8) & 255), b = mix(n & 255);
-  return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
-};
+// Pastel tint of a theme colour. The theme colours are CSS variables, so the
+// mixing is done by the browser with color-mix. amount 0 = original, 1 = white.
+const lighten = (color, amount = 0.5) =>
+  `color-mix(in srgb, ${color} ${Math.round((1 - amount) * 100)}%, white)`;
 
 const VISION_ITEMS = [
   { title: "The Puzzle Box", desc: "ECD developmental screening\nfor 5 to 6 year olds.", color: COLORS.teal, page: "pb-home", row: 0, col: 0, edges: { top: 0, right: 1, bottom: 1, left: 0 } },
@@ -634,6 +631,7 @@ const VISION_ROWS = 2;
 
 function VisionSection({ onNavigate }) {
   const [ref, inView] = useInView();
+  const [devHover, setDevHover] = useState(null);
   // Below this width the 3x2 layout leaves each piece too narrow to read
   // comfortably, so we transpose to a taller 2x3 grid instead.
   const isMobile = useIsMobile(640);
@@ -668,8 +666,9 @@ function VisionSection({ onNavigate }) {
 
             return (
               <div key={item.title}
-                title={item.inDevelopment ? "In Development" : undefined}
-                onClick={item.page ? () => onNavigate(item.page) : undefined}
+                onMouseEnter={item.inDevelopment ? () => setDevHover(item.title) : undefined}
+                onMouseLeave={item.inDevelopment ? () => setDevHover(null) : undefined}
+                onClick={item.page ? () => onNavigate(item.page) : item.inDevelopment ? () => setDevHover(devHover === item.title ? null : item.title) : undefined}
                 onKeyDown={item.page ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNavigate(item.page); } } : undefined}
                 role={item.page ? "link" : undefined}
                 tabIndex={item.page ? 0 : undefined}
@@ -695,7 +694,7 @@ function VisionSection({ onNavigate }) {
                     width: "156%", height: "156%", overflow: "visible",
                   }}
                 >
-                  <path d={piecePath(edges)} fill={item.color} />
+                  <path d={piecePath(edges)} style={{ fill: item.color }} fillOpacity={item.inDevelopment ? 0.7 : 1} />
                 </svg>
 
                 {/* Label, inset so it clears the knobs and sockets */}
@@ -739,6 +738,18 @@ function VisionSection({ onNavigate }) {
                     {item.desc}
                   </p>
                 </div>
+
+                {item.inDevelopment && devHover === item.title && (
+                  <div role="tooltip" style={{
+                    position: "absolute", left: "50%", top: isMobile ? "8%" : "10%",
+                    transform: "translateX(-50%)", zIndex: 5, pointerEvents: "none",
+                    background: COLORS.ink, color: "#fff", fontFamily: FONTS.heading,
+                    fontSize: 12, fontWeight: 800, letterSpacing: 0.3, whiteSpace: "nowrap",
+                    padding: "6px 12px", borderRadius: 999, boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
+                  }}>
+                    In Development
+                  </div>
+                )}
               </div>
             );
           })}
@@ -797,8 +808,8 @@ export default function Homepage({ onNavigateToLogin, onNavigate }) {
       <WhyWeExist />
       <Pillars />
       <OurStory onNavigate={go} />
-      <WhatWeDo onNavigate={go} />
       <VisionSection onNavigate={go} />
+      <WhatWeDo onNavigate={go} />
       <SupportBand onNavigate={go} />
       <CallToAction />
       <Footer site="tpp" onNavigate={go} onLoginClick={onNavigateToLogin} />

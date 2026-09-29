@@ -12,6 +12,7 @@ import StatRing from "./StatRing";
 import ChildrenTable from "./ChildrenTable";
 import FlagsAlerts from "./FlagsAlerts";
 import SummaryReport from "./SummaryReport";
+import TrainingModulesAdmin from "./TrainingModulesAdmin";
 import "./TeacherHome.css";
 import "./AdminHome.css";
 import "./RoleHomeKit.css";
@@ -395,6 +396,13 @@ const NAV_ICONS = {
       />
     </svg>
   ),
+
+  training: (
+    <svg viewBox="0 0 16 16" fill="none">
+      <path d="M1.5 5.5L8 2.5l6.5 3L8 8.5l-6.5-3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+      <path d="M4 7.2V10c0 1 1.8 2 4 2s4-1 4-2V7.2" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  ),
 };
 
 const ROLE_COLORS = {
@@ -662,6 +670,12 @@ export default function AdminHome({ user, profile }) {
       icon: NAV_ICONS.reports,
     },
     {
+      id: "training-modules",
+      label: "Training Modules",
+      section: t.section2,
+      icon: NAV_ICONS.training,
+    },
+    {
       id: "profile",
       label: t.navProfile,
       section: t.section3,
@@ -693,10 +707,12 @@ export default function AdminHome({ user, profile }) {
               {activePage === "children" && t.navChildren}
               {activePage === "flags" && t.navFlags}
               {activePage === "reports" && t.navReports}
+              {activePage === "training-modules" && "Training Modules"}
               {activePage === "profile" && t.navProfile}
             </div>
 
             <div className="page-sub">
+              {activePage === "training-modules" && "Add, reorder, publish and edit the modules shown on the Training page — no code or database changes needed."}
               {activePage === "users" && t.usersSub}
               {activePage === "children" && t.childrenSub}
               {activePage === "flags" && t.flagsSub}
@@ -1252,6 +1268,10 @@ export default function AdminHome({ user, profile }) {
 
         {activePage === "children" && (
           <ChildrenTable children={children} lang={lang} />
+        )}
+
+        {activePage === "training-modules" && (
+          <TrainingModulesAdmin />
         )}
 
         {activePage === "flags" && (

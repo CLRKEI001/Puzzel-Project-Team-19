@@ -4,8 +4,15 @@ import { signOut } from "firebase/auth";
 import { supabase } from "../supabaseClient";
 import { COLORS, FONT_IMPORT, BrandLogo, useIsMobile } from "./SiteChrome";
 import { PurchaseContent } from "./PuzzleBoxPurchase";
-import { MODULES } from "./Trainingpage";
+import { useTrainingModules } from "../lib/useTrainingModules.js";
 import ThemeToggle from "../theme/ThemeToggle";
+
+// Maps an admin's chosen colour key (see Admin → Training Modules) back
+// to this site's actual brand colours.
+function moduleColor(colorKey) {
+  const key = colorKey || "teal";
+  return { color: COLORS[key] || COLORS.teal, bg: COLORS[`${key}Light`] || COLORS.tealLight };
+}
 
 // ---------------------------------------------------------------------------
 // Logged-in area for Tier 1 (educator) and Tier 2 (psychologist) users.
@@ -146,6 +153,8 @@ function Training({ user }) {
     setBusy(false);
   };
 
+  const { modules, loading: modulesLoading } = useTrainingModules();
+
   if (state === "checking") return <p style={{ color: COLORS.inkMid }}>Checking your training access…</p>;
 
   if (state === "locked") {
@@ -175,19 +184,40 @@ function Training({ user }) {
       <span style={{ display: "inline-block", padding: "4px 14px", borderRadius: 16, background: COLORS.tealLight, color: COLORS.teal, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 14 }}>Training unlocked</span>
       <h1 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 32, fontWeight: 900, color: COLORS.ink, marginBottom: 10 }}>Training modules</h1>
       <p style={{ fontSize: 15.5, color: COLORS.inkMid, lineHeight: 1.75, maxWidth: 640, marginBottom: 28 }}>
-        Complete the seven modules in order, followed by the certification assessment. The module content itself isn't loaded into the platform yet, so each one is marked as coming soon.
+        Complete the modules in order, followed by the certification assessment.
       </p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
-        {MODULES.map(mod => (
-          <div key={mod.number} style={{ padding: "20px 22px", borderRadius: 16, background: COLORS.white, border: `1px solid ${COLORS.border}`, display: "flex", alignItems: "center", gap: 16 }}>
-            <div style={{ width: 46, height: 46, borderRadius: 12, background: mod.bg, color: mod.color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontFamily: "'Nunito', sans-serif", flexShrink: 0 }}>{mod.number}</div>
-            <div>
-              <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 15, fontWeight: 800, color: COLORS.ink, lineHeight: 1.3 }}>{mod.title}</div>
-              <div style={{ fontSize: 12, color: COLORS.inkFaint, marginTop: 3 }}>Coming soon</div>
-            </div>
-          </div>
-        ))}
-      </div>
+      {modulesLoading ? (
+        <p style={{ color: COLORS.inkMid, fontSize: 14 }}>Loading modules…</p>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
+          {modules.map((mod, i) => {
+            const { color, bg } = moduleColor(mod.colorKey);
+            const number = String(mod.sortOrder ?? i + 1).padStart(2, "0");
+            const isPublished = mod.status === "published";
+            return (
+              <a
+                key={mod.id}
+                href={isPublished && mod.contentUrl ? mod.contentUrl : undefined}
+                target={isPublished && mod.contentUrl ? "_blank" : undefined}
+                rel={isPublished && mod.contentUrl ? "noreferrer" : undefined}
+                style={{
+                  padding: "20px 22px", borderRadius: 16, background: COLORS.white, border: `1px solid ${COLORS.border}`,
+                  display: "flex", alignItems: "center", gap: 16, textDecoration: "none",
+                  cursor: isPublished && mod.contentUrl ? "pointer" : "default",
+                }}
+              >
+                <div style={{ width: 46, height: 46, borderRadius: 12, background: bg, color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontFamily: "'Nunito', sans-serif", flexShrink: 0 }}>{number}</div>
+                <div>
+                  <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 15, fontWeight: 800, color: COLORS.ink, lineHeight: 1.3 }}>{mod.title}</div>
+                  <div style={{ fontSize: 12, color: isPublished ? COLORS.teal : COLORS.inkFaint, marginTop: 3, fontWeight: isPublished ? 700 : 400 }}>
+                    {isPublished ? (mod.contentUrl ? "Open →" : "Published") : "Coming soon"}
+                  </div>
+                </div>
+              </a>
+            );
+          })}
+        </div>
+      )}
     </>
   );
 }

@@ -19,7 +19,7 @@ import "./RoleHomeKit.css";
 // Roles an admin can hand out. "admin" is deliberately left out of the
 // reassignment dropdown — promoting/demoting other admins from this list
 // is easy to fat-finger, so that stays a database-level action for now.
-const ASSIGNABLE_ROLES = ["educator", "psychologist", "analyst"];
+const ASSIGNABLE_ROLES = ["educator", "psychologist", "admin"];
 
 const T = {
   en: {

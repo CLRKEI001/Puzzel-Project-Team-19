@@ -4,7 +4,8 @@ import { signOut } from "firebase/auth";
 import { supabase } from "../supabaseClient";
 import { COLORS, FONT_IMPORT, BrandLogo, useIsMobile } from "./SiteChrome";
 import { PurchaseContent } from "./PuzzleBoxPurchase";
-import { useTrainingModules } from "../lib/useTrainingModules.js";
+import { useTrainingModules } from "../lib/useTrainingModules";
+import TrainingModuleQuiz from "./TrainingModuleQuiz";
 import ThemeToggle from "../theme/ThemeToggle";
 
 // Maps an admin's chosen colour key (see Admin → Training Modules) back
@@ -12,6 +13,39 @@ import ThemeToggle from "../theme/ThemeToggle";
 function moduleColor(colorKey) {
   const key = colorKey || "teal";
   return { color: COLORS[key] || COLORS.teal, bg: COLORS[`${key}Light`] || COLORS.tealLight };
+}
+
+// A video placeholder box for a module. With no video_url set yet (the
+// admin hasn't added one), it's a static "coming soon" box; once a link
+// is added it becomes a clickable "Watch video" tile that opens it.
+function VideoBlock({ url, color, bg }) {
+  const content = (
+    <>
+      <span style={{
+        width: 40, height: 40, borderRadius: "50%", background: url ? color : "rgba(0,0,0,0.08)",
+        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+      }}>
+        <svg viewBox="0 0 16 16" width="15" height="15" fill={url ? "#fff" : "var(--ink-faint, #999)"}>
+          <path d="M4 2.5v11l10-5.5-10-5.5z" />
+        </svg>
+      </span>
+      <span style={{ fontSize: 12.5, fontWeight: 700, color: url ? color : "var(--ink-faint, #999)" }}>
+        {url ? "Watch video" : "Video coming soon"}
+      </span>
+    </>
+  );
+
+  const boxStyle = {
+    marginTop: 12, padding: "12px 16px", borderRadius: 12,
+    display: "flex", alignItems: "center", gap: 12,
+    border: url ? "none" : "1.5px dashed var(--border, #ddd)",
+    background: url ? bg : "transparent",
+    textDecoration: "none", width: "fit-content",
+  };
+
+  return url
+    ? <a href={url} target="_blank" rel="noreferrer" style={{ ...boxStyle, cursor: "pointer" }}>{content}</a>
+    : <div style={boxStyle}>{content}</div>;
 }
 
 // ---------------------------------------------------------------------------
@@ -189,31 +223,42 @@ function Training({ user }) {
       {modulesLoading ? (
         <p style={{ color: COLORS.inkMid, fontSize: 14 }}>Loading modules…</p>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 }}>
           {modules.map((mod, i) => {
             const { color, bg } = moduleColor(mod.colorKey);
             const number = String(mod.sortOrder ?? i + 1).padStart(2, "0");
             const isPublished = mod.status === "published";
             return (
-              <a
+              <div
                 key={mod.id}
-                href={isPublished && mod.contentUrl ? mod.contentUrl : undefined}
-                target={isPublished && mod.contentUrl ? "_blank" : undefined}
-                rel={isPublished && mod.contentUrl ? "noreferrer" : undefined}
                 style={{
                   padding: "20px 22px", borderRadius: 16, background: COLORS.white, border: `1px solid ${COLORS.border}`,
-                  display: "flex", alignItems: "center", gap: 16, textDecoration: "none",
-                  cursor: isPublished && mod.contentUrl ? "pointer" : "default",
                 }}
               >
-                <div style={{ width: 46, height: 46, borderRadius: 12, background: bg, color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontFamily: "'Nunito', sans-serif", flexShrink: 0 }}>{number}</div>
-                <div>
-                  <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 15, fontWeight: 800, color: COLORS.ink, lineHeight: 1.3 }}>{mod.title}</div>
-                  <div style={{ fontSize: 12, color: isPublished ? COLORS.teal : COLORS.inkFaint, marginTop: 3, fontWeight: isPublished ? 700 : 400 }}>
-                    {isPublished ? (mod.contentUrl ? "Open →" : "Published") : "Coming soon"}
+                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                  <div style={{ width: 46, height: 46, borderRadius: 12, background: bg, color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontFamily: "'Nunito', sans-serif", flexShrink: 0 }}>{number}</div>
+                  <div>
+                    <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 15, fontWeight: 800, color: COLORS.ink, lineHeight: 1.3 }}>{mod.title}</div>
+                    <div style={{ fontSize: 12, color: isPublished ? COLORS.teal : COLORS.inkFaint, marginTop: 3, fontWeight: isPublished ? 700 : 400 }}>
+                      {isPublished ? "Published" : "Coming soon"}
+                    </div>
                   </div>
                 </div>
-              </a>
+
+                {mod.description && (
+                  <p style={{ fontSize: 12.5, color: COLORS.inkMid, lineHeight: 1.6, marginTop: 10, marginBottom: 0 }}>{mod.description}</p>
+                )}
+
+                <VideoBlock url={isPublished ? mod.videoUrl : null} color={color} bg={bg} />
+
+                {mod.contentUrl && (
+                  <a href={mod.contentUrl} target="_blank" rel="noreferrer" style={{ display: "block", marginTop: 8, fontSize: 12, fontWeight: 700, color }}>
+                    Open resource →
+                  </a>
+                )}
+
+                {isPublished && <TrainingModuleQuiz moduleId={mod.id} color={color} />}
+              </div>
             );
           })}
         </div>

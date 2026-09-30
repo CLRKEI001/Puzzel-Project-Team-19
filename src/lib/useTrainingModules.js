@@ -15,13 +15,13 @@ export const COLOR_KEYS = ["teal", "pink", "purple", "orange", "maroon"];
 // 004 not run yet, or offline) or is currently empty. Keeps the training
 // pages from breaking — Supabase is the source of truth once it's seeded.
 export const FALLBACK_MODULES = [
-  { id: "fallback-1", sortOrder: 1, title: "Introduction to The Puzzle Box", description: "", colorKey: "teal", status: "coming_soon", contentUrl: null },
-  { id: "fallback-2", sortOrder: 2, title: "Research Background & Psychometric Properties", description: "", colorKey: "pink", status: "coming_soon", contentUrl: null },
-  { id: "fallback-3", sortOrder: 3, title: "Test Equipment & Setting Up", description: "", colorKey: "purple", status: "coming_soon", contentUrl: null },
-  { id: "fallback-4", sortOrder: 4, title: "Administration", description: "", colorKey: "orange", status: "coming_soon", contentUrl: null },
-  { id: "fallback-5", sortOrder: 5, title: "Interpretation", description: "", colorKey: "teal", status: "coming_soon", contentUrl: null },
-  { id: "fallback-6", sortOrder: 6, title: "Online Navigation", description: "", colorKey: "pink", status: "coming_soon", contentUrl: null },
-  { id: "fallback-7", sortOrder: 7, title: "Report Writing & Referral", description: "", colorKey: "purple", status: "coming_soon", contentUrl: null },
+  { id: "fallback-1", sortOrder: 1, title: "Introduction to The Puzzle Box", description: "", colorKey: "teal", status: "coming_soon", videoUrl: null, contentUrl: null },
+  { id: "fallback-2", sortOrder: 2, title: "Research Background & Psychometric Properties", description: "", colorKey: "pink", status: "coming_soon", videoUrl: null, contentUrl: null },
+  { id: "fallback-3", sortOrder: 3, title: "Test Equipment & Setting Up", description: "", colorKey: "purple", status: "coming_soon", videoUrl: null, contentUrl: null },
+  { id: "fallback-4", sortOrder: 4, title: "Administration", description: "", colorKey: "orange", status: "coming_soon", videoUrl: null, contentUrl: null },
+  { id: "fallback-5", sortOrder: 5, title: "Interpretation", description: "", colorKey: "teal", status: "coming_soon", videoUrl: null, contentUrl: null },
+  { id: "fallback-6", sortOrder: 6, title: "Online Navigation", description: "", colorKey: "pink", status: "coming_soon", videoUrl: null, contentUrl: null },
+  { id: "fallback-7", sortOrder: 7, title: "Report Writing & Referral", description: "", colorKey: "purple", status: "coming_soon", videoUrl: null, contentUrl: null },
 ];
 
 function mapRow(row) {
@@ -32,6 +32,7 @@ function mapRow(row) {
     description: row.description || "",
     colorKey: COLOR_KEYS.includes(row.color_key) ? row.color_key : "teal",
     status: row.status === "published" ? "published" : "coming_soon",
+    videoUrl: row.video_url || null,
     contentUrl: row.content_url || null,
   };
 }

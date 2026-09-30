@@ -9,7 +9,8 @@
 
 import React, { useState } from "react";
 import { supabase } from "../supabaseClient";
-import { useTrainingModules, COLOR_KEYS } from "../lib/useTrainingModules.js";
+import { useTrainingModules, COLOR_KEYS } from "../lib/useTrainingModules";
+import TrainingQuizEditor from "./TrainingQuizEditor";
 
 const inputStyle = {
   width: "100%",
@@ -40,7 +41,7 @@ const COLOR_SWATCH = {
   maroon: "#7A1B3D",
 };
 
-const EMPTY_FORM = { title: "", description: "", colorKey: "teal", status: "coming_soon", contentUrl: "" };
+const EMPTY_FORM = { title: "", description: "", colorKey: "teal", status: "coming_soon", videoUrl: "", contentUrl: "" };
 
 export default function TrainingModulesAdmin() {
   const { modules, loading, error, refresh } = useTrainingModules();
@@ -52,6 +53,7 @@ export default function TrainingModulesAdmin() {
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [busyId, setBusyId] = useState(null); // row currently reordering/toggling
+  const [quizModuleId, setQuizModuleId] = useState(null); // module whose quiz panel is open
 
   const openAdd = () => {
     setForm(EMPTY_FORM);
@@ -66,6 +68,7 @@ export default function TrainingModulesAdmin() {
       description: mod.description,
       colorKey: mod.colorKey,
       status: mod.status,
+      videoUrl: mod.videoUrl || "",
       contentUrl: mod.contentUrl || "",
     });
     setEditingId(mod.id);
@@ -92,6 +95,7 @@ export default function TrainingModulesAdmin() {
       description: form.description.trim(),
       color_key: form.colorKey,
       status: form.status,
+      video_url: form.videoUrl.trim() || null,
       content_url: form.contentUrl.trim() || null,
     };
 
@@ -197,7 +201,8 @@ export default function TrainingModulesAdmin() {
               </thead>
               <tbody>
                 {sorted.map((mod, i) => (
-                  <tr key={mod.id}>
+                  <React.Fragment key={mod.id}>
+                  <tr>
                     <td>
                       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                         <button
@@ -250,6 +255,13 @@ export default function TrainingModulesAdmin() {
                       <button className="btn btn-teal btn-sm" onClick={() => togglePublished(mod)} disabled={busyId === mod.id}>
                         {mod.status === "published" ? "Unpublish" : "Publish"}
                       </button>
+                      <button
+                        className="btn btn-sm"
+                        style={{ marginLeft: 6, background: quizModuleId === mod.id ? "var(--purple)" : "var(--purple-lt, #F0EDF8)", color: quizModuleId === mod.id ? "#fff" : "var(--purple, #6B2F8A)", border: "none" }}
+                        onClick={() => setQuizModuleId(quizModuleId === mod.id ? null : mod.id)}
+                      >
+                        {quizModuleId === mod.id ? "Hide Quiz" : "Quiz"}
+                      </button>
                       <button className="btn btn-ghost btn-sm" style={{ marginLeft: 6 }} onClick={() => openEdit(mod)}>
                         Edit
                       </button>
@@ -262,6 +274,14 @@ export default function TrainingModulesAdmin() {
                       </button>
                     </td>
                   </tr>
+                  {quizModuleId === mod.id && (
+                    <tr>
+                      <td colSpan={4} style={{ padding: 0 }}>
+                        <TrainingQuizEditor moduleId={mod.id} />
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
@@ -337,11 +357,21 @@ export default function TrainingModulesAdmin() {
               </div>
             </div>
 
-            <div style={{ marginBottom: 20 }}>
-              <label style={labelStyle}>Video / resource link (optional)</label>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Video link (optional)</label>
               <input
                 style={inputStyle}
-                placeholder="https://..."
+                placeholder="https://... (leave blank to show a 'Video coming soon' placeholder)"
+                value={form.videoUrl}
+                onChange={(e) => setForm({ ...form, videoUrl: e.target.value })}
+              />
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <label style={labelStyle}>Other resource link (optional)</label>
+              <input
+                style={inputStyle}
+                placeholder="https://... e.g. a PDF or worksheet"
                 value={form.contentUrl}
                 onChange={(e) => setForm({ ...form, contentUrl: e.target.value })}
               />

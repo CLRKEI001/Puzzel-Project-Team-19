@@ -410,6 +410,8 @@ export default function ChildrenTable({ children, lang }) {
   const [uploadedFileType, setUploadedFileType] = useState(null);
 
   const [consentFiles, setConsentFiles] = useState({});
+  const [consentSaving, setConsentSaving] = useState(false);
+  const [consentError, setConsentError] = useState("");
 
   const [showFollowUp, setShowFollowUp] = useState(false);
   const [followUpDate, setFollowUpDate] = useState("");
@@ -785,8 +787,13 @@ export default function ChildrenTable({ children, lang }) {
 
     if (!file) return;
 
+    setConsentError("");
     setUploadedFile(file);
 
+    // Local preview only, shown in the "about to save" panel before
+    // handleSaveConsent actually uploads it — see that function for the
+    // real, persistent copy (Supabase Storage + the consent_form_url
+    // column on the child's row).
     setUploadedFileURL(
       URL.createObjectURL(file)
     );
@@ -798,24 +805,76 @@ export default function ChildrenTable({ children, lang }) {
 
   // ==========================================================
   // SAVE CONSENT
+  //
+  // Actually uploads the file to Supabase Storage (the "consent-forms"
+  // bucket, migration 009) and records its URL on the child's row —
+  // previously this only ever set a client-side blob URL in local React
+  // state, which silently disappeared on refresh/new session. `consentFiles`
+  // is still kept as an immediate-feedback cache; consentFormUrl on the
+  // child row (loaded via mapChildRow) is now the real source of truth.
   // ==========================================================
 
-  const handleSaveConsent = () => {
+  const handleSaveConsent = async () => {
 
-    if (selected && uploadedFileURL) {
+    if (!selected || !uploadedFile) return;
 
-      setConsentFiles(prev => ({
-        ...prev,
+    setConsentSaving(true);
+    setConsentError("");
 
-        [selected.id || selected.name]: {
-          url: uploadedFileURL,
-          type: uploadedFileType,
-          name: uploadedFile.name,
-        },
+    const path = `${selected.id}/${Date.now()}-${uploadedFile.name}`;
 
-      }));
+    const { error: uploadErr } = await supabase.storage
+      .from("consent-forms")
+      .upload(path, uploadedFile, { upsert: true, contentType: uploadedFileType });
 
+    if (uploadErr) {
+      console.error("Error uploading consent form:", uploadErr);
+      setConsentError("Could not upload the consent form — " + uploadErr.message);
+      setConsentSaving(false);
+      return;
     }
+
+    const { data: pub } = supabase.storage.from("consent-forms").getPublicUrl(path);
+    const nowIso = new Date().toISOString();
+
+    const { error: saveErr } = await supabase
+      .from("children")
+      .update({
+        consent_form_url: pub.publicUrl,
+        consent_file_name: uploadedFile.name,
+        consent_uploaded_at: nowIso,
+      })
+      .eq("id", selected.id);
+
+    if (saveErr) {
+      console.error("Error saving consent form record:", saveErr);
+      setConsentError("Uploaded, but could not save the record — " + saveErr.message);
+      setConsentSaving(false);
+      return;
+    }
+
+    setConsentFiles(prev => ({
+      ...prev,
+
+      [selected.id || selected.name]: {
+        url: pub.publicUrl,
+        type: uploadedFileType,
+        name: uploadedFile.name,
+      },
+
+    }));
+
+    setSelected(prev => prev && ({
+      ...prev,
+      consentFormUrl: pub.publicUrl,
+      consentFileName: uploadedFile.name,
+      consentUploadedAt: nowIso,
+    }));
+
+    setUploadedFile(null);
+    setUploadedFileURL(null);
+    setUploadedFileType(null);
+    setConsentSaving(false);
 
   };
 
@@ -1150,7 +1209,14 @@ export default function ChildrenTable({ children, lang }) {
   // ==========================================================
 
   const consentFile = selected
-    ? consentFiles[selected.id || selected.name]
+    ? consentFiles[selected.id || selected.name] ||
+      (selected.consentFormUrl
+        ? {
+            url: selected.consentFormUrl,
+            name: selected.consentFileName || "Consent form",
+            type: /\.pdf($|\?)/i.test(selected.consentFileName || selected.consentFormUrl) ? "application/pdf" : "image/*",
+          }
+        : null)
     : null;
 
 
@@ -2946,16 +3012,23 @@ export default function ChildrenTable({ children, lang }) {
                           }}
                         >
 
+                          {consentError && (
+                            <div style={{ color: "var(--pink)", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>
+                              ⚠ {consentError}
+                            </div>
+                          )}
+
                           <button
                             className="btn btn-teal"
                             style={{
                               width: "100%",
                             }}
+                            disabled={consentSaving}
                             onClick={
                               handleSaveConsent
                             }
                           >
-                            ✓ Save Consent Form
+                            {consentSaving ? "Saving…" : "✓ Save Consent Form"}
                           </button>
 
                         </div>

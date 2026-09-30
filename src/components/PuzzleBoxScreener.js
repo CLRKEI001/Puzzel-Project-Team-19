@@ -117,6 +117,13 @@ function computeBand(interpretationBands, age, rawScore) {
   return null;
 }
 
+// The puzzle itself is meant to be completed within 10 minutes — past that
+// the screening record should carry an "Over Time" flag the psychologist
+// can see (puzzlebox_screenings.puzzle_time_seconds / puzzle_over_time,
+// migration 002 — present in the schema from the start but never actually
+// written to until now).
+const PUZZLE_TIME_LIMIT_SECONDS = 600;
+
 function formatTimer(ms) {
   const totalSeconds = Math.floor(ms / 1000);
   const m = Math.floor(totalSeconds / 60);
@@ -140,6 +147,12 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
   const [loadingChildren, setLoadingChildren] = useState(false);
   const [selectedChild, setSelectedChild] = useState(initialChild || null);
   const [existingSession, setExistingSession] = useState(null);
+  // Past (non in-progress) screenings for the selected child — shown on the
+  // confirm step so re-screening a child is an informed choice, not a
+  // surprise. The DB has always allowed multiple screenings per child
+  // (no unique constraint on child_id); this just surfaces that history
+  // instead of the teacher re-screening blind.
+  const [priorScreenings, setPriorScreenings] = useState([]);
 
   const [session, setSession] = useState(null); // the puzzlebox_screenings row
   const [responses, setResponses] = useState({});
@@ -176,7 +189,18 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
     let active = true;
     setLoadingChildren(true);
     const run = async () => {
-      let query = supabase.from("children").select("*").order("name", { ascending: true }).limit(50);
+      // Scoped to this teacher's own children — same rule TeacherHome's
+      // "My Class" uses: match on the real teacher_email (migration 009)
+      // where it's set, and for older rows added before that column
+      // existed (NULL), fall back to an examiner-name match instead of
+      // showing them to every teacher. Seed/demo data and children
+      // explicitly owned by a different teacher are excluded either way.
+      let query = supabase
+        .from("children")
+        .select("*")
+        .or(`teacher_email.eq.${teacherEmail},and(teacher_email.is.null,examiner.ilike.${teacherName})`)
+        .order("name", { ascending: true })
+        .limit(50);
       if (search.trim()) {
         query = query.or(`name.ilike.%${search.trim()}%,school.ilike.%${search.trim()}%`);
       }
@@ -211,6 +235,16 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
         .maybeSingle();
       if (active) setExistingSession(data || null);
     })();
+    (async () => {
+      const { data } = await supabase
+        .from("puzzlebox_screenings")
+        .select("id, status, completed_at, interpretation_band")
+        .eq("child_id", initialChild.id)
+        .neq("status", "in_progress")
+        .order("completed_at", { ascending: false })
+        .limit(5);
+      if (active) setPriorScreenings(data || []);
+    })();
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -228,6 +262,14 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
       .limit(1)
       .maybeSingle();
     setExistingSession(data || null);
+    const { data: prior } = await supabase
+      .from("puzzlebox_screenings")
+      .select("id, status, completed_at, interpretation_band")
+      .eq("child_id", child.id)
+      .neq("status", "in_progress")
+      .order("completed_at", { ascending: false })
+      .limit(5);
+    setPriorScreenings(prior || []);
     setView("confirm");
   };
 
@@ -352,8 +394,20 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
       if (q.id === timerQuestion?.id) return;
       updateResponse(q.id, { timeSeconds: totalSeconds });
     });
+    // Only the puzzle section itself (isPuzzleTimerSection) drives the
+    // session-level puzzle_time_seconds / puzzle_over_time columns — those
+    // are specifically about the puzzle task, not every timed section.
+    if (currentSection?.isPuzzleTimerSection) {
+      debouncedPersist({
+        puzzle_time_seconds: totalSeconds,
+        puzzle_over_time: totalSeconds > PUZZLE_TIME_LIMIT_SECONDS,
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timerMs, timerRunning]);
+
+  const isPuzzleOverTime =
+    !!currentSection?.isPuzzleTimerSection && Math.floor(timerMs / 1000) > PUZZLE_TIME_LIMIT_SECONDS;
 
   const startTimer = () => {
     if (timerRunning) return;
@@ -618,6 +672,18 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
               <div><div className="pbs-confirm-label">{t.language}</div><div>{selectedChild.language || "—"}</div></div>
             </div>
           </div>
+          {priorScreenings.length > 0 && (
+            <div className="card" style={{ marginTop: 12, padding: "12px 16px", background: "var(--teal-lt, #E6F7F5)" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--teal)", marginBottom: 4 }}>
+                Already screened {priorScreenings.length} time{priorScreenings.length === 1 ? "" : "s"} before
+              </div>
+              <div style={{ fontSize: 12, color: "var(--ink-mid)" }}>
+                Most recent: {priorScreenings[0].completed_at ? new Date(priorScreenings[0].completed_at).toLocaleDateString() : "—"}
+                {priorScreenings[0].interpretation_band ? ` — ${priorScreenings[0].interpretation_band}` : ""}
+                {priorScreenings[0].status === "awaiting_review" ? " (still awaiting review)" : ""}
+              </div>
+            </div>
+          )}
           {error && <div className="pbs-error">{error}</div>}
           <div className="pbs-confirm-actions">
             <button className="btn btn-ghost" onClick={() => setView("select")}>{t.goBack}</button>
@@ -660,6 +726,11 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
         <div className="pbs-timer-label">Timer</div>
         <div className="pbs-timer-display">{formatTimer(timerMs)}</div>
         {timerQuestion && <div className="pbs-timer-target">for "{timerQuestion.label}"</div>}
+        {isPuzzleOverTime && (
+          <div className="pbs-timer-target" style={{ color: "var(--pink)", fontWeight: 800 }}>
+            ⚠ Over time (10 min limit)
+          </div>
+        )}
         <div className="pbs-timer-controls">
           {!timerRunning ? (
             <button className="btn btn-teal btn-sm" onClick={startTimer}>

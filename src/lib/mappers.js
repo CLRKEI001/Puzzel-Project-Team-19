@@ -34,7 +34,11 @@ export function mapChildRow(r) {
     resolved: r.resolved,
     date: r.date,
     examiner: r.examiner,
+    teacherEmail: r.teacher_email,
     stage: r.stage,
+    consentFormUrl: r.consent_form_url,
+    consentFileName: r.consent_file_name,
+    consentUploadedAt: r.consent_uploaded_at,
     createdAt: r.created_at,
   };
 }

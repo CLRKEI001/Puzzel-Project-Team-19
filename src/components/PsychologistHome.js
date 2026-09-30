@@ -399,17 +399,42 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
         .is("read_at", null);
       if (readErr) console.error("Could not clear the notification:", readErr.message);
 
-      if (recipients.length > 0) {
-        const verdictLabel = verdict === "fine" ? t.verdictFine : t.verdictConcerns;
-        const body =
-          `${reviewScreening.childName}'s PuzzleBox screening has been reviewed. Outcome: ${verdictLabel}.` +
-          (reviewNotes ? ` ${reviewNotes}` : "");
+      const verdictLabel = verdict === "fine" ? t.verdictFine : t.verdictConcerns;
+      const body =
+        `${reviewScreening.childName}'s PuzzleBox screening has been reviewed. Outcome: ${verdictLabel}.` +
+        (reviewNotes ? ` ${reviewNotes}` : "");
+
+      // The teacher who submitted this screening always gets a message
+      // back — this used to only happen if the parent/headmistress boxes
+      // below were checked, which meant "reviewed" showed on the
+      // teacher's side with no way to actually see what the psychologist
+      // said (see the "View Feedback" button in their Screening History,
+      // which reads the same review_verdict/review_notes columns — this
+      // is the Messages-tab equivalent of that).
+      const allRecipients = [...recipients];
+      if (reviewScreening.teacherEmail) {
+        allRecipients.push({
+          role: "teacher",
+          name: reviewScreening.teacherName,
+          email: reviewScreening.teacherEmail,
+          label: null, // not part of the "shared with" summary shown below — that's about parent/head only
+        });
+      }
+
+      if (allRecipients.length > 0) {
         const { error: insertErr } = await supabase.from("messages").insert(
-          recipients.map((r) => ({
+          allRecipients.map((r) => ({
             screening_id: reviewScreening.id,
             child_id: reviewScreening.childId,
             child_name: reviewScreening.childName,
+            child_score: reviewScreening.rawScore,
             school: reviewScreening.school,
+            // NOT NULL on this table regardless of who the message is
+            // addressed to — every message row is anchored to the
+            // screening's teacher, same as the original "ready for
+            // review" notification PuzzleBoxScreener.js sends.
+            teacher_email: reviewScreening.teacherEmail,
+            teacher_name: reviewScreening.teacherName,
             recipient_role: r.role,
             recipient_email: r.email,
             recipient_name: r.name,

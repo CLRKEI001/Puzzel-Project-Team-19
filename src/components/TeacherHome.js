@@ -14,15 +14,8 @@
 //   collection.
 
 import React, { useState, useEffect, useMemo } from "react";
-import { db } from "../firebase";
-import {
-  collection,
-  onSnapshot,
-  query,
-  where,
-} from "firebase/firestore";
 import { supabase } from "../supabaseClient";
-import { mapChildRow, mapPuzzleboxScreeningRow } from "../lib/mappers";
+import { mapChildRow, mapPuzzleboxScreeningRow, mapMessageRow } from "../lib/mappers";
 
 import RoleSidebar from "./RoleSidebar";
 import RoleHero from "./RoleHero";
@@ -877,41 +870,58 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
 
 
   // ============================================================
-  // FIRESTORE — PSYCHOLOGIST MESSAGES
+  // SUPABASE — MESSAGES FROM THE PSYCHOLOGIST
+  //
+  // This used to read a Firestore "messages" collection that nothing in
+  // the app ever actually wrote to (the psychologist's review only ever
+  // inserted into the Supabase `messages` table, and only for parent/
+  // headmistress recipients — never "teacher"). So this tab was
+  // structurally guaranteed to always be empty. Now reads the same
+  // Supabase table everything else already uses, scoped to messages
+  // addressed to this teacher; PsychologistHome.js's submitReview now
+  // always sends one here on every review, regardless of whether the
+  // parent/headmistress boxes are checked.
   // ============================================================
 
   useEffect(() => {
     if (!user?.email) return;
+    let isMounted = true;
 
-    const q = query(
-      collection(db, "messages"),
-      where("teacherEmail", "==", user.email)
-    );
+    const loadMessages = async () => {
+      const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("recipient_role", "teacher")
+        .eq("recipient_email", user.email)
+        .order("sent_at", { ascending: false });
 
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        const data = snap.docs
-          .map((d) => ({
-            id: d.id,
-            ...d.data(),
-          }))
-          .sort(
-            (a, b) =>
-              (b.sentAt?.seconds || 0) -
-              (a.sentAt?.seconds || 0)
-          );
-
-        setMessages(data);
-        setLoadingMessages(false);
-      },
-      (error) => {
+      if (error) {
         console.error("Error loading teacher messages:", error);
+        if (isMounted) setLoadingMessages(false);
+        return;
+      }
+
+      if (isMounted) {
+        setMessages((data || []).map(mapMessageRow));
         setLoadingMessages(false);
       }
-    );
+    };
 
-    return () => unsub();
+    loadMessages();
+
+    const channel = supabase
+      .channel("teacher-messages")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "messages", filter: `recipient_email=eq.${user.email}` },
+        () => loadMessages()
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
   }, [user?.email]);
 
 

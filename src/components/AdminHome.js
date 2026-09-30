@@ -13,6 +13,7 @@ import ChildrenTable from "./ChildrenTable";
 import FlagsAlerts from "./FlagsAlerts";
 import SummaryReport from "./SummaryReport";
 import TrainingModulesAdmin from "./TrainingModulesAdmin";
+import ScreenerContentAdmin from "./ScreenerContentAdmin";
 import "./TeacherHome.css";
 import "./AdminHome.css";
 import "./RoleHomeKit.css";
@@ -403,6 +404,15 @@ const NAV_ICONS = {
       <path d="M4 7.2V10c0 1 1.8 2 4 2s4-1 4-2V7.2" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   ),
+
+  screenerContent: (
+    <svg viewBox="0 0 16 16" fill="none">
+      <rect x="1.5" y="1.5" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+      <rect x="8.5" y="1.5" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+      <rect x="1.5" y="8.5" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M11.5 8.5v6M8.5 11.5h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  ),
 };
 
 const ROLE_COLORS = {
@@ -676,6 +686,12 @@ export default function AdminHome({ user, profile }) {
       icon: NAV_ICONS.training,
     },
     {
+      id: "screener-content",
+      label: "Screener Content",
+      section: t.section2,
+      icon: NAV_ICONS.screenerContent,
+    },
+    {
       id: "profile",
       label: t.navProfile,
       section: t.section3,
@@ -708,11 +724,13 @@ export default function AdminHome({ user, profile }) {
               {activePage === "flags" && t.navFlags}
               {activePage === "reports" && t.navReports}
               {activePage === "training-modules" && "Training Modules"}
+              {activePage === "screener-content" && "Screener Content"}
               {activePage === "profile" && t.navProfile}
             </div>
 
             <div className="page-sub">
               {activePage === "training-modules" && "Add, reorder, publish and edit the modules shown on the Training page — no code or database changes needed."}
+              {activePage === "screener-content" && "Manage the PuzzleBox Screener's sections, questions and scoring rules — no code or database changes needed."}
               {activePage === "users" && t.usersSub}
               {activePage === "children" && t.childrenSub}
               {activePage === "flags" && t.flagsSub}
@@ -1272,6 +1290,10 @@ export default function AdminHome({ user, profile }) {
 
         {activePage === "training-modules" && (
           <TrainingModulesAdmin />
+        )}
+
+        {activePage === "screener-content" && (
+          <ScreenerContentAdmin />
         )}
 
         {activePage === "flags" && (

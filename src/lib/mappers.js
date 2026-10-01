@@ -146,3 +146,21 @@ export function mapUserRow(r) {
     createdAt: r.created_at,
   };
 }
+
+export function mapPurchaseRequestRow(r) {
+  return {
+    id: r.id,
+    name: r.name,
+    email: r.email,
+    organisation: r.organisation,
+    phone: r.phone,
+    numberOfScreeners: r.number_of_screeners,
+    message: r.message,
+    status: r.status,
+    productNumber: r.product_number,
+    adminNotes: r.admin_notes,
+    fulfilledBy: r.fulfilled_by,
+    fulfilledAt: r.fulfilled_at,
+    createdAt: r.created_at,
+  };
+}

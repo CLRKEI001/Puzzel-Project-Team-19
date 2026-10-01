@@ -280,7 +280,7 @@ export default function MemberArea({ user, profile, view, onView }) {
       {view === "purchase" && (
         <>
           <h1 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 32, fontWeight: 900, color: COLORS.ink, marginBottom: 28 }}>Buy The Puzzle Box Screener</h1>
-          <PurchaseContent />
+          <PurchaseContent user={user} />
         </>
       )}
       {!isLanding && (

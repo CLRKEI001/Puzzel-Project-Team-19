@@ -355,7 +355,7 @@ export function VideoHero({ actions = [] }) {
         preload="auto"
         autoPlay muted loop playsInline
         aria-hidden="true"
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", transform: "scale(1.04)" }}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", transform: "scale(1.04) rotate(180deg)" }}
       />
 
       {/* Even shade across the frame so centred text reads anywhere */}

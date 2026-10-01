@@ -735,16 +735,33 @@ export default function AdminHome({ user, profile }) {
     setPrSaving(true);
     setPrError("");
 
-    const { error: productErr } = await supabase
-      .from("screener_products")
-      .upsert(
-        {
-          product_number: number,
-          notes: `Issued to ${reviewRequest.organisation || reviewRequest.name} — purchase request from ${reviewRequest.email}`,
-          active: true,
-        },
-        { onConflict: "product_number" }
-      );
+    const productRow = {
+      product_number: number,
+      notes: `Issued to ${reviewRequest.organisation || reviewRequest.name} — purchase request from ${reviewRequest.email}`,
+      active: true,
+    };
+
+    // Deliberately NOT using .upsert()/onConflict here. screener_products has
+    // no SELECT policy on purpose (migration 003 — numbers can't be listed
+    // from the browser, only checked one at a time via redeem_product_number).
+    // Postgres' INSERT ... ON CONFLICT DO UPDATE needs a SELECT policy under
+    // RLS to resolve the conflict check, even for a number that doesn't
+    // already exist — without one it always throws "new row violates
+    // row-level security policy", which is what was happening here. A plain
+    // INSERT, falling back to a plain UPDATE on an actual duplicate, needs
+    // only the INSERT/UPDATE policies we already have and sidesteps that
+    // Postgres/RLS interaction entirely.
+    const { error: insertErr } = await supabase.from("screener_products").insert(productRow);
+    let productErr = insertErr;
+
+    if (insertErr && insertErr.code === "23505") {
+      // Number already exists (e.g. re-fulfilling, or a rare random clash) — update it instead.
+      const { error: updateProductErr } = await supabase
+        .from("screener_products")
+        .update(productRow)
+        .eq("product_number", number);
+      productErr = updateProductErr;
+    }
 
     if (productErr) {
       console.error("Error creating screener product:", productErr.message);

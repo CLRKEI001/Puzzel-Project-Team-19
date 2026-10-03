@@ -1,12 +1,12 @@
-// Login.js — PuzzleBox Screener System
+// Login.js — The Puzzle Box Screener System
 // Handles: sign in, new-account registration (with staff/teacher number
 // captured for future verification), and forgot-password.
 //
-// NOTE: Verification against SACE/HPCSA isn't wired up yet (pending contact
-// with those organisations), so there is currently no approval gate — any
-// account that successfully authenticates with Firebase is logged straight
-// in. The "users" table and staff/teacher number are still captured on
-// registration so that gate can be added later without a data migration.
+// Sign-up creates the account but does NOT grant access: every new account
+// is inserted with is_verified = false, and App.js's gate (PendingApproval)
+// keeps it off every dashboard until an admin approves it there. This file
+// only needs to create the account correctly — the actual gate lives in
+// App.js so it can't be bypassed by any other entry point into the app.
 
 import React, { useState } from "react";
 import { auth } from "../firebase";
@@ -18,14 +18,38 @@ import {
 import { supabase } from "../supabaseClient";
 import { mapUserRow } from "../lib/mappers";
 import { PuzzlePiece, SinglePuzzlePiece } from "./puzzlePiece";
+import ThemeToggle from "../theme/ThemeToggle";
 import "./Login.css";
 
+// Administrator is deliberately NOT self-registerable here — letting anyone
+// pick "Administrator" at sign-up and land on AdminHome the moment an
+// admin (or a bug) mis-clicks Approve would defeat the whole point of an
+// approval gate. Admin accounts are created by promoting an existing user
+// (update their `role` directly) — see the note under the role picker.
 const ROLES = [
   { value: "educator", label: "Educator / Teacher", color: "var(--orange, #F26522)" },
   { value: "psychologist", label: "Psychologist", color: "var(--pink, #E8175D)" },
   { value: "analyst", label: "Data Analyst", color: "var(--teal, #009B8D)" },
-  { value: "admin", label: "Administrator", color: "var(--purple, #6B2F8A)" },
 ];
+
+// The Puzzle Box site sends visitors here from the Tier 1 / Tier 2 cards
+// ("click to sign-up / login"). When a tier is supplied the sign-up form is
+// narrowed to the role that tier is for; with no tier (plain "Login" button)
+// every self-service role stays selectable, exactly as before.
+const TIERS = {
+  1: {
+    label: "Tier 1",
+    title: "Teachers & Primary Healthcare",
+    roles: ["educator"],
+    roleLabels: { educator: "Teacher / Primary healthcare practitioner" },
+  },
+  2: {
+    label: "Tier 2",
+    title: "Psychologists",
+    roles: ["psychologist"],
+    roleLabels: {},
+  },
+};
 
 const EMPTY_REGISTER = {
   name: "",
@@ -49,8 +73,14 @@ const AMBIENT_PIECES = [
   { top: "4%",  left: "46%", size: 120, rotate: -12, delay: "-16s", duration: "30s", color: "var(--purple, #6B2F8A)", opacity: 0.16, blur: 8 },
   { top: "60%", left: "42%", size: 140, rotate: 22,  delay: "-6s",  duration: "34s", color: "var(--teal, #009B8D)",   opacity: 0.14, blur: 10 },
 ];
-export default function Login({ onVerified, onBack }) {
-  const [mode, setMode] = useState("login"); // login | register | forgot
+
+
+export default function Login({ onVerified, onBack, tier = null, initialMode = "login" }) {
+  const tierInfo = TIERS[tier] || null;
+  const visibleRoles = tierInfo ? ROLES.filter((r) => tierInfo.roles.includes(r.value)) : ROLES;
+
+  const [mode, setMode] = useState(initialMode); // login | register | forgot
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
@@ -58,7 +88,10 @@ export default function Login({ onVerified, onBack }) {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
 
-  const [reg, setReg] = useState(EMPTY_REGISTER);
+  const [reg, setReg] = useState({
+    ...EMPTY_REGISTER,
+    role: tierInfo ? tierInfo.roles[0] : EMPTY_REGISTER.role,
+  });
   const [forgotEmail, setForgotEmail] = useState("");
 
   const resetMessages = () => {
@@ -81,9 +114,10 @@ export default function Login({ onVerified, onBack }) {
       const { data: profileRow, error: profileError } = await supabase.from("users").select("*").eq("id", cred.user.uid).maybeSingle();
       if (profileError) throw profileError;
 
-      // No verification gate for now — any Firebase account that can sign
-      // in successfully gets in. Real SACE/HPCSA verification isn't wired
-      // up yet, so there's nothing meaningful to gate on until that exists.
+      // Hand whatever we found to App.js unfiltered — including a missing
+      // row (e.g. a rejected account) or is_verified: false. App.js's gate
+      // is what decides whether that's enough to reach a dashboard; this
+      // component never makes that call itself.
       onVerified?.(profileRow ? mapUserRow(profileRow) : null);
     } catch (err) {
       setError(friendlyAuthError(err));
@@ -111,6 +145,21 @@ export default function Login({ onVerified, onBack }) {
 
     setLoading(true);
     try {
+      // A lightweight duplicate check before creating the Firebase account —
+      // makes it harder to flood the admin's Pending Approvals list with
+      // near-identical fake accounts under the same staff/teacher number.
+      const { data: existing, error: dupError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("staff_number", reg.staffNumber.trim())
+        .maybeSingle();
+      if (dupError) throw dupError;
+      if (existing) {
+        setError("That staff / teacher number is already registered. Try signing in, or contact your administrator.");
+        setLoading(false);
+        return;
+      }
+
       const cred = await createUserWithEmailAndPassword(auth, reg.email, reg.password);
       const newProfile = {
         id: cred.user.uid,
@@ -118,14 +167,13 @@ export default function Login({ onVerified, onBack }) {
         email: reg.email,
         role: reg.role,
         staff_number: reg.staffNumber.trim(),
-        is_verified: false, // captured for when verification is wired up later — not enforced yet
+        is_verified: false, // the actual gate — see App.js / PendingApproval.js
       };
       const { error: insertError } = await supabase.from("users").insert(newProfile);
       if (insertError) throw insertError;
 
-      // No approval gate yet — log the new account straight in, same as
-      // handleLogin, rather than sending them to a "pending" screen for a
-      // feature that isn't enforced.
+      // Hands off to App.js's gate, which will render PendingApproval
+      // (is_verified is false) rather than any dashboard.
       onVerified?.(mapUserRow(newProfile));
     } catch (err) {
       setError(friendlyAuthError(err));
@@ -177,7 +225,7 @@ export default function Login({ onVerified, onBack }) {
             <PuzzlePiece rotate={180} fill="var(--pink, #E8175D)"   className="pb-mark-piece" />
             <PuzzlePiece rotate={270} fill="var(--purple, #6B2F8A)" className="pb-mark-piece" />
           </div>
-          <h1>PuzzleBox</h1>
+          <h1>The Puzzle Box</h1>
           <p></p>
           {onBack && (
             <button
@@ -214,8 +262,15 @@ export default function Login({ onVerified, onBack }) {
           >
             <span aria-hidden="true">←</span>
           </button>
+          <div style={{ position: "absolute", top: 24, right: 24, zIndex: 2 }}>
+            <ThemeToggle />
+          </div>
           <div className="pb-login-card-head">
-            <div className="pb-login-eyebrow">The Puzzle Project · Screener System</div>
+            <div className="pb-login-eyebrow">
+              {tierInfo
+                ? `The Puzzle Box · ${tierInfo.label} — ${tierInfo.title}`
+                : "The Puzzle Box · Screener System"}
+            </div>
             <h2>
               {mode === "login" && "Welcome back"}
               {mode === "register" && "Create your account"}
@@ -285,8 +340,8 @@ export default function Login({ onVerified, onBack }) {
               />
 
               <label className="pb-label">Role</label>
-              <div className="pb-role-grid">
-                {ROLES.map((r) => (
+              <div className="pb-role-grid" style={tierInfo ? { gridTemplateColumns: "1fr" } : undefined}>
+                {visibleRoles.map((r) => (
                   <button
                     type="button"
                     key={r.value}
@@ -294,10 +349,14 @@ export default function Login({ onVerified, onBack }) {
                     style={{ "--chip-color": r.color }}
                     onClick={() => setReg({ ...reg, role: r.value })}
                   >
-                    {r.label}
+                    {tierInfo?.roleLabels[r.value] || r.label}
                   </button>
                 ))}
               </div>
+              <p style={{ fontSize: 12, color: "var(--ink-faint, #8888a8)", margin: "-6px 0 14px" }}>
+                Need an administrator account? Ask an existing admin to grant it —
+                admin access isn't available through self sign-up.
+              </p>
 
               <label className="pb-label" htmlFor="reg-staff">
                 Staff / teacher number
@@ -415,13 +474,15 @@ README — wiring this in
 ========================
 1. Supabase: this expects a "users" table with columns { id (Firebase UID,
    primary key), name, email, role, staff_number, is_verified, created_at }.
-   is_verified is captured but NOT currently enforced anywhere — there's no
-   approval gate until real SACE/HPCSA verification is wired up.
+   is_verified is the real approval gate — App.js renders PendingApproval
+   instead of any dashboard until an admin flips it true from AdminHome's
+   Pending Approvals list.
 
-2. App.js's onAuthStateChanged should mirror this — load whatever profile
-   exists for the signed-in Firebase user and let them straight in, rather
-   than checking is_verified.
+2. App.js's onAuthStateChanged loads whatever profile exists for the
+   signed-in Firebase user (including none at all) and lets its gate decide
+   what to render — this file never grants access itself.
 
 3. Drop PuzzleTransition.js next to Login.js — it's the full-screen
-   "pieces fly together" animation, self-contained and self-dismissing.
+   "pieces fly together" animation, played only once an approved account
+   actually reaches a dashboard.
 */

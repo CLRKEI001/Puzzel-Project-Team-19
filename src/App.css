@@ -11,20 +11,101 @@
 :root {
   --teal: #009B8D;
   --teal-lt: #E0F5F3;
+  --teal-dark: #007f74;
   --pink: #E8175D;
   --pink-lt: #FCE6EE;
   --purple: #6B2F8A;
   --purple-lt: #F0E8F7;
   --orange: #F26522;
   --orange-lt: #FEF0E7;
+  --maroon: #7B2B3F;
+  --maroon-lt: #F7EAEE;
   --dark: #1A1A2E;
   --ink: #1a1a2e;
   --ink-mid: #444460;
   --ink-faint: #8888a8;
   --surface: #F7F6FF;
   --card: #ffffff;
+  --white: #ffffff;
   --border: rgba(100, 80, 160, 0.12);
+
+  /* Translucent navbar background on the public pages (Navbar in
+     SiteChrome.js) — a plain hex can't fade with scroll position, so this
+     stays a variable rather than folding into --white. */
+  --nav-bg: rgba(255, 255, 255, 0.92);
+  --nav-bg-scrolled: rgba(255, 255, 255, 0.98);
 }
+
+/* ============================================================
+   DARK MODE
+   Toggled by ThemeContext, which sets data-theme="dark" on <html>.
+   Re-pointing these same custom properties re-themes almost the whole
+   site for free, since App.css, SiteChrome's COLORS object and most
+   component styles all read colour through var(--x) rather than a
+   hardcoded hex. The handful of places that still had a hardcoded light
+   surface (stat-card gradients, table row hover, etc.) get an explicit
+   override below the variables.
+
+   Left unchanged on purpose: the teal/pink/purple/orange accent colours
+   and their pastel "-lt" tints, which are used for status pills, badges
+   and chips — they stay legible as coloured chips on a dark surface, and
+   keeping them constant means a colour always means the same thing in
+   either theme. Also unchanged: the sections that were already dark by
+   design regardless of theme (the login page, the sidebar, the site
+   footer, the Admin hero) — they don't need to change to read correctly
+   in dark mode.
+============================================================ */
+[data-theme="dark"] {
+  --ink: #EDEDF5;
+  --ink-mid: #B7B7CC;
+  --ink-faint: #85859F;
+  --surface: #121220;
+  --card: #1C1C2C;
+  --white: #1C1C2C;
+  --border: rgba(255, 255, 255, 0.10);
+  --nav-bg: rgba(18, 18, 32, 0.88);
+  --nav-bg-scrolled: rgba(18, 18, 32, 0.97);
+}
+
+/* Structural backgrounds that were hardcoded to a light hex instead of a
+   var() token. Selector specificity here (attribute + class) is higher
+   than the plain class rules elsewhere, so these win regardless of which
+   CSS file loads first. */
+[data-theme="dark"] .stat-card.c1 { background: linear-gradient(160deg, rgba(0,155,141,0.14) 0%, var(--card) 60%); }
+[data-theme="dark"] .stat-card.c2 { background: linear-gradient(160deg, rgba(107,47,138,0.16) 0%, var(--card) 60%); }
+[data-theme="dark"] .stat-card.c3 { background: linear-gradient(160deg, rgba(242,101,34,0.14) 0%, var(--card) 60%); }
+[data-theme="dark"] .stat-card.c4 { background: linear-gradient(160deg, rgba(232,23,93,0.14) 0%, var(--card) 60%); }
+[data-theme="dark"] .data-table tr:hover td { background: rgba(255,255,255,0.03); }
+[data-theme="dark"] .bar-track { background: rgba(255,255,255,0.08); }
+[data-theme="dark"] .domain-bar-track { background: rgba(255,255,255,0.08); }
+[data-theme="dark"] .flag-item { background: var(--card); }
+[data-theme="dark"] .top-filter-bar { background: rgba(28,28,44,0.72); }
+[data-theme="dark"] .top-filter-bar select { background: rgba(255,255,255,0.06); color: var(--ink-mid); }
+[data-theme="dark"] .top-filter-bar select:focus { background: rgba(255,255,255,0.1); }
+[data-theme="dark"] .th-quicklink { background: var(--card); }
+[data-theme="dark"] .rh-card,
+[data-theme="dark"] .rh-profile-card,
+[data-theme="dark"] .rh-pill { background: var(--card); }
+[data-theme="dark"] .rh-list-row.clickable:hover,
+[data-theme="dark"] .rh-chip { background: rgba(255,255,255,0.05); }
+/* .rh-shell restyles the sidebar to a light, tinted panel for the role
+   home screens (Teacher/Psychologist/Admin) instead of the usual dark
+   one — needs its own dark-mode pass rather than inheriting --dark. */
+[data-theme="dark"] .rh-shell .sidebar { background: #17172a; border-right-color: rgba(255,255,255,0.06); }
+[data-theme="dark"] .rh-shell .sidebar-role { background: rgba(255,255,255,0.05); }
+[data-theme="dark"] .rh-shell .sidebar-role-label { color: rgba(255,255,255,0.4); }
+[data-theme="dark"] .rh-shell .sidebar-role-name { color: #fff; }
+[data-theme="dark"] .rh-shell .nav-section-label { color: rgba(255,255,255,0.32); }
+[data-theme="dark"] .rh-shell .nav-item { color: rgba(255,255,255,0.6); }
+[data-theme="dark"] .rh-shell .nav-item:not(.active):hover { background: rgba(255,255,255,0.06); color: #fff; }
+
+/* Login screen (Login.js / Login.css) — the right-hand form panel is a
+   light surface hardcoded to a few off-white hexes; the left branding
+   panel is already permanently dark by design and needs no change. */
+[data-theme="dark"] .pb-login-page { background: var(--surface); }
+[data-theme="dark"] .pb-back-home { background: var(--card); color: var(--teal); }
+[data-theme="dark"] .pb-input,
+[data-theme="dark"] .pb-role-chip { background: var(--card); color: var(--ink); }
 
 /* The * selector targets every element on the page.
    margin/padding 0 gives a clean blank slate.
@@ -37,6 +118,7 @@ body {
   background: var(--surface);
   color: var(--ink);
   font-size: 15px;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 /* ============================================================

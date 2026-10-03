@@ -1,8 +1,22 @@
 import React, { useState, useEffect } from "react";
 import {
-  COLORS, FONT_IMPORT, PuzzlePiece, PuzzlePhoto, SectionHeading, Navbar, Footer, CallToAction,
-  piecePath, gridEdges, useInView, useIsMobile, PIECE_BODY, PIECE_PAD, PIECE_VIEWBOX,
+  COLORS, ON_DARK, FONTS, PUBLIC_FONT_IMPORT, CREAM, WARM_YELLOW, Reveal, PuzzlePiece, PuzzlePhoto, SectionHeading, Navbar, Footer, CallToAction, piecePath, gridEdges, useInView, useIsMobile, PIECE_BODY, PIECE_PAD, PIECE_VIEWBOX,
 } from "./SiteChrome";
+// Hero footage lives in src/lib so webpack bundles it.
+// hero-puzzle.mp4 = desktop (1280x960), hero-puzzle-mobile.mp4 = phones (720x540, ~3 MB)
+import heroVideo from "../hero-puzzle.mp4";
+import heroVideoMobile from "../hero-puzzle-mobile.mp4";
+import heroPoster from "../hero-poster.jpg";
+// Stills taken from the session footage, used as photos down the page
+import momentClassroom from "../moment-classroom.jpg";
+
+// NOTE — site structure (sponsor feedback, Aug 2026)
+// This file is now the home page of THE PUZZLE PROJECT (the organisation).
+// The screener-specific parts that used to live here moved to their own
+// pages:  the "who can administer" tiers → PuzzleBoxHome.js,  the donation
+// form → DonatePage.js.  `Hero` (with the impact-stats strip) and the
+// assemble/float animation CSS are exported so The Puzzle Box home page can
+// reuse them with its own copy.
 
 // The four developmental domains the screener measures, rendered as a real
 // 2x2 jigsaw: each piece's tabs slot into the neighbouring piece's sockets.
@@ -96,8 +110,8 @@ function DomainPuzzle() {
                 <span style={{
                   position: "absolute", inset: 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontFamily: "'Nunito', sans-serif", fontWeight: 900,
-                  fontSize: labelSize, color: COLORS.white, textAlign: "center",
+                  fontFamily: FONTS.heading, fontWeight: 900,
+                  fontSize: labelSize, color: ON_DARK, textAlign: "center",
                   lineHeight: 1.2, pointerEvents: "none", padding: isMobile ? "0 14px" : "0 22px",
                   textShadow: "0 1px 6px rgba(0,0,0,0.3)",
                 }}>
@@ -134,8 +148,35 @@ function DomainPuzzle() {
   );
 }
 
-// Light hero — soft background, brand colours, split layout
-function Hero({ onLoginClick, onNavigate }) {
+// Animation CSS shared by every page that shows the four-domain puzzle
+export const HOME_ANIMATION_CSS = `
+  @keyframes assemble {
+    from { opacity: 0; transform: var(--from) scale(0.8); }
+    to { opacity: 1; transform: translate(0, 0) scale(1); }
+  }
+  @keyframes gentle-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-7px); }
+  }
+  .domain-piece {
+    opacity: 0;
+    animation: assemble 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+               gentle-float 5s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .domain-piece { animation: none; opacity: 1; }
+  }
+`;
+
+const TPP_HERO = {
+  badge: "South African NGO initiative",
+  lead: "The Puzzle Project is a South African non-profit bringing structured early childhood developmental screening to every school — regardless of location or connectivity.",
+};
+
+// Light hero — soft background, brand colours, split layout.
+// `badge` / `lead` / `actions` let The Puzzle Box home page reuse it with its own copy.
+// actions: [{ label, onClick, primary? }]
+export function Hero({ badge = TPP_HERO.badge, lead = TPP_HERO.lead, actions = [] }) {
   const [visible, setVisible] = useState(false);
   const isMobile = useIsMobile(860);
   useEffect(() => { const t = setTimeout(() => setVisible(true), 120); return () => clearTimeout(t); }, []);
@@ -176,11 +217,11 @@ function Hero({ onLoginClick, onNavigate }) {
             ...fadeUp(0.05),
           }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS.teal }} />
-            South African NGO initiative
+            {badge}
           </div>
 
           <h1 style={{
-            fontFamily: "'Nunito', sans-serif",
+            fontFamily: FONTS.heading,
             fontSize: "clamp(34px, 4.4vw, 58px)",
             fontWeight: 900, color: COLORS.ink,
             lineHeight: 1.08, letterSpacing: "-0.03em",
@@ -197,7 +238,7 @@ function Hero({ onLoginClick, onNavigate }) {
             marginLeft: isMobile ? "auto" : 0, marginRight: isMobile ? "auto" : 0,
             ...fadeUp(0.25),
           }}>
-            The Puzzle Project is a South African non-profit bringing structured early childhood developmental screening to every school — regardless of location or connectivity.
+            {lead}
           </p>
 
           <div style={{
@@ -205,23 +246,31 @@ function Hero({ onLoginClick, onNavigate }) {
             justifyContent: isMobile ? "center" : "flex-start",
             ...fadeUp(0.35),
           }}>
-          
-
-            <button onClick={() => onNavigate("how")} style={{
-              padding: "14px 32px", borderRadius: 12,
-              background: COLORS.white, color: COLORS.ink,
-              border: `1.5px solid ${COLORS.border}`, fontSize: 15, fontWeight: 700,
-              cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
-            }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = COLORS.teal; e.currentTarget.style.color = COLORS.teal; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = COLORS.border; e.currentTarget.style.color = COLORS.ink; }}
-            >
-              See how it works
-            </button>
+            {actions.map(a => (
+              <button key={a.label} onClick={a.onClick} style={{
+                padding: "14px 32px", borderRadius: 12,
+                background: a.primary ? COLORS.teal : COLORS.white,
+                color: a.primary ? COLORS.white : COLORS.ink,
+                border: a.primary ? "none" : `1.5px solid ${COLORS.border}`,
+                fontSize: 15, fontWeight: a.primary ? 800 : 700,
+                cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
+              }}
+                onMouseEnter={e => {
+                  if (a.primary) { e.currentTarget.style.background = COLORS.tealDark; }
+                  else { e.currentTarget.style.borderColor = COLORS.teal; e.currentTarget.style.color = COLORS.teal; }
+                }}
+                onMouseLeave={e => {
+                  if (a.primary) { e.currentTarget.style.background = COLORS.teal; }
+                  else { e.currentTarget.style.borderColor = COLORS.border; e.currentTarget.style.color = COLORS.ink; }
+                }}
+              >
+                {a.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Right — the four-domain puzzle */}
+        {/* Right — the four-domain puzzle (kept for The Puzzle Box home page) */}
         <div style={{ ...fadeUp(0.3) }}>
           <DomainPuzzle />
         </div>
@@ -253,7 +302,7 @@ function Hero({ onLoginClick, onNavigate }) {
                 borderLeft: isFirstInRow ? "none" : `1px solid ${COLORS.border}`,
                 borderTop: isSecondRowOrLater ? `1px solid ${COLORS.border}` : "none",
               }}>
-                <div style={{ fontSize: isMobile ? 26 : 32, fontWeight: 900, color: COLORS.teal, fontFamily: "'Nunito', sans-serif", lineHeight: 1 }}>{s.value}</div>
+                <div style={{ fontSize: isMobile ? 26 : 32, fontWeight: 900, color: COLORS.teal, fontFamily: FONTS.heading, lineHeight: 1 }}>{s.value}</div>
                 <div style={{ fontSize: 12, color: COLORS.inkFaint, marginTop: 7, fontWeight: 600 }}>{s.label}</div>
               </div>
             );
@@ -264,36 +313,192 @@ function Hero({ onLoginClick, onNavigate }) {
   );
 }
 
-// Our mission — three pillars
+// ===========================================================================
+// THE PUZZLE PROJECT HOME PAGE (reworked, Sep 2026)
+// Goal: feel human, not corporate. Real footage and photos from sessions,
+// warm cream backgrounds, softer shapes, and sections that ease in as you
+// scroll. Content and navigation targets are unchanged from the sponsor
+// wireframes; only the layout and feel changed.
+// ===========================================================================
+
+// ---- 1. Hero: full-bleed footage, centred message ------------------------
+export function VideoHero({ actions = [] }) {
+  const [visible, setVisible] = useState(false);
+  const isMobile = useIsMobile(860);
+  const videoRef = React.useRef(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 150);
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      videoRef.current?.pause();
+    }
+    return () => clearTimeout(t);
+  }, []);
+
+  const rise = (delay = 0) => ({
+    opacity: visible ? 1 : 0,
+    transform: visible ? "translateY(0)" : "translateY(18px)",
+    transition: `opacity 0.8s ease ${delay}s, transform 0.8s ease ${delay}s`,
+  });
+
+  return (
+    <section style={{
+      position: "relative", minHeight: "100svh", width: "100%",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      overflow: "hidden", background: "#1d1a17",
+    }}>
+      <video
+        ref={videoRef}
+        key={isMobile ? "mobile" : "desktop"}
+        src={isMobile ? heroVideoMobile : heroVideo}
+        poster={heroPoster}
+        preload="auto"
+        autoPlay muted loop playsInline
+        aria-hidden="true"
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", transform: "scale(1.04)" }}
+      />
+
+      {/* Even shade across the frame so centred text reads anywhere */}
+      <div style={{
+        position: "absolute", inset: 0, pointerEvents: "none",
+        background: "radial-gradient(ellipse at center, rgba(20,14,8,0.55) 0%, rgba(20,14,8,0.35) 55%, rgba(20,14,8,0.6) 100%)",
+      }} />
+
+      <div style={{
+        position: "relative", zIndex: 1, width: "100%", maxWidth: 980,
+        padding: isMobile ? "130px 22px 90px" : "150px 40px 110px",
+        textAlign: "center", color: ON_DARK,
+      }}>
+        <p style={{
+          fontFamily: FONTS.heading, fontSize: 12, fontWeight: 800,
+          letterSpacing: "0.12em", textTransform: "uppercase",
+          color: WARM_YELLOW, marginBottom: 16, ...rise(0.1),
+        }}>
+          One piece at a time
+        </p>
+
+        <h1 style={{
+          fontFamily: FONTS.heading, fontWeight: 900,
+          fontSize: "clamp(38px, 6.4vw, 84px)", lineHeight: 1.04,
+          letterSpacing: "-0.03em", marginBottom: 22,
+          textShadow: "0 2px 24px rgba(0,0,0,0.35)", ...rise(0.2),
+        }}>
+          Every child deserves<br />to be{" "}
+          <span style={{ position: "relative", whiteSpace: "nowrap" }}>
+            seen.
+            <svg viewBox="0 0 200 20" preserveAspectRatio="none" aria-hidden="true"
+              style={{ position: "absolute", left: 0, bottom: "-0.12em", width: "100%", height: "0.3em", overflow: "visible" }}>
+              <path d="M3 13 C 40 4, 90 18, 130 9 S 185 6, 197 11"
+                fill="none" stroke={WARM_YELLOW} strokeWidth="5" strokeLinecap="round" className="scribble" />
+            </svg>
+          </span>
+        </h1>
+
+        <p style={{
+          fontSize: "clamp(15px, 1.6vw, 19px)", lineHeight: 1.7, maxWidth: 580,
+          margin: "0 auto 32px", color: "rgba(255,255,255,0.9)", ...rise(0.35),
+        }}>
+          We're a South African non-profit using puzzles to spot developmental needs early,
+          in every school, in every language, whether or not there's signal.
+        </p>
+
+        <div style={{ display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center", ...rise(0.5) }}>
+          {actions.map(a => (
+            <button key={a.label} onClick={a.onClick} className={a.primary ? "hero-btn hero-btn--primary" : "hero-btn"}>
+              {a.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Scroll cue */}
+      <div aria-hidden="true" className="scroll-cue" style={{
+        position: "absolute", bottom: 26, left: "50%", transform: "translateX(-50%)",
+        width: 26, height: 42, borderRadius: 14, border: "2px solid rgba(255,255,255,0.7)",
+        zIndex: 1, ...rise(0.9),
+      }}>
+        <span style={{ position: "absolute", top: 8, left: "50%", width: 4, height: 8, marginLeft: -2, borderRadius: 2, background: ON_DARK }} />
+      </div>
+    </section>
+  );
+}
+
+export const VIDEO_HERO_CSS = `
+  @keyframes draw-scribble { from { stroke-dashoffset: 260; } to { stroke-dashoffset: 0; } }
+  .scribble { stroke-dasharray: 260; stroke-dashoffset: 260; animation: draw-scribble 0.9s ease 0.9s forwards; }
+  @keyframes cue { 0% { opacity: 0; transform: translateY(0); } 40% { opacity: 1; } 100% { opacity: 0; transform: translateY(12px); } }
+  .scroll-cue span { animation: cue 1.8s ease-in-out infinite; }
+  .hero-btn {
+    padding: 14px 30px; border-radius: 999px; font-family: inherit; font-size: 15px;
+    font-weight: 800; cursor: pointer; transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+    background: rgba(255,255,255,0.12); color: #fff; border: 1.5px solid rgba(255,255,255,0.7);
+    backdrop-filter: blur(6px);
+  }
+  .hero-btn:hover { background: #fff; color: #1d1a17; transform: translateY(-2px) rotate(-1deg); }
+  .hero-btn--primary { background: ${WARM_YELLOW}; color: #1d1a17; border-color: ${WARM_YELLOW}; }
+  .hero-btn--primary:hover { background: #fff; border-color: #fff; }
+  .snapshot { transition: transform 0.35s ease; }
+  .snapshot:hover { transform: rotate(0deg) translateY(-6px) scale(1.02) !important; }
+  .soft-card { transition: transform 0.25s ease; }
+  .soft-card:hover { transform: translateY(-6px); }
+  @media (prefers-reduced-motion: reduce) {
+    .scribble { animation: none; stroke-dashoffset: 0; }
+    .scroll-cue span { animation: none; }
+    .hero-btn:hover, .snapshot:hover, .soft-card:hover { transform: none !important; }
+  }
+`;
+
+// ---- 2. Why we exist: plain-language statement ----------------------------
+
+function WhyWeExist() {
+  const isMobile = useIsMobile(760);
+  return (
+    <section style={{ background: CREAM, padding: isMobile ? "70px 22px" : "110px 40px" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto", textAlign: "center" }}>
+        <Reveal>
+          <p style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: COLORS.teal, marginBottom: 18 }}>
+            Why we exist
+          </p>
+          <h2 style={{
+            fontFamily: FONTS.heading, fontWeight: 800, color: COLORS.ink,
+            fontSize: "clamp(24px, 3.4vw, 42px)", lineHeight: 1.25, letterSpacing: "-0.02em",
+            maxWidth: 860, margin: "0 auto",
+          }}>
+            Too often, a child's developmental needs are only noticed once they're already
+            struggling at school. We want to catch them early, with something{" "}
+            <span style={{ color: COLORS.teal }}>every child already loves.</span>
+          </h2>
+        </Reveal>
+
+      </div>
+    </section>
+  );
+}
+
+// ---- 3. What guides us: three pillars, no boxes --------------------------
 const PILLARS = [
-  { title: "Identify early", color: COLORS.teal, desc: "Catch developmental concerns before they become barriers to learning, using structured evidence-based screening tools." },
-  { title: "Reach every child", color: COLORS.pink, desc: "Multilingual and designed to work in low-connectivity environments across all nine provinces." },
-  { title: "Protect with ethics", color: COLORS.purple, desc: "All child data is anonymised, POPIA-compliant and governed by strict ethical standards aligned with HPCSA guidelines." },
+  { n: "01", title: "Identify early", color: COLORS.teal, desc: "Catch developmental concerns before they become barriers to learning, using structured evidence-based screening tools." },
+  { n: "02", title: "Reach every child", color: COLORS.pink, desc: "Multilingual and designed to work in low-connectivity environments across all nine provinces." },
+  { n: "03", title: "Protect with ethics", color: COLORS.purple, desc: "All child data is anonymised, POPIA-compliant and governed by strict ethical standards aligned with HPCSA guidelines." },
 ];
 
-function Mission() {
-  const isMobile = useIsMobile(640);
+function Pillars() {
+  const isMobile = useIsMobile(760);
   return (
-    <section style={{ padding: isMobile ? "56px 20px" : "90px 40px", background: COLORS.white }}>
-      <div style={{ maxWidth: 1300, margin: "auto" }}>
-        <SectionHeading
-          align="center"
-          eyebrow="Our mission"
-          title="Three pillars that guide everything we build"
-        />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
-          {PILLARS.map(p => (
-            <div key={p.title} style={{
-              padding: "32px 28px", borderRadius: 18,
-              background: COLORS.surface, borderTop: `4px solid ${p.color}`,
-              transition: "all 0.2s",
-            }}
-              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-5px)"; e.currentTarget.style.boxShadow = "0 16px 40px rgba(0,0,0,0.08)"; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
-            >
-              <h3 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 19, fontWeight: 900, color: COLORS.ink, marginBottom: 12 }}>{p.title}</h3>
-              <p style={{ fontSize: 14, color: COLORS.inkMid, lineHeight: 1.75 }}>{p.desc}</p>
-            </div>
+    <section style={{ background: COLORS.white, padding: isMobile ? "64px 22px" : "100px 40px" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <Reveal>
+          <SectionHeading align="center" eyebrow="What guides us" title="Three things we won't compromise on" />
+        </Reveal>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: isMobile ? 36 : 48 }}>
+          {PILLARS.map((p, i) => (
+            <Reveal key={p.title} delay={i * 0.12} style={{ textAlign: isMobile ? "center" : "left" }}>
+              <span style={{ fontFamily: FONTS.heading, fontWeight: 900, fontSize: 44, color: p.color, lineHeight: 1, display: "block", marginBottom: 12 }}>
+                {p.n}
+              </span>
+              <h3 style={{ fontFamily: FONTS.heading, fontSize: 20, fontWeight: 800, color: COLORS.ink, marginBottom: 10 }}>{p.title}</h3>
+              <p style={{ fontSize: 15, color: COLORS.inkMid, lineHeight: 1.75 }}>{p.desc}</p>
+            </Reveal>
           ))}
         </div>
       </div>
@@ -301,109 +506,95 @@ function Mission() {
   );
 }
 
-// Our story
+// ---- 4. Our story: told like a story -------------------------------------
 function OurStory({ onNavigate }) {
   const isMobile = useIsMobile(860);
   return (
-    <section style={{ background: COLORS.surface, padding: isMobile ? "56px 20px" : "90px 40px", position: "relative", overflow: "hidden" }}>
-      {!isMobile && (
-        <PuzzlePiece size={140} color={COLORS.purple} rotate={-10} style={{ position: "absolute", top: -30, left: -40 }} />
-      )}
+    <section style={{ background: CREAM, padding: isMobile ? "70px 22px" : "110px 40px", overflow: "hidden" }}>
       <div style={{
-        maxWidth: 1300, margin: "auto", display: "grid",
+        maxWidth: 1150, margin: "0 auto", display: "grid",
         gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-        gap: isMobile ? 40 : 64, alignItems: "center", position: "relative",
+        gap: isMobile ? 44 : 72, alignItems: "center",
       }}>
-        <div style={{ textAlign: isMobile ? "center" : "left" }}>
-          <p style={{ color: COLORS.teal, textTransform: "uppercase", fontWeight: 800, letterSpacing: "0.1em", marginBottom: 14, fontSize: 12 }}>
-            Our story
-          </p>
-          <h2 style={{ fontFamily: "'Nunito', sans-serif", fontSize: "clamp(26px, 3.2vw, 40px)", color: COLORS.ink, lineHeight: 1.14, marginBottom: 22, fontWeight: 900, letterSpacing: "-0.02em" }}>
-            What if puzzles could make a difference?
-          </h2>
-          <p style={{ color: COLORS.inkMid, lineHeight: 1.8, marginBottom: 16, fontSize: 15.5 }}>
-            For Gary King, the question arrived while producing a film in the rural Eastern Cape, where he witnessed the challenges facing young children growing up with limited access to educational and developmental resources.
-          </p>
-          <p style={{ color: COLORS.inkMid, lineHeight: 1.8, marginBottom: 24, fontSize: 15.5 }}>
-            That question became the foundation of the Puzzle Project. Gary brought together psychologists, educators, researchers and community partners to develop a scientifically rigorous, culturally responsive screening solution designed specifically for South African children.
-          </p>
-          <button onClick={() => onNavigate("about")} style={{
-            padding: "12px 26px", borderRadius: 11,
-            background: COLORS.white, color: COLORS.teal,
-            border: `1.5px solid ${COLORS.teal}`, fontSize: 14, fontWeight: 700,
-            cursor: "pointer", fontFamily: "inherit", transition: "all 0.18s",
-          }}
-            onMouseEnter={e => { e.currentTarget.style.background = COLORS.teal; e.currentTarget.style.color = COLORS.white; }}
-            onMouseLeave={e => { e.currentTarget.style.background = COLORS.white; e.currentTarget.style.color = COLORS.teal; }}
-          >
-            Learn more about us
-          </button>
-        </div>
-
-        {/* Photo cluster — drop real image paths into `src` when photography is ready */}
-        <div style={{
-          display: "flex", justifyContent: "center", alignItems: "center",
-          position: "relative", minHeight: isMobile ? 260 : 400,
-        }}>
+        {/* Photos first on desktop so the story reads beside them */}
+        <Reveal style={{ position: "relative", minHeight: isMobile ? 280 : 420, order: isMobile ? 2 : 1 }}>
           <PuzzlePhoto
-            size={isMobile ? 210 : 300}
+            size={isMobile ? 230 : 330}
+            src={momentClassroom}
+            alt="Children holding up a puzzle during a Puzzle Play session"
+            edges={{ top: 0, right: 1, bottom: 1, left: 0 }}
+            style={{ filter: "drop-shadow(0 16px 36px rgba(60,40,20,0.18))", display: "block", margin: isMobile ? "0 auto" : 0 }}
+          />
+          <PuzzlePhoto
+            size={isMobile ? 130 : 190}
             label="Founder photo"
             alt="Gary King, founder of The Puzzle Project"
-            color={COLORS.teal}
-            edges={{ top: 0, right: 1, bottom: 1, left: 0 }}
-            style={{ filter: "drop-shadow(0 14px 34px rgba(0,0,0,0.12))" }}
-            /* src="/images/gary-king.jpg" */
-          />
-          <PuzzlePhoto
-            size={isMobile ? 128 : 185}
-            label="Classroom"
-            alt="Children using the Puzzle Box in a classroom"
             color={COLORS.purple}
-            edges={{ top: -1, right: 0, bottom: 0, left: 0 }}
-            style={{
-              position: "absolute",
-              right: isMobile ? -4 : 8, bottom: isMobile ? 14 : 34,
-              filter: "drop-shadow(0 10px 26px rgba(0,0,0,0.12))",
-            }}
-            /* src="/images/classroom.jpg" */
+            edges={{ top: -1, right: 0, bottom: 0, left: -1 }}
+            style={{ position: "absolute", right: isMobile ? 0 : 10, bottom: isMobile ? -10 : 0, filter: "drop-shadow(0 10px 26px rgba(60,40,20,0.16))" }}
+            /* src="/images/gary-king.jpg" once the founder photo is ready */
           />
-        </div>
+        </Reveal>
+
+        <Reveal delay={0.1} style={{ order: isMobile ? 1 : 2, textAlign: isMobile ? "center" : "left" }}>
+          <p style={{ color: COLORS.teal, textTransform: "uppercase", fontWeight: 800, letterSpacing: "0.12em", marginBottom: 14, fontSize: 12 }}>
+            How it started
+          </p>
+          <h2 style={{ fontFamily: FONTS.heading, fontSize: "clamp(28px, 3.4vw, 44px)", color: COLORS.ink, lineHeight: 1.12, marginBottom: 22, fontWeight: 900, letterSpacing: "-0.02em" }}>
+            "What if puzzles could make a difference?"
+          </h2>
+          <p style={{ color: COLORS.inkMid, lineHeight: 1.85, marginBottom: 16, fontSize: 16 }}>
+            For Gary King, the question arrived while producing a film in the rural Eastern Cape, where he saw
+            the challenges facing young children growing up with limited access to educational and developmental resources.
+          </p>
+          <p style={{ color: COLORS.inkMid, lineHeight: 1.85, marginBottom: 28, fontSize: 16 }}>
+            That question became The Puzzle Project. Gary brought together psychologists, educators, researchers
+            and community partners to build a scientifically rigorous, culturally responsive screening tool made for South African children.
+          </p>
+          <button onClick={() => onNavigate("about")} className="hero-btn" style={{ background: COLORS.ink, borderColor: COLORS.ink }}>
+            Read our story
+          </button>
+        </Reveal>
       </div>
     </section>
   );
 }
 
-// What we do — the three core modules
+// ---- 5. What we do: soft tinted cards ------------------------------------
 const WHAT_WE_DO = [
-  { title: "Puzzle Play module", desc: "Digital lesson plans, multilingual instructional videos and training quizzes for educators to facilitate puzzle-based activities.", color: COLORS.pink },
-  { title: "Screening module", desc: "The PuzzleBox Screener — structured digital assessment forms with timers, observational input and domain-based evaluation.", color: COLORS.teal },
-  { title: "Research & analytics", desc: "Anonymised data dashboards and Excel export for researchers, policy makers and project sponsors.", color: COLORS.purple },
+  { title: "Puzzle Play", desc: "Lesson plans, multilingual videos and training quizzes so educators can run puzzle-based activities in class.", color: COLORS.pink, bg: COLORS.pinkLight, page: "pp-home", cta: "Explore Puzzle Play" },
+  { title: "The Puzzle Box", desc: "Our screener: structured assessments with timers, observation notes and results across four developmental domains.", color: COLORS.teal, bg: COLORS.tealLight, page: "pb-home", cta: "Explore The Puzzle Box" },
+  { title: "Research and insight", desc: "Anonymised dashboards and exports for researchers, policy makers and project sponsors.", color: COLORS.purple, bg: COLORS.purpleLight },
 ];
 
-function WhatWeDo() {
-  const isMobile = useIsMobile(640);
+function WhatWeDo({ onNavigate }) {
+  const isMobile = useIsMobile(760);
   return (
-    <section style={{ padding: isMobile ? "56px 20px" : "90px 40px", background: COLORS.white }}>
-      <div style={{ maxWidth: 1300, margin: "auto" }}>
-        <SectionHeading
-          eyebrow="What we do"
-          title="A single digital ecosystem connecting play, screening and research"
-        />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
-          {WHAT_WE_DO.map(item => (
-            <div key={item.title} style={{
-              padding: "30px 26px", borderRadius: 18,
-              background: COLORS.white, border: `1px solid ${COLORS.border}`,
-              boxShadow: "0 2px 16px rgba(0,0,0,0.04)",
-              position: "relative", overflow: "hidden", transition: "all 0.2s",
-            }}
-              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-5px)"; e.currentTarget.style.boxShadow = "0 16px 40px rgba(0,0,0,0.10)"; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 16px rgba(0,0,0,0.04)"; }}
-            >
-              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 4, background: item.color }} />
-              <h3 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 18, fontWeight: 900, color: COLORS.ink, marginBottom: 10 }}>{item.title}</h3>
-              <p style={{ fontSize: 14, color: COLORS.inkMid, lineHeight: 1.7 }}>{item.desc}</p>
-            </div>
+    <section style={{ background: COLORS.white, padding: isMobile ? "64px 22px" : "100px 40px" }}>
+      <div style={{ maxWidth: 1150, margin: "0 auto" }}>
+        <Reveal>
+          <SectionHeading align="center" eyebrow="What we do" title="Play, screening and research, all connected" maxWidth={640} />
+        </Reveal>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 22 }}>
+          {WHAT_WE_DO.map((item, i) => (
+            <Reveal key={item.title} delay={i * 0.12}>
+              <div className="soft-card" style={{
+                height: "100%", padding: isMobile ? "30px 26px" : "38px 32px", borderRadius: 28,
+                background: item.bg, display: "flex", flexDirection: "column",
+              }}>
+                <PuzzlePiece size={46} color={item.color} fillOpacity={1} rotate={-8} style={{ marginBottom: 20 }} />
+                <h3 style={{ fontFamily: FONTS.heading, fontSize: 22, fontWeight: 800, color: COLORS.ink, marginBottom: 10 }}>{item.title}</h3>
+                <p style={{ fontSize: 15, color: COLORS.inkMid, lineHeight: 1.7, flex: 1 }}>{item.desc}</p>
+                {item.page && (
+                  <button onClick={() => onNavigate(item.page)} style={{
+                    marginTop: 22, alignSelf: "flex-start", background: "none", border: "none", padding: 0,
+                    cursor: "pointer", fontFamily: "inherit", fontSize: 15, fontWeight: 800, color: item.color,
+                  }}>
+                    {item.cta} →
+                  </button>
+                )}
+              </div>
+            </Reveal>
           ))}
         </div>
       </div>
@@ -411,25 +602,36 @@ function WhatWeDo() {
   );
 }
 
-// ---- The Puzzle Project Vision, built as one interlocking jigsaw ----------
+// ---- 6. The Puzzle Project Vision, built as one interlocking jigsaw ----------
 // Six pieces in a 3x2 grid, each carrying one strand of the wider project.
 // The pieces are laid out as percentages so the whole puzzle scales with the
 // container, and they fly in from their own side of the page and lock together
 // when the section scrolls into view.
+//
+// Only The Puzzle Box is live. The other pieces are flagged `inDevelopment`:
+// they use a lighter tint of their colour, dark text, and show an
+// "In Development" tooltip on hover.
+
+// Pastel tint of a theme colour. The theme colours are CSS variables, so the
+// mixing is done by the browser with color-mix. amount 0 = original, 1 = white.
+const lighten = (color, amount = 0.5) =>
+  `color-mix(in srgb, ${color} ${Math.round((1 - amount) * 100)}%, white)`;
+
 const VISION_ITEMS = [
-  { title: "The Puzzle Box", desc: "ECD developmental screening for 5 to 6 year olds.", color: COLORS.teal },
-  { title: "Puzzle Play", desc: "Nationwide puzzle development for Grades 0 to 7.", color: COLORS.pink },
-  { title: "Puzzle TV", desc: "An educational TV show taking development into homes.", color: COLORS.purple },
-  { title: "Puzzle App", desc: "Puzzles for all — a digital platform, everywhere.", color: COLORS.orange },
-  { title: "Puzzle Production", desc: "Design, production and distribution, creating jobs through printing and recycling.", color: COLORS.maroon },
-  { title: "Puzzle Data Analysis", desc: "Recording the shifts that puzzles make.", color: COLORS.teal },
+  { title: "The Puzzle Box", desc: "ECD developmental screening\nfor 5 to 6 year olds.", color: COLORS.teal, page: "pb-home", row: 0, col: 0, edges: { top: 0, right: 1, bottom: 1, left: 0 } },
+   {title: "Puzzle Play", desc: "Nationwide puzzle development\nfor Grades 0 to 7.", color: COLORS.pink, page: "pp-home", row: 0, col: 1, edges: { top: 0, right: 1, bottom: 1, left: -1 } },
+  { title: "Puzzle TV", desc: "An educational TV show\ntaking development into\nhomes.", color: lighten(COLORS.purple), inDevelopment: true, row: 0, col: 2, edges: { top: 0, right: 0, bottom: 1, left: -1 } },
+  { title: "Puzzle App", desc: "Puzzles for all — a digital\nplatform, everywhere.", color: lighten(COLORS.orange), inDevelopment: true, row: 1, col: 0, edges: { top: -1, right: 1, bottom: 0, left: 0 } },
+  { title: "Puzzle Production", desc: "Design, production and\ndistribution, creating jobs\nthrough printing and recycling.", color: lighten(COLORS.maroon), inDevelopment: true, row: 1, col: 1, edges: { top: -1, right: 1, bottom: 0, left: -1 } },
+  { title: "Puzzle Data Analysis", desc: "Recording the shifts that\npuzzles make.", color: lighten(COLORS.teal), inDevelopment: true, row: 1, col: 2, edges: { top: -1, right: 0, bottom: 0, left: -1 } },
 ];
 
 const VISION_COLS = 3;
 const VISION_ROWS = 2;
 
-function VisionSection() {
+function VisionSection({ onNavigate }) {
   const [ref, inView] = useInView();
+  const [devHover, setDevHover] = useState(null);
   // Below this width the 3x2 layout leaves each piece too narrow to read
   // comfortably, so we transpose to a taller 2x3 grid instead.
   const isMobile = useIsMobile(640);
@@ -449,8 +651,9 @@ function VisionSection() {
 
         {/* The assembled jigsaw */}
         <div ref={ref} style={{
-          position: "relative", width: "100%", maxWidth: 880,
-          margin: "0 auto", aspectRatio: `${cols} / ${rows}`,
+          position: "relative", width: "100%", maxWidth: 1100,
+          margin: "0 auto", aspectRatio: isMobile ? `${cols} / ${rows}` : "1.6 / 1",
+          padding: isMobile ? "0" : "0 18px",
         }}>
           {VISION_ITEMS.map((item, i) => {
             const row = Math.floor(i / cols);
@@ -463,7 +666,15 @@ function VisionSection() {
 
             return (
               <div key={item.title}
+                onMouseEnter={item.inDevelopment ? () => setDevHover(item.title) : undefined}
+                onMouseLeave={item.inDevelopment ? () => setDevHover(null) : undefined}
+                onClick={item.page ? () => onNavigate(item.page) : item.inDevelopment ? () => setDevHover(devHover === item.title ? null : item.title) : undefined}
+                onKeyDown={item.page ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onNavigate(item.page); } } : undefined}
+                role={item.page ? "link" : undefined}
+                tabIndex={item.page ? 0 : undefined}
+                aria-label={item.page ? `Go to ${item.title}` : undefined}
                 style={{
+                  cursor: item.page ? "pointer" : "default",
                   position: "absolute",
                   left: `${(col / cols) * 100}%`,
                   top: `${(row / rows) * 100}%`,
@@ -472,6 +683,7 @@ function VisionSection() {
                   opacity: inView ? 1 : 0,
                   transform: inView ? "translate(0, 0) scale(1)" : `translate(${dx}px, ${dy}px) scale(0.82)`,
                   transition: `opacity 0.6s ease ${i * 0.09}s, transform 0.75s cubic-bezier(0.22, 1, 0.36, 1) ${i * 0.09}s`,
+                  padding: isMobile ? "0" : "0 6px",
                 }}
               >
                 {/* The piece itself, overflowing its cell so tabs reach into neighbours */}
@@ -482,29 +694,62 @@ function VisionSection() {
                     width: "156%", height: "156%", overflow: "visible",
                   }}
                 >
-                  <path d={piecePath(edges)} fill={item.color} />
+                  <path d={piecePath(edges)} style={{ fill: item.color }} fillOpacity={item.inDevelopment ? 0.7 : 1} />
                 </svg>
 
                 {/* Label, inset so it clears the knobs and sockets */}
                 <div style={{
-                  position: "absolute", inset: "17%",
-                  display: "flex", flexDirection: "column", justifyContent: "center",
-                  textAlign: "center", pointerEvents: "none",
+                  position: "absolute",
+                  inset: isMobile ? "18% 8% 18% 8%" : "20% 10% 18% 10%",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  textAlign: "center",
+                  pointerEvents: "none",
+                  maxWidth: "86%",
+                  margin: "0 auto",
                 }}>
                   <h3 style={{
-                    fontFamily: "'Nunito', sans-serif", fontWeight: 900, color: COLORS.white,
-                    fontSize: "clamp(13px, 1.45vw, 18px)", lineHeight: 1.2, marginBottom: 8,
-                    textShadow: "0 1px 6px rgba(0,0,0,0.25)",
+                    fontFamily: FONTS.heading,
+                    fontWeight: 900,
+                    color: item.inDevelopment ? COLORS.ink : ON_DARK,
+                    fontSize: isMobile ? "clamp(12px, 2vw, 18px)" : "clamp(14px, 1.3vw, 22px)",
+                    lineHeight: 1.15,
+                    marginBottom: isMobile ? 4 : 6,
+                    textShadow: item.inDevelopment ? "none" : "0 1px 6px rgba(0,0,0,0.25)",
+                    maxWidth: "82%",
+                    overflowWrap: "anywhere",
+                    wordBreak: "break-word",
+                    whiteSpace: "pre-line",
                   }}>
                     {item.title}
                   </h3>
                   <p style={{
-                    fontSize: "clamp(9.5px, 0.95vw, 12.5px)", lineHeight: 1.5,
-                    color: "rgba(255,255,255,0.9)",
+                    fontSize: isMobile ? "clamp(8px, 1.4vw, 11px)" : "clamp(9.5px, 0.82vw, 12.5px)",
+                    lineHeight: 1.35,
+                    color: item.inDevelopment ? COLORS.inkMid : "rgba(255,255,255,0.92)",
+                    maxWidth: "82%",
+                    margin: 0,
+                    overflowWrap: "anywhere",
+                    wordBreak: "break-word",
+                    whiteSpace: "pre-line",
                   }}>
                     {item.desc}
                   </p>
                 </div>
+
+                {item.inDevelopment && devHover === item.title && (
+                  <div role="tooltip" style={{
+                    position: "absolute", left: "50%", top: isMobile ? "8%" : "10%",
+                    transform: "translateX(-50%)", zIndex: 5, pointerEvents: "none",
+                    background: COLORS.ink, color: "#fff", fontFamily: FONTS.heading,
+                    fontSize: 12, fontWeight: 800, letterSpacing: 0.3, whiteSpace: "nowrap",
+                    padding: "6px 12px", borderRadius: 999, boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
+                  }}>
+                    In Development
+                  </div>
+                )}
               </div>
             );
           })}
@@ -513,212 +758,61 @@ function VisionSection() {
     </section>
   );
 }
-function TiersSection({ onNavigate }) {
-  const tiers = [
-    {
-      label: "Tier 1",
-      title: "Teachers & Primary Healthcare",
-      color: COLORS.teal,
-      bg: COLORS.tealLight,
-      desc: "For preschool teachers and selected primary healthcare practitioners who have completed PuzzleBox Screener training. This level produces a single global screening score to support early identification and inform referral decisions.",
-    },
-    {
-      label: "Tier 2",
-      title: "Psychologists",
-      color: COLORS.purple,
-      bg: COLORS.purpleLight,
-      desc: "Reserved for psychologists who have completed PuzzleBox Screener training. This level supports interpretation at domain and construct level, including pattern recognition across domains and informed referral decision-making.",
-    },
-  ];
-
-  const isMobile = useIsMobile(640);
+// ---- 7. Support: warm, personal ask --------------------------------------
+function SupportBand({ onNavigate }) {
+  const isMobile = useIsMobile(760);
   return (
-    <section style={{ padding: isMobile ? "56px 20px" : "90px 40px", background: COLORS.surface, position: "relative", overflow: "hidden" }}>
-      {!isMobile && (
-        <PuzzlePiece size={110} color={COLORS.teal} rotate={-15} style={{ position: "absolute", top: 40, right: -30 }} />
-      )}
-      <div style={{ maxWidth: 1300, margin: "auto", position: "relative" }}>
-        <SectionHeading
-          eyebrow="Who can administer"
-          title="A tiered system for education and clinical contexts"
-          lead="The PuzzleBox Screener is designed for children aged 5 years 0 months to 6 years 11 months, with two levels of administration to support appropriate use in clinical, educational, home-based and community outreach settings."
-        />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24 }}>
-          {tiers.map(tier => (
-            <div key={tier.label} style={{
-              padding: "32px 30px", borderRadius: 20,
-              background: COLORS.white, borderTop: `4px solid ${tier.color}`,
-              border: `1px solid ${COLORS.border}`,
-              transition: "all 0.2s",
-            }}
-              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,0,0,0.08)"; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
-            >
-              <span style={{
-                display: "inline-block", padding: "4px 14px", borderRadius: 16,
-                background: tier.bg, color: tier.color,
-                fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase",
-                marginBottom: 14,
-              }}>
-                {tier.label}
-              </span>
-              <h3 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 20, fontWeight: 900, color: COLORS.ink, marginBottom: 12 }}>{tier.title}</h3>
-              <p style={{ fontSize: 14, color: COLORS.inkMid, lineHeight: 1.75 }}>{tier.desc}</p>
-            </div>
-          ))}
-        </div>
-        <div style={{ marginTop: 28 }}>
-          <button onClick={() => onNavigate("training")} style={{
-            padding: "13px 28px", borderRadius: 12,
-            background: COLORS.teal, color: COLORS.white,
-            border: "none", fontSize: 14, fontWeight: 700,
-            cursor: "pointer", fontFamily: "inherit", transition: "all 0.18s",
-          }}
-            onMouseEnter={e => { e.currentTarget.style.background = COLORS.tealDark; e.currentTarget.style.transform = "translateY(-1px)"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = COLORS.teal; e.currentTarget.style.transform = "translateY(0)"; }}
-          >
-            View training requirements
-          </button>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// Donation section — preset amounts plus custom entry
-const AMOUNTS = [50, 150, 500, 1000];
-
-function DonationSection() {
-  const [selected, setSelected] = useState(150);
-  const [custom, setCustom] = useState("");
-
-  const chooseAmount = (amt) => { setSelected(amt); setCustom(""); };
-  const amountToGive = custom ? Number(custom) : selected;
-  const sessions = amountToGive ? Math.floor(amountToGive / 50) : 0;
-
-  const isMobile = useIsMobile(640);
-  return (
-    <section id="donate" style={{ padding: isMobile ? "56px 20px" : "90px 40px", background: COLORS.white, scrollMarginTop: 84 }}>
-      <div style={{
-        maxWidth: 900, margin: "auto",
-        padding: isMobile ? "32px 24px" : "48px 44px",
-        borderRadius: 24,
-        background: `linear-gradient(135deg, ${COLORS.tealLight} 0%, ${COLORS.purpleLight} 100%)`,
-        border: `1px solid ${COLORS.border}`, position: "relative", overflow: "hidden",
-      }}>
-        <PuzzlePiece size={130} color={COLORS.teal} rotate={20} fillOpacity={0.18} style={{ position: "absolute", top: -30, right: -30 }} />
-        <div style={{ position: "relative" }}>
-          <p style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: COLORS.teal, marginBottom: 12 }}>
-            Make a difference
-          </p>
-          <h2 style={{ fontFamily: "'Nunito', sans-serif", fontSize: "clamp(26px, 3vw, 38px)", fontWeight: 900, color: COLORS.ink, lineHeight: 1.12, letterSpacing: "-0.02em", marginBottom: 14 }}>
-            Support a child's future
-          </h2>
-          <p style={{ fontSize: 15.5, color: COLORS.inkMid, lineHeight: 1.75, maxWidth: 600, marginBottom: 28 }}>
-            Every donation helps us screen more children and train more educators. R50 covers one full screener session.
-          </p>
-
-          {/* Preset amounts */}
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
-            {AMOUNTS.map(amt => {
-              const isActive = !custom && selected === amt;
-              return (
-                <button key={amt} onClick={() => chooseAmount(amt)} style={{
-                  padding: "13px 28px", borderRadius: 12,
-                  background: isActive ? COLORS.teal : COLORS.white,
-                  color: isActive ? COLORS.white : COLORS.ink,
-                  border: `1.5px solid ${isActive ? COLORS.teal : COLORS.border}`,
-                  fontSize: 15, fontWeight: 800, cursor: "pointer",
-                  fontFamily: "inherit", transition: "all 0.15s",
-                }}
-                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.borderColor = COLORS.teal; }}
-                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.borderColor = COLORS.border; }}
-                >
-                  R{amt.toLocaleString("en-ZA")}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Custom amount + donate */}
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-            <input
-              type="number"
-              min="10"
-              value={custom}
-              onChange={e => setCustom(e.target.value)}
-              placeholder="Custom amount (R)"
-              style={{
-                flex: 1, minWidth: 220, padding: "14px 18px", borderRadius: 12,
-                border: `1.5px solid ${custom ? COLORS.teal : COLORS.border}`,
-                background: COLORS.white, fontSize: 15, fontFamily: "inherit",
-                color: COLORS.ink, outline: "none",
-              }}
-            />
-            <button style={{
-              padding: "14px 34px", borderRadius: 12,
-              background: COLORS.teal, color: COLORS.white,
-              border: "none", fontSize: 15, fontWeight: 800,
-              cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
-              boxShadow: "0 6px 20px rgba(0,155,141,0.25)",
-            }}
-              onMouseEnter={e => { e.currentTarget.style.background = COLORS.tealDark; e.currentTarget.style.transform = "translateY(-2px)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = COLORS.teal; e.currentTarget.style.transform = "translateY(0)"; }}
-            >
-              Donate now
+    <section style={{ background: CREAM, padding: isMobile ? "64px 22px" : "100px 40px" }}>
+      <Reveal>
+        <div style={{
+          maxWidth: 820, margin: "0 auto", borderRadius: 32, background: COLORS.white,
+          boxShadow: "0 20px 50px rgba(60,40,20,0.10)", position: "relative", overflow: "hidden",
+        }}>
+          <PuzzlePiece size={120} color={COLORS.pink} rotate={-14} style={{ position: "absolute", top: -34, right: -30 }} />
+          <PuzzlePiece size={90} color={COLORS.teal} rotate={18} style={{ position: "absolute", bottom: -30, left: -24 }} />
+          <div style={{ padding: isMobile ? "40px 26px" : "60px 56px", textAlign: "center", position: "relative" }}>
+            <p style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: COLORS.pink, marginBottom: 12 }}>
+              Make a difference
+            </p>
+            <h2 style={{ fontFamily: FONTS.heading, fontSize: "clamp(26px, 3vw, 38px)", fontWeight: 900, color: COLORS.ink, lineHeight: 1.12, letterSpacing: "-0.02em", marginBottom: 14 }}>
+              Help a child get seen sooner
+            </h2>
+            <p style={{ fontSize: 16, color: COLORS.inkMid, lineHeight: 1.75, marginBottom: 26, maxWidth: 520, marginLeft: "auto", marginRight: "auto" }}>
+              Your donation goes towards The Puzzle Box Screener and Puzzle Play, reaching more children and training more educators.
+            </p>
+            <button onClick={() => onNavigate("donate")} className="hero-btn hero-btn--primary">
+              Donate
             </button>
           </div>
-
-          {/* Live impact of the chosen amount */}
-          {sessions > 0 && (
-            <p style={{ fontSize: 13.5, color: COLORS.inkMid, marginTop: 18, fontWeight: 600 }}>
-              R{amountToGive.toLocaleString("en-ZA")} funds{" "}
-              <strong style={{ color: COLORS.teal }}>
-                {sessions} full screener session{sessions === 1 ? "" : "s"}
-              </strong>.
-            </p>
-          )}
         </div>
-      </div>
+      </Reveal>
     </section>
   );
 }
 
 export default function Homepage({ onNavigateToLogin, onNavigate }) {
-  // Falls back gracefully if a navigation handler was not supplied
   const go = onNavigate || (() => console.warn("No onNavigate handler passed to Homepage"));
 
   return (
-    <div style={{ fontFamily: "'Nunito Sans', sans-serif" }}>
+    <div style={{ fontFamily: FONTS.body }}>
       <style>{`
-        ${FONT_IMPORT}
-        @keyframes assemble {
-          from { opacity: 0; transform: var(--from) scale(0.8); }
-          to { opacity: 1; transform: translate(0, 0) scale(1); }
-        }
-        @keyframes gentle-float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-7px); }
-        }
-        .domain-piece {
-          opacity: 0;
-          animation: assemble 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards,
-                     gentle-float 5s ease-in-out infinite;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .domain-piece { animation: none; opacity: 1; }
-        }
+        ${PUBLIC_FONT_IMPORT}
+        ${HOME_ANIMATION_CSS}
+        ${VIDEO_HERO_CSS}
       `}</style>
-      <Navbar current="home" onNavigate={go} onLoginClick={onNavigateToLogin} />
-      <Hero onLoginClick={onNavigateToLogin} onNavigate={go} />
-      <Mission />
+      <Navbar site="tpp" current="home" overlay onNavigate={go} onLoginClick={onNavigateToLogin} />
+      <VideoHero actions={[
+        { label: "Explore The Puzzle Box", primary: true, onClick: () => go("pb-home") },
+        { label: "Explore Puzzle Play", onClick: () => go("pp-home") },
+      ]} />
+      <WhyWeExist />
+      <Pillars />
       <OurStory onNavigate={go} />
-      <WhatWeDo />
-      <VisionSection />
-      <TiersSection onNavigate={go} />
-      <DonationSection />
-      <CallToAction onNavigate={go} onLoginClick={onNavigateToLogin} />
-      <Footer onNavigate={go} onLoginClick={onNavigateToLogin} />
+      <VisionSection onNavigate={go} />
+      <WhatWeDo onNavigate={go} />
+      <SupportBand onNavigate={go} />
+      <CallToAction />
+      <Footer site="tpp" onNavigate={go} onLoginClick={onNavigateToLogin} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { auth } from "../firebase";
 import { signOut } from "firebase/auth";
+import ThemeToggle from "../theme/ThemeToggle";
 
 const labels = {
   en: {
@@ -85,6 +86,7 @@ export default function Sidebar({ activePage, setActivePage, lang, user }) {
           <NavContent />
         </div>
         <div className="sidebar-footer">
+          <ThemeToggle variant="dark" style={{ width: "100%", justifyContent: "center", marginBottom: 8 }} />
           <button className="logout-btn" onClick={() => signOut(auth)}>
             {t.logout}
           </button>
@@ -142,11 +144,12 @@ export default function Sidebar({ activePage, setActivePage, lang, user }) {
             <NavContent onNavigate={() => setMobileOpen(false)} />
           </div>
 
-          {/* Logout */}
+          {/* Theme + Logout */}
+          <ThemeToggle variant="dark" style={{ width: "100%", justifyContent: "center", marginTop: 24 }} />
           <button
             className="logout-btn"
             onClick={() => { setMobileOpen(false); signOut(auth); }}
-            style={{ marginTop: 24 }}
+            style={{ marginTop: 10 }}
           >
             {t.logout}
           </button>

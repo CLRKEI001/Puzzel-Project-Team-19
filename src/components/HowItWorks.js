@@ -1,38 +1,15 @@
 import React from "react";
-import { COLORS, FONT_IMPORT, PuzzlePiece, SectionHeading, Navbar, Footer, CallToAction } from "./SiteChrome";
+import {
+  COLORS, FONTS, PUBLIC_FONT_IMPORT, WARM_PAGE_CSS, CREAM,
+  PuzzlePiece, SectionHeading, PageHero, Reveal,
+  Navbar, Footer, CallToAction, useIsMobile,
+} from "./SiteChrome";
 
-function HowHero() {
-  return (
-    <section style={{
-      paddingTop: 84,
-      background: `linear-gradient(180deg, ${COLORS.white} 0%, ${COLORS.surface} 100%)`,
-      position: "relative", overflow: "hidden",
-    }}>
-      <PuzzlePiece size={150} color={COLORS.teal} rotate={-12} style={{ position: "absolute", top: 50, right: -40 }} />
-      <div style={{ maxWidth: 1300, margin: "0 auto", padding: "72px 40px", position: "relative" }}>
-        <span style={{
-          display: "inline-block", padding: "7px 16px", borderRadius: 20,
-          background: COLORS.tealLight, border: `1px solid rgba(0,155,141,0.25)`,
-          fontSize: 12, fontWeight: 800, color: COLORS.teal, marginBottom: 24,
-        }}>
-          Platform overview
-        </span>
-        <h1 style={{
-          fontFamily: "'Nunito', sans-serif", fontSize: "clamp(34px, 4.4vw, 56px)",
-          fontWeight: 900, color: COLORS.ink, lineHeight: 1.08,
-          letterSpacing: "-0.03em", marginBottom: 20,
-        }}>
-          How The PuzzleBox works
-        </h1>
-        <p style={{ fontSize: 17, color: COLORS.inkMid, lineHeight: 1.75, maxWidth: 760 }}>
-          From registration to research — a step-by-step walkthrough of the full screening process.
-        </p>
-      </div>
-    </section>
-  );
-}
+// How It Works, reworked to match the warmer home page.
+// Journey is a zigzag timeline on desktop and a single column on phones.
+// All copy is unchanged from the previous version except the page title.
 
-// The six-stage screening journey
+// ---- The six-stage screening journey -------------------------------------
 const JOURNEY = [
   {
     title: "Register & verify credentials",
@@ -42,7 +19,7 @@ const JOURNEY = [
   {
     title: "Complete training modules",
     color: COLORS.pink,
-    desc: "Before accessing screening features, users complete the digital training modules covering puzzle facilitation techniques, observation methods and how to interact with children during assessments. Quizzes ensure knowledge retention.",
+    desc: "Before accessing screening features, users unlock the digital training modules with their login and the Product number supplied with their screener, then complete modules covering puzzle facilitation techniques, observation methods and how to interact with children during assessments. Quizzes ensure knowledge retention.",
   },
   {
     title: "Facilitate the puzzle activity",
@@ -66,47 +43,70 @@ const JOURNEY = [
   },
 ];
 
-function JourneySection() {
+function StageCard({ stage, i }) {
   return (
-    <section style={{ padding: "90px 40px", background: COLORS.white }}>
-      <div style={{ maxWidth: 1000, margin: "auto" }}>
-        <SectionHeading
-          eyebrow="The screening journey"
-          title="Six stages from onboarding to research output"
-        />
+    <div className="soft-card" style={{ background: COLORS.white, borderRadius: 24, padding: "26px 28px", boxShadow: "0 8px 26px rgba(60,40,20,0.06)" }}>
+      <p style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: stage.color, marginBottom: 8 }}>
+        Step {i + 1}
+      </p>
+      <h3 style={{ fontFamily: FONTS.heading, fontSize: 20, fontWeight: 800, color: COLORS.ink, marginBottom: 10, lineHeight: 1.25 }}>
+        {stage.title}
+      </h3>
+      <p style={{ fontSize: 15, color: COLORS.inkMid, lineHeight: 1.75 }}>{stage.desc}</p>
+    </div>
+  );
+}
+
+function StageMarker({ stage, i }) {
+  return (
+    <div className="wiggle" style={{
+      width: 52, height: 52, borderRadius: "50%", background: stage.color, color: COLORS.white,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontFamily: FONTS.heading, fontSize: 20, fontWeight: 900,
+      border: `4px solid ${CREAM}`, boxShadow: `0 6px 16px color-mix(in srgb, ${stage.color} 33%, transparent)`,
+      position: "relative", zIndex: 1, flexShrink: 0,
+    }}>
+      {i + 1}
+    </div>
+  );
+}
+
+function JourneySection() {
+  const isMobile = useIsMobile(860);
+  return (
+    <section style={{ padding: isMobile ? "64px 22px" : "100px 40px", background: CREAM }}>
+      <div style={{ maxWidth: 1100, margin: "auto" }}>
+        <Reveal>
+          <SectionHeading align="center" eyebrow="The screening journey" title="Six stages from onboarding to research output" maxWidth={620} />
+        </Reveal>
 
         <div style={{ position: "relative" }}>
-          {JOURNEY.map((stage, i) => {
-            const isLast = i === JOURNEY.length - 1;
-            return (
-              <div key={stage.title} style={{ display: "flex", gap: 26, position: "relative" }}>
-                {/* Numbered marker + connecting line */}
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
-                  <div style={{
-                    width: 44, height: 44, borderRadius: "50%",
-                    background: stage.color, color: COLORS.white,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontFamily: "'Nunito', sans-serif", fontSize: 17, fontWeight: 900,
-                    boxShadow: `0 4px 14px ${stage.color}55`, zIndex: 1,
-                  }}>
-                    {i + 1}
-                  </div>
-                  {!isLast && (
-                    <div style={{ width: 2, flex: 1, background: COLORS.border, minHeight: 28 }} />
-                  )}
-                </div>
+          {/* The dashed line the steps hang off */}
+          <div aria-hidden="true" style={{
+            position: "absolute", top: 26, bottom: 26,
+            left: isMobile ? 25 : "50%", marginLeft: isMobile ? 0 : -1,
+            borderLeft: `2.5px dashed rgba(60,40,20,0.18)`,
+          }} />
 
-                {/* Stage content */}
-                <div style={{ paddingBottom: isLast ? 0 : 34, flex: 1 }}>
-                  <h3 style={{
-                    fontFamily: "'Nunito', sans-serif", fontSize: 19, fontWeight: 900,
-                    color: COLORS.ink, marginBottom: 10, paddingTop: 9,
-                  }}>
-                    {stage.title}
-                  </h3>
-                  <p style={{ fontSize: 14.5, color: COLORS.inkMid, lineHeight: 1.75 }}>{stage.desc}</p>
-                </div>
-              </div>
+          {JOURNEY.map((stage, i) => {
+            const left = i % 2 === 0;
+            if (isMobile) {
+              return (
+                <Reveal key={stage.title} style={{ display: "flex", gap: 18, marginBottom: i === JOURNEY.length - 1 ? 0 : 26 }}>
+                  <StageMarker stage={stage} i={i} />
+                  <div style={{ flex: 1 }}><StageCard stage={stage} i={i} /></div>
+                </Reveal>
+              );
+            }
+            return (
+              <Reveal key={stage.title} style={{
+                display: "grid", gridTemplateColumns: "1fr 90px 1fr", alignItems: "center",
+                marginBottom: i === JOURNEY.length - 1 ? 0 : 34,
+              }}>
+                <div>{left && <StageCard stage={stage} i={i} />}</div>
+                <div style={{ display: "flex", justifyContent: "center" }}><StageMarker stage={stage} i={i} /></div>
+                <div>{!left && <StageCard stage={stage} i={i} />}</div>
+              </Reveal>
             );
           })}
         </div>
@@ -115,7 +115,7 @@ function JourneySection() {
   );
 }
 
-// What each role sees — reinforces the tiered access rule
+// ---- What each role sees: reinforces the tiered access rule --------------
 const ROLE_ACCESS = [
   {
     role: "Educators & primary healthcare",
@@ -141,51 +141,48 @@ const ROLE_ACCESS = [
 ];
 
 function RoleAccessSection() {
+  const isMobile = useIsMobile(860);
   return (
-    <section style={{ padding: "90px 40px", background: COLORS.surface, position: "relative", overflow: "hidden" }}>
-      <PuzzlePiece size={120} color={COLORS.orange} rotate={22} style={{ position: "absolute", bottom: -20, right: -30 }} />
-      <div style={{ maxWidth: 1300, margin: "auto", position: "relative" }}>
-        <SectionHeading
-          eyebrow="Access by role"
-          title="Everyone sees exactly what they need — and nothing more"
-          lead="Access to screening results is tiered by professional role. Educators receive a single overall screening score to guide referral, while domain-level interpretation is reserved for qualified psychologists."
-          maxWidth={820}
-        />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))", gap: 22 }}>
-          {ROLE_ACCESS.map(r => (
-            <div key={r.role} style={{
-              padding: "30px 28px", borderRadius: 20,
-              background: COLORS.white, border: `1px solid ${COLORS.border}`,
-              borderTop: `4px solid ${r.color}`, transition: "all 0.2s",
-            }}
-              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,0,0,0.08)"; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
-            >
-              <span style={{
-                display: "inline-block", padding: "4px 13px", borderRadius: 16,
-                background: r.bg, color: r.color, fontSize: 11, fontWeight: 800,
-                letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 14,
-              }}>
-                {r.tier}
-              </span>
-              <h3 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 18, fontWeight: 900, color: COLORS.ink, marginBottom: 16 }}>{r.role}</h3>
-              <ul style={{ listStyle: "none", padding: 0 }}>
-                {r.sees.map(item => (
-                  <li key={item} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13.5, color: COLORS.inkMid, marginBottom: 10, lineHeight: 1.6 }}>
-                    <span style={{
-                      width: 18, height: 18, borderRadius: "50%", background: r.bg,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      flexShrink: 0, marginTop: 2,
-                    }}>
-                      <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                        <path d="M1 4l2.5 2.5L9 1" stroke={r.color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
+    <section style={{ padding: isMobile ? "64px 22px" : "100px 40px", background: COLORS.white }}>
+      <div style={{ maxWidth: 1150, margin: "auto" }}>
+        <Reveal>
+          <SectionHeading
+            align="center"
+            eyebrow="Access by role"
+            title="Everyone sees exactly what they need — and nothing more"
+            lead="Access to screening results is tiered by professional role. Educators receive a single overall screening score to guide referral, while domain-level interpretation is reserved for qualified psychologists."
+            maxWidth={760}
+          />
+        </Reveal>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 22 }}>
+          {ROLE_ACCESS.map((r, i) => (
+            <Reveal key={r.role} delay={i * 0.12}>
+              <div className="soft-card" style={{ height: "100%", padding: isMobile ? "30px 26px" : "36px 32px", borderRadius: 28, background: r.bg }}>
+                <span style={{
+                  display: "inline-block", padding: "5px 14px", borderRadius: 999,
+                  background: COLORS.white, color: r.color, fontSize: 11.5, fontWeight: 800,
+                  letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 16,
+                }}>
+                  {r.tier}
+                </span>
+                <h3 style={{ fontFamily: FONTS.heading, fontSize: 21, fontWeight: 800, color: COLORS.ink, marginBottom: 18 }}>{r.role}</h3>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                  {r.sees.map(item => (
+                    <li key={item} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 15, color: COLORS.inkMid, marginBottom: 12, lineHeight: 1.55 }}>
+                      <span style={{
+                        width: 20, height: 20, borderRadius: "50%", background: COLORS.white,
+                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1,
+                      }}>
+                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none" aria-hidden="true">
+                          <path d="M1 4l2.5 2.5L9 1" stroke={r.color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Reveal>
           ))}
         </div>
       </div>
@@ -193,7 +190,7 @@ function RoleAccessSection() {
   );
 }
 
-// Built for South African classrooms
+// ---- Built for South African classrooms ----------------------------------
 const FEATURES = [
   { title: "Works offline", color: COLORS.teal, desc: "Screening sessions run without connectivity. Data is stored locally on the device and synced automatically once a connection is restored." },
   { title: "Three languages", color: COLORS.pink, desc: "Every instruction, lesson plan and training video is available in English, Afrikaans and isiXhosa — administered in the child's home language." },
@@ -201,22 +198,20 @@ const FEATURES = [
 ];
 
 function FeaturesSection() {
+  const isMobile = useIsMobile(760);
   return (
-    <section style={{ padding: "90px 40px", background: COLORS.white }}>
-      <div style={{ maxWidth: 1300, margin: "auto" }}>
-        <SectionHeading
-          eyebrow="Designed for the context"
-          title="Built for South African classrooms"
-        />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
-          {FEATURES.map(f => (
-            <div key={f.title} style={{
-              padding: "30px 26px", borderRadius: 18,
-              background: COLORS.surface, borderTop: `4px solid ${f.color}`,
-            }}>
-              <h3 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 18, fontWeight: 900, color: COLORS.ink, marginBottom: 10 }}>{f.title}</h3>
-              <p style={{ fontSize: 14, color: COLORS.inkMid, lineHeight: 1.75 }}>{f.desc}</p>
-            </div>
+    <section style={{ padding: isMobile ? "64px 22px" : "100px 40px", background: CREAM }}>
+      <div style={{ maxWidth: 1100, margin: "auto" }}>
+        <Reveal>
+          <SectionHeading align="center" eyebrow="Designed for the context" title="Built for South African classrooms" />
+        </Reveal>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: isMobile ? 36 : 48 }}>
+          {FEATURES.map((f, i) => (
+            <Reveal key={f.title} delay={i * 0.12} style={{ textAlign: "center" }}>
+              <PuzzlePiece size={58} color={f.color} fillOpacity={1} rotate={[-10, 8, -4][i % 3]} style={{ margin: "0 auto 18px", display: "block" }} />
+              <h3 style={{ fontFamily: FONTS.heading, fontSize: 21, fontWeight: 800, color: COLORS.ink, marginBottom: 10 }}>{f.title}</h3>
+              <p style={{ fontSize: 15, color: COLORS.inkMid, lineHeight: 1.75, maxWidth: 320, margin: "0 auto" }}>{f.desc}</p>
+            </Reveal>
           ))}
         </div>
       </div>
@@ -228,15 +223,20 @@ export default function HowItWorks({ onNavigateToLogin, onNavigate }) {
   const go = onNavigate || (() => console.warn("No onNavigate handler passed to HowItWorks"));
 
   return (
-    <div style={{ fontFamily: "'Nunito Sans', sans-serif" }}>
-      <style>{FONT_IMPORT}</style>
-      <Navbar current="how" onNavigate={go} onLoginClick={onNavigateToLogin} />
-      <HowHero />
+    <div style={{ fontFamily: FONTS.body }}>
+      <style>{`${PUBLIC_FONT_IMPORT}${WARM_PAGE_CSS}`}</style>
+      <Navbar site="pb" current="pb-how" onNavigate={go} onLoginClick={() => onNavigateToLogin()} />
+      <PageHero
+        eyebrow="The Puzzle Box"
+        title="How it"
+        highlight="works"
+        lead="From registration to research — a step-by-step walkthrough of the full screening process."
+      />
       <JourneySection />
       <RoleAccessSection />
       <FeaturesSection />
-      <CallToAction onNavigate={go} onLoginClick={onNavigateToLogin} />
-      <Footer onNavigate={go} onLoginClick={onNavigateToLogin} />
+      <CallToAction />
+      <Footer site="pb" onNavigate={go} onLoginClick={() => onNavigateToLogin()} />
     </div>
   );
 }

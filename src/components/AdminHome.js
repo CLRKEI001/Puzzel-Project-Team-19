@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "../supabaseClient";
-import { mapUserRow, mapChildRow, mapPurchaseRequestRow } from "../lib/mappers";
+import { mapUserRow, mapChildRow, mapPurchaseRequestRow, mapTrainingCertificateRow } from "../lib/mappers";
 import RoleSidebar from "./RoleSidebar";
 import RoleHero from "./RoleHero";
 import StatRing from "./StatRing";
@@ -457,6 +457,17 @@ export default function AdminHome({ user, profile }) {
   const [prSaving, setPrSaving] = useState(false);
   const [prError, setPrError] = useState("");
 
+  // Training certifications — results surfaced from useTrainingProgress /
+  // training_certificates (migrations 015 & 018). A trainee's completion
+  // lands here as "pending"; nothing is visible to them until an admin
+  // reviews it and approves.
+  const [trainingCertificates, setTrainingCertificates] = useState([]);
+  const [reviewCertificate, setReviewCertificate] = useState(null); // certificate row open in the modal
+  const [certModuleBreakdown, setCertModuleBreakdown] = useState(null); // per-module quiz results for that trainee
+  const [certBreakdownLoading, setCertBreakdownLoading] = useState(false);
+  const [certSaving, setCertSaving] = useState(false);
+  const [certError, setCertError] = useState("");
+
   const t = T[lang];
 
   const langLabels = {
@@ -513,9 +524,24 @@ export default function AdminHome({ user, profile }) {
       if (isMounted) setPurchaseRequests(data.map(mapPurchaseRequestRow));
     };
 
+    const loadTrainingCertificates = async () => {
+      const { data, error } = await supabase
+        .from("training_certificates")
+        .select("*")
+        .order("requested_at", { ascending: false });
+
+      if (error) {
+        console.error("Error loading training certificates:", error);
+        return;
+      }
+
+      if (isMounted) setTrainingCertificates(data.map(mapTrainingCertificateRow));
+    };
+
     loadUsers();
     loadChildren();
     loadPurchaseRequests();
+    loadTrainingCertificates();
 
     const usersChannel = supabase
       .channel("admin-users-changes")
@@ -556,11 +582,25 @@ export default function AdminHome({ user, profile }) {
       )
       .subscribe();
 
+    const trainingCertificatesChannel = supabase
+      .channel("admin-training-certificates-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "training_certificates",
+        },
+        () => loadTrainingCertificates()
+      )
+      .subscribe();
+
     return () => {
       isMounted = false;
       supabase.removeChannel(usersChannel);
       supabase.removeChannel(childrenChannel);
       supabase.removeChannel(purchaseRequestsChannel);
+      supabase.removeChannel(trainingCertificatesChannel);
     };
   }, []);
 
@@ -586,6 +626,11 @@ export default function AdminHome({ user, profile }) {
   const pendingPurchaseRequests = useMemo(
     () => purchaseRequests.filter((r) => r.status === "pending" || !r.status),
     [purchaseRequests]
+  );
+
+  const pendingTrainingCertificates = useMemo(
+    () => trainingCertificates.filter((c) => c.status === "pending" || !c.status),
+    [trainingCertificates]
   );
 
   // "Open" mirrors the definition FlagsAlerts already uses: flagged and
@@ -809,6 +854,76 @@ export default function AdminHome({ user, profile }) {
     setReviewRequest((r) => (r ? { ...r, status: "declined", adminNotes: prNotes.trim() || null } : r));
   };
 
+  // Opens a trainee's certificate request and loads their per-module quiz
+  // results (training_progress, joined with training_modules for the
+  // title/order) so the admin can actually see what they're approving,
+  // not just a bare "they're done" flag.
+  const openCertificate = async (cert) => {
+    setReviewCertificate(cert);
+    setCertError("");
+    setCertModuleBreakdown(null);
+    setCertBreakdownLoading(true);
+
+    const { data, error } = await supabase
+      .from("training_progress")
+      .select("status, best_score_percent, quiz_passed_at, module_id, training_modules(title, sort_order)")
+      .eq("user_id", cert.userId);
+
+    setCertBreakdownLoading(false);
+
+    if (error) {
+      console.error("Error loading training progress for certificate review:", error.message);
+      setCertModuleBreakdown([]);
+      return;
+    }
+
+    const rows = (data || [])
+      .map((r) => ({
+        title: r.training_modules?.title || "Untitled module",
+        sortOrder: r.training_modules?.sort_order ?? 0,
+        status: r.status,
+        bestScorePercent: r.best_score_percent,
+      }))
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+
+    setCertModuleBreakdown(rows);
+  };
+
+  const closeCertificate = () => {
+    setReviewCertificate(null);
+    setCertModuleBreakdown(null);
+    setCertError("");
+  };
+
+  // Approving is the only action here — there's nothing to "decline":
+  // the row only exists because every published module's quiz was
+  // already passed. Approving just releases the certificate the trainee
+  // sees on their own Training tab (see MemberArea.js's
+  // progressApi.certificate?.status === "approved" check) — still no
+  // email step, matching how Product numbers are delivered.
+  const handleApproveCertificate = async () => {
+    if (!reviewCertificate) return;
+    setCertSaving(true);
+    setCertError("");
+    const { error } = await supabase
+      .from("training_certificates")
+      .update({
+        status: "approved",
+        issued_at: new Date().toISOString(),
+        reviewed_by: user?.email || null,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq("user_id", reviewCertificate.userId);
+    setCertSaving(false);
+
+    if (error) {
+      console.error("Error approving training certificate:", error.message);
+      setCertError("Couldn't approve this certificate — try again.");
+      return;
+    }
+    setReviewCertificate((c) => (c ? { ...c, status: "approved" } : c));
+  };
+
   const roleLabel = (role) =>
     t[`role_${role}`] || role || "—";
 
@@ -846,6 +961,24 @@ export default function AdminHome({ user, profile }) {
     {
       id: "training-modules",
       label: "Training Modules",
+      section: t.section2,
+      icon: NAV_ICONS.training,
+    },
+    {
+      id: "training-certifications",
+      label: (
+        <span style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+          Training Certifications
+          {pendingTrainingCertificates.length > 0 && (
+            <span style={{
+              marginLeft: "auto", background: "#F2652233", color: "#F26522",
+              borderRadius: 20, fontSize: 10.5, fontWeight: 800, padding: "1px 7px",
+            }}>
+              {pendingTrainingCertificates.length}
+            </span>
+          )}
+        </span>
+      ),
       section: t.section2,
       icon: NAV_ICONS.training,
     },
@@ -906,6 +1039,7 @@ export default function AdminHome({ user, profile }) {
               {activePage === "flags" && t.navFlags}
               {activePage === "reports" && t.navReports}
               {activePage === "training-modules" && "Training Modules"}
+              {activePage === "training-certifications" && "Training Certifications"}
               {activePage === "screener-content" && "Screener Content"}
               {activePage === "purchase-requests" && "Purchase Requests"}
               {activePage === "profile" && t.navProfile}
@@ -913,6 +1047,7 @@ export default function AdminHome({ user, profile }) {
 
             <div className="page-sub">
               {activePage === "training-modules" && "Add, reorder, publish and edit the modules shown on the Training page — no code or database changes needed."}
+              {activePage === "training-certifications" && "Trainees who've passed every module's quiz land here. Review their results and approve to release their certificate."}
               {activePage === "screener-content" && "Manage the PuzzleBox Screener's sections, questions and scoring rules — no code or database changes needed."}
               {activePage === "purchase-requests" && "Requests submitted from the \"Buy The Puzzle Box Screener\" page. Fulfil a request to issue its Product number."}
               {activePage === "users" && t.usersSub}
@@ -1476,6 +1611,56 @@ export default function AdminHome({ user, profile }) {
           <TrainingModulesAdmin />
         )}
 
+        {activePage === "training-certifications" && (
+          trainingCertificates.length === 0 ? (
+            <div className="rh-card">
+              <div className="rh-empty">
+                <div className="rh-empty-icon">🎓</div>
+                <div className="rh-empty-title">No certifications yet</div>
+                <div className="rh-empty-sub">Once a trainee passes every published module's quiz, they'll show up here for review.</div>
+              </div>
+            </div>
+          ) : (
+            <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+              <div style={{ overflowX: "auto" }}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Trainee</th>
+                      <th>Status</th>
+                      <th>Requested</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trainingCertificates.map((c) => (
+                      <tr key={c.userId}>
+                        <td>
+                          <div style={{ fontWeight: 700, fontSize: 13 }}>{c.userName || "—"}</div>
+                          <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{c.userEmail}</div>
+                        </td>
+                        <td>
+                          {c.status === "approved"
+                            ? <span style={{ fontWeight: 700, fontSize: 12, color: "var(--teal)" }}>✓ Approved</span>
+                            : <span style={{ fontWeight: 700, fontSize: 12, color: "var(--orange)" }}>● Pending review</span>}
+                        </td>
+                        <td style={{ fontSize: 12, color: "var(--ink-faint)" }}>
+                          {c.requestedAt ? new Date(c.requestedAt).toLocaleDateString() : "—"}
+                        </td>
+                        <td>
+                          <button className="btn btn-sm" style={{ background: "var(--purple-lt, #F0E8F7)", color: "var(--purple, #6B2F8A)", border: "none" }} onClick={() => openCertificate(c)}>
+                            {c.status === "approved" ? "View" : "Review"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
+        )}
+
         {activePage === "screener-content" && (
           <ScreenerContentAdmin />
         )}
@@ -1766,6 +1951,77 @@ export default function AdminHome({ user, profile }) {
                   </button>
                   <button className="btn btn-teal" disabled={prSaving} onClick={handleFulfil}>
                     {prSaving ? "Saving…" : "Mark Fulfilled"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TRAINING CERTIFICATE REVIEW MODAL */}
+      {reviewCertificate && (
+        <div className="modal-overlay" onClick={closeCertificate}>
+          <div className="modal" style={{ maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">{reviewCertificate.userName || reviewCertificate.userEmail}</div>
+              <button className="modal-close" onClick={closeCertificate}>✕</button>
+            </div>
+
+            <div style={{ display: "grid", gap: 4, marginBottom: 18, fontSize: 13.5 }}>
+              <div><strong>Email:</strong> {reviewCertificate.userEmail}</div>
+              <div><strong>Requested:</strong> {reviewCertificate.requestedAt ? new Date(reviewCertificate.requestedAt).toLocaleString() : "—"}</div>
+            </div>
+
+            <div style={{ fontSize: 12, fontWeight: 800, color: "var(--ink-mid)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Module results
+            </div>
+
+            {certBreakdownLoading ? (
+              <p style={{ fontSize: 13, color: "var(--ink-mid)" }}>Loading results…</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 18 }}>
+                {(certModuleBreakdown || []).map((m, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "8px 12px", borderRadius: 10, background: "var(--surface)", fontSize: 13,
+                  }}>
+                    <span>{m.title}</span>
+                    <span style={{ fontWeight: 700, color: m.status === "quiz_passed" ? "var(--teal)" : "var(--ink-faint)" }}>
+                      {m.status === "quiz_passed" ? `✓ Passed${m.bestScorePercent != null ? ` · ${m.bestScorePercent}%` : ""}` : "Not completed"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {reviewCertificate.status === "approved" ? (
+              <div style={{
+                padding: "14px 16px", borderRadius: 12,
+                background: "var(--teal-lt, #E0F5F3)", color: "var(--ink)",
+              }}>
+                <div style={{ fontWeight: 800, fontSize: 12.5, color: "var(--teal)", marginBottom: 4 }}>✓ APPROVED</div>
+                <div style={{ fontSize: 12.5 }}>
+                  Certificate released to {reviewCertificate.userEmail}
+                  {reviewCertificate.reviewedAt ? ` on ${new Date(reviewCertificate.reviewedAt).toLocaleDateString()}` : ""}.
+                </div>
+              </div>
+            ) : (
+              <>
+                {certError && (
+                  <div style={{ fontSize: 13, color: "var(--pink)", background: "var(--pink-lt)", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
+                    {certError}
+                  </div>
+                )}
+                <p style={{ fontSize: 11.5, color: "var(--ink-faint)", lineHeight: 1.6, marginBottom: 14 }}>
+                  Approving releases the certificate on {reviewCertificate.userEmail}'s own Training tab — nothing is emailed.
+                </p>
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                  <button className="btn btn-ghost" disabled={certSaving} onClick={closeCertificate}>
+                    Not yet
+                  </button>
+                  <button className="btn btn-teal" disabled={certSaving} onClick={handleApproveCertificate}>
+                    {certSaving ? "Saving…" : "Approve & issue certificate"}
                   </button>
                 </div>
               </>

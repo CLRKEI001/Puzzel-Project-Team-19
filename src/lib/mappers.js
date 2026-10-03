@@ -164,3 +164,16 @@ export function mapPurchaseRequestRow(r) {
     createdAt: r.created_at,
   };
 }
+
+export function mapTrainingCertificateRow(r) {
+  return {
+    userId: r.user_id,
+    userEmail: r.user_email,
+    userName: r.user_name,
+    status: r.status, // "pending" | "approved"
+    requestedAt: r.requested_at,
+    issuedAt: r.issued_at,
+    reviewedBy: r.reviewed_by,
+    reviewedAt: r.reviewed_at,
+  };
+}

@@ -142,10 +142,10 @@ function FoundingStory() {
             Founding story
           </h2>
           <p style={{ color: COLORS.inkMid, lineHeight: 1.85, marginBottom: 16, fontSize: 16 }}>
-            Gary King founded The Puzzle Project after producing a film in the rural Eastern Cape, where he saw the challenges facing young children growing up with limited access to educational and developmental resources. It left him with a question: what if puzzles could make a difference?
+            Gary King founded The Puzzle Project after a 12-piece puzzle sparked an idea during his work as a movie director in the rural Eastern Cape: what if a single puzzle could screen broad areas of a child's development needing support?
           </p>
           <p style={{ color: COLORS.inkMid, lineHeight: 1.85, fontSize: 16 }}>
-            He partnered with Dr Rivca Marais and Dr Jennifer Jansen to develop a play-based screening protocol built around puzzle activities that children engage with naturally. The digital platform was developed to scale this protocol across South Africa.
+            And so began a journey with Dr Rivca Marais and Dr Jennifer Jansen to explore what that simple puzzle could become — a play-based screening protocol built around puzzle activities that children engage with naturally. The digital platform was developed to scale this protocol across South Africa.
           </p>
         </Reveal>
       </div>
@@ -164,12 +164,12 @@ function FoundingStory() {
 
 // ---- Team: faces (initials for now), no card borders ---------------------
 const TEAM = [
-  { initials: "GK", name: "Gary King", role: "Founder & project sponsor", color: COLORS.teal, bg: COLORS.tealLight, image: "/gary-king.jpg", imageAlt: "Gary King", imageFit: "cover" },
-  { initials: "RM", name: "Dr Rivca Marais", role: "Lead psychologist & clinical advisor", color: COLORS.pink, bg: COLORS.pinkLight },
-  { initials: "JJ", name: "Dr Jennifer Jansen", role: "Research & development", color: COLORS.purple, bg: COLORS.purpleLight },
-  { initials: "SF", name: "Ms Satara Ferreira", role: "Education", color: COLORS.maroon, bg: COLORS.maroonLight },
-  { initials: "T19", name: "UCT INF3003W Team 19", role: "Platform design & development", color: COLORS.teal, bg: COLORS.tealLight, image: "/uct-seal.jpg", imageAlt: "University of Cape Town seal", imageFit: "contain" },
-  { initials: "UCT", name: "UCT INF3011F Team 11 and Team 18 ", role: "Academic supervisors & advisors", color: COLORS.purple, bg: COLORS.purpleLight, image: "/uct-seal.jpg", imageAlt: "University of Cape Town seal", imageFit: "contain" },
+  { initials: "GK", name: "Gary King", role: "Founder & project sponsor", color: COLORS.teal, bg: COLORS.tealLight, image: "/gary-king.jpg", imageAlt: "Gary King", imageFit: "cover", imagePosition: "center" },
+  { initials: "RM", name: "Dr Rivca Marais", role: "Lead psychologist & clinical advisor", color: COLORS.pink, bg: COLORS.pinkLight, image: "/rivca.jpeg", imageAlt: "Rivca Marais", imageFit: "cover", imagePosition: "center 20%" },
+  { initials: "JJ", name: "Dr Jennifer Jansen", role: "Research & development", color: COLORS.purple, bg: COLORS.purpleLight, image: "/jenny.jpeg", imageAlt: "Jennifer Jansen", imageFit: "cover", imagePosition: "center 30%" },
+  { initials: "SF", name: "Ms Satara Ferreira", role: "Education", color: COLORS.maroon, bg: COLORS.maroonLight, image: "/satara.jpeg", imageAlt: "Satara Ferreira", imageFit: "cover", imagePosition: "center 20%" },
+  { initials: "T19", name: "UCT INF3003W Team 19", role: "Platform design & development", color: COLORS.teal, bg: COLORS.tealLight, image: "/uct-seal.jpg", imageAlt: "University of Cape Town seal", imageFit: "contain", imagePosition: "center" },
+  { initials: "UCT", name: "UCT INF3011F Team 11 and Team 18", role: "Academic supervisors & advisors", color: COLORS.purple, bg: COLORS.purpleLight, image: "/uct-seal.jpg", imageAlt: "University of Cape Town seal", imageFit: "contain", imagePosition: "center" },
 ];
 
 function TeamSection() {

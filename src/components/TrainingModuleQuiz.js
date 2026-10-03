@@ -9,7 +9,7 @@ import React, { useState } from "react";
 import { COLORS } from "./SiteChrome";
 import { useTrainingQuestions } from "../lib/useTrainingQuestions";
 
-export default function TrainingModuleQuiz({ moduleId, color }) {
+export default function TrainingModuleQuiz({ moduleId, color, onResult }) {
   const { questions, loading, error } = useTrainingQuestions(moduleId);
   const [started, setStarted] = useState(false);
   const [answers, setAnswers] = useState({}); // questionId -> choiceId
@@ -31,7 +31,12 @@ export default function TrainingModuleQuiz({ moduleId, color }) {
       (sum, q) => sum + (answers[q.id] === q.correctChoiceId ? q.points : 0),
       0
     );
-    setResult({ score, total: totalPoints, percent: totalPoints ? Math.round((score / totalPoints) * 100) : 0 });
+    const outcome = { score, total: totalPoints, percent: totalPoints ? Math.round((score / totalPoints) * 100) : 0 };
+    setResult(outcome);
+    // Let the parent (MemberArea's Training flow) persist pass/fail to
+    // training_progress — this component stays pure/presentational and
+    // keeps working exactly as before when no callback is passed in.
+    if (onResult) onResult({ ...outcome, passed: outcome.percent >= 70 });
   };
 
   const retake = () => {

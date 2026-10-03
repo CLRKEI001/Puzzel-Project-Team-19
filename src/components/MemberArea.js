@@ -5,7 +5,11 @@ import { supabase } from "../supabaseClient";
 import { COLORS, FONT_IMPORT, BrandLogo, useIsMobile } from "./SiteChrome";
 import { PurchaseContent } from "./PuzzleBoxPurchase";
 import { useTrainingModules } from "../lib/useTrainingModules";
+import { useTrainingProgress } from "../lib/useTrainingProgress";
 import TrainingModuleQuiz from "./TrainingModuleQuiz";
+import TrainingModuleContent from "./TrainingModuleContent";
+import TrainingCertificate from "./TrainingCertificate";
+import { getModuleContent } from "../data/trainingContent.v1";
 import ThemeToggle from "../theme/ThemeToggle";
 
 // Maps an admin's chosen colour key (see Admin → Training Modules) back
@@ -146,11 +150,110 @@ function Landing({ profile, onView }) {
   );
 }
 
-function Training({ user }) {
+// One module's full rich-content view: the storytelling/cards/tables from
+// TrainingModuleContent.js, the module's quiz below it, and a progress
+// badge driven by useTrainingProgress. Marks the module "viewed" as soon
+// as it's opened; a passed quiz (>=70%, same threshold TrainingModuleQuiz
+// already used) upgrades that to "quiz_passed".
+function ModuleDetail({ user, mod, modules, onBack, onOpenModule, progressApi }) {
+  const { color, bg } = moduleColor(mod.colorKey);
+  const content = getModuleContent(mod.sortOrder);
+  const progressRow = progressApi.progress.get(mod.id);
+
+  const orderedIds = (modules || []).map((m) => m.id);
+  const myIndex = orderedIds.indexOf(mod.id);
+  const nextMod = myIndex >= 0 ? modules[myIndex + 1] : null;
+
+  useEffect(() => {
+    progressApi.markViewed(mod.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mod.id]);
+
+  const handleResult = (outcome) => {
+    progressApi.recordQuizResult(mod.id, outcome);
+  };
+
+  const isDone = progressRow?.status === "quiz_passed";
+
+  return (
+    <div>
+      <button onClick={onBack} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: 800, color: COLORS.teal, marginBottom: 22 }}>
+        ← Back to modules
+      </button>
+
+      {isDone && (
+        <div style={{ display: "inline-block", padding: "4px 14px", borderRadius: 16, background: COLORS.tealLight, color: COLORS.teal, fontSize: 11, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 16 }}>
+          ✓ Completed{progressRow.bestScorePercent != null ? ` · best score ${progressRow.bestScorePercent}%` : ""}
+        </div>
+      )}
+
+      {content ? (
+        <TrainingModuleContent content={content} colorKey={mod.colorKey} />
+      ) : (
+        <>
+          <h1 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 28, fontWeight: 900, color: COLORS.ink, marginBottom: 10 }}>{mod.title}</h1>
+          {mod.description && <p style={{ fontSize: 14.5, color: COLORS.inkMid, lineHeight: 1.7, marginBottom: 20 }}>{mod.description}</p>}
+          <VideoBlock url={mod.videoUrl} color={color} bg={bg} />
+          {mod.contentUrl && (
+            <a href={mod.contentUrl} target="_blank" rel="noreferrer" style={{ display: "block", marginTop: 10, fontSize: 13, fontWeight: 700, color }}>
+              Open resource →
+            </a>
+          )}
+        </>
+      )}
+
+      <div style={{ marginTop: 32, paddingTop: 24, borderTop: `1px solid ${COLORS.border}` }}>
+        <h3 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 17, fontWeight: 800, color: COLORS.ink, marginBottom: 4 }}>Checkpoint</h3>
+        <p style={{ fontSize: 13, color: COLORS.inkMid, marginBottom: 4 }}>Pass this module's quiz (70% or higher) to mark it complete.</p>
+        <TrainingModuleQuiz
+          moduleId={mod.id}
+          color={color}
+          onResult={handleResult}
+        />
+      </div>
+
+      {isDone && (
+        <div style={{
+          marginTop: 24, padding: "18px 20px", borderRadius: 14,
+          background: COLORS.tealLight, border: `1px solid ${COLORS.teal}`,
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap",
+        }}>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: COLORS.ink }}>
+            {nextMod ? "Module complete — ready for the next one?" : "Module complete — that's the last module."}
+          </div>
+          {nextMod ? (
+            <button
+              onClick={() => onOpenModule(nextMod.id)}
+              style={{
+                background: color, color: "#fff", border: "none", borderRadius: 10,
+                padding: "10px 20px", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 800, whiteSpace: "nowrap",
+              }}
+            >
+              Continue to {nextMod.title} →
+            </button>
+          ) : (
+            <button
+              onClick={onBack}
+              style={{
+                background: color, color: "#fff", border: "none", borderRadius: 10,
+                padding: "10px 20px", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 800, whiteSpace: "nowrap",
+              }}
+            >
+              Back to all modules →
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Training({ user, profile, onCertificateStatusChange }) {
   const [state, setState] = useState("checking"); // checking | locked | unlocked
   const [number, setNumber] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [openModuleId, setOpenModuleId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -188,6 +291,20 @@ function Training({ user }) {
   };
 
   const { modules, loading: modulesLoading } = useTrainingModules();
+  const progressApi = useTrainingProgress(user.uid);
+  const publishedModules = modules.filter((m) => m.status === "published");
+
+  useEffect(() => {
+    if (!progressApi.loading && publishedModules.length > 0) {
+      progressApi.issueCertificateIfEligible(publishedModules.map((m) => m.id), user.email, user.displayName);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progressApi.loading, progressApi.progress, publishedModules.length]);
+
+  useEffect(() => {
+    if (onCertificateStatusChange) onCertificateStatusChange(progressApi.certificate?.status ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progressApi.certificate?.status]);
 
   if (state === "checking") return <p style={{ color: COLORS.inkMid }}>Checking your training access…</p>;
 
@@ -213,13 +330,36 @@ function Training({ user }) {
     );
   }
 
+  if (openModuleId) {
+    const mod = modules.find((m) => m.id === openModuleId);
+    if (mod) {
+      return (
+        <ModuleDetail
+          user={user}
+          mod={mod}
+          modules={publishedModules}
+          onBack={() => setOpenModuleId(null)}
+          onOpenModule={(id) => setOpenModuleId(id)}
+          progressApi={progressApi}
+        />
+      );
+    }
+  }
+
+  const completedCount = publishedModules.filter((m) => progressApi.progress.get(m.id)?.status === "quiz_passed").length;
+
   return (
     <>
       <span style={{ display: "inline-block", padding: "4px 14px", borderRadius: 16, background: COLORS.tealLight, color: COLORS.teal, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 14 }}>Training unlocked</span>
       <h1 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 32, fontWeight: 900, color: COLORS.ink, marginBottom: 10 }}>Training modules</h1>
-      <p style={{ fontSize: 15.5, color: COLORS.inkMid, lineHeight: 1.75, maxWidth: 640, marginBottom: 28 }}>
-        Complete the modules in order, followed by the certification assessment.
+      <p style={{ fontSize: 15.5, color: COLORS.inkMid, lineHeight: 1.75, maxWidth: 640, marginBottom: 10 }}>
+        Complete the modules in order, followed by each module's quiz, to earn your certification.
       </p>
+      {publishedModules.length > 0 && (
+        <p style={{ fontSize: 13, fontWeight: 700, color: COLORS.teal, marginBottom: 28 }}>
+          {completedCount} of {publishedModules.length} modules completed
+        </p>
+      )}
       {modulesLoading ? (
         <p style={{ color: COLORS.inkMid, fontSize: 14 }}>Loading modules…</p>
       ) : (
@@ -228,19 +368,25 @@ function Training({ user }) {
             const { color, bg } = moduleColor(mod.colorKey);
             const number = String(mod.sortOrder ?? i + 1).padStart(2, "0");
             const isPublished = mod.status === "published";
+            const row = progressApi.progress.get(mod.id);
+            const isDone = row?.status === "quiz_passed";
+            const hasRichContent = !!getModuleContent(mod.sortOrder);
             return (
               <div
                 key={mod.id}
                 style={{
-                  padding: "20px 22px", borderRadius: 16, background: COLORS.white, border: `1px solid ${COLORS.border}`,
+                  padding: "20px 22px", borderRadius: 16, background: COLORS.white,
+                  border: `1px solid ${isDone ? COLORS.teal : COLORS.border}`,
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                  <div style={{ width: 46, height: 46, borderRadius: 12, background: bg, color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontFamily: "'Nunito', sans-serif", flexShrink: 0 }}>{number}</div>
+                  <div style={{ width: 46, height: 46, borderRadius: 12, background: bg, color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontFamily: "'Nunito', sans-serif", flexShrink: 0 }}>
+                    {isDone ? "✓" : number}
+                  </div>
                   <div>
                     <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 15, fontWeight: 800, color: COLORS.ink, lineHeight: 1.3 }}>{mod.title}</div>
-                    <div style={{ fontSize: 12, color: isPublished ? COLORS.teal : COLORS.inkFaint, marginTop: 3, fontWeight: isPublished ? 700 : 400 }}>
-                      {isPublished ? "Published" : "Coming soon"}
+                    <div style={{ fontSize: 12, color: isDone ? COLORS.teal : isPublished ? COLORS.inkMid : COLORS.inkFaint, marginTop: 3, fontWeight: isDone ? 700 : 400 }}>
+                      {isDone ? "Completed" : isPublished ? (row?.status === "viewed" ? "In progress" : "Not started") : "Coming soon"}
                     </div>
                   </div>
                 </div>
@@ -249,18 +395,52 @@ function Training({ user }) {
                   <p style={{ fontSize: 12.5, color: COLORS.inkMid, lineHeight: 1.6, marginTop: 10, marginBottom: 0 }}>{mod.description}</p>
                 )}
 
-                <VideoBlock url={isPublished ? mod.videoUrl : null} color={color} bg={bg} />
-
-                {mod.contentUrl && (
-                  <a href={mod.contentUrl} target="_blank" rel="noreferrer" style={{ display: "block", marginTop: 8, fontSize: 12, fontWeight: 700, color }}>
-                    Open resource →
-                  </a>
+                {isPublished && hasRichContent ? (
+                  <button
+                    onClick={() => setOpenModuleId(mod.id)}
+                    style={{
+                      marginTop: 14, background: color, color: "#fff", border: "none", borderRadius: 10,
+                      padding: "9px 18px", cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 800,
+                    }}
+                  >
+                    {row ? "Continue module" : "Open module"} →
+                  </button>
+                ) : (
+                  <>
+                    <VideoBlock url={isPublished ? mod.videoUrl : null} color={color} bg={bg} />
+                    {mod.contentUrl && (
+                      <a href={mod.contentUrl} target="_blank" rel="noreferrer" style={{ display: "block", marginTop: 8, fontSize: 12, fontWeight: 700, color }}>
+                        Open resource →
+                      </a>
+                    )}
+                    {isPublished && <TrainingModuleQuiz moduleId={mod.id} color={color} onResult={(outcome) => progressApi.recordQuizResult(mod.id, outcome)} />}
+                  </>
                 )}
-
-                {isPublished && <TrainingModuleQuiz moduleId={mod.id} color={color} />}
               </div>
             );
           })}
+        </div>
+      )}
+
+      {progressApi.certificate?.status === "approved" && (
+        <TrainingCertificate
+          name={user.displayName || user.email}
+          tierLabel={TIER_LABEL[profile?.role]}
+          issuedAt={progressApi.certificate.issuedAt}
+        />
+      )}
+
+      {progressApi.certificate?.status === "pending" && (
+        <div style={{
+          marginTop: 28, borderRadius: 16, padding: "22px 24px",
+          background: COLORS.orangeLight, border: `1px solid ${COLORS.orange}`,
+        }}>
+          <div style={{ fontWeight: 800, fontSize: 14, color: COLORS.orange, marginBottom: 4 }}>
+            All modules complete — awaiting review
+          </div>
+          <div style={{ fontSize: 13, color: COLORS.inkMid, lineHeight: 1.6 }}>
+            You've passed every module's quiz. Your admin will review your results and issue your certificate — it'll appear here once approved.
+          </div>
         </div>
       )}
     </>
@@ -269,6 +449,14 @@ function Training({ user }) {
 
 export default function MemberArea({ user, profile, view, onView }) {
   const isLanding = view === "landing";
+  // Training's certificate status ("pending" | "approved" | null), reported
+  // up by Training so the "Continue to my dashboard" link below can be
+  // suppressed for the entire training flow until the admin has approved
+  // the certificate — a trainee shouldn't be nudged toward "done" anywhere
+  // in Training before that happens. Doesn't affect the purchase view.
+  const [trainingCertStatus, setTrainingCertStatus] = useState(null);
+  const awaitingApproval = view === "training" && trainingCertStatus !== "approved";
+
   return (
     <Shell
       profile={profile}
@@ -276,19 +464,26 @@ export default function MemberArea({ user, profile, view, onView }) {
       backLabel="← Back"
     >
       {isLanding && <Landing profile={profile} onView={onView} />}
-      {view === "training" && <Training user={user} />}
+      {view === "training" && (
+        <Training user={user} profile={profile} onCertificateStatusChange={setTrainingCertStatus} />
+      )}
       {view === "purchase" && (
         <>
           <h1 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 32, fontWeight: 900, color: COLORS.ink, marginBottom: 28 }}>Buy The Puzzle Box Screener</h1>
           <PurchaseContent user={user} />
         </>
       )}
-      {!isLanding && (
+      {!isLanding && !awaitingApproval && (
         <div style={{ marginTop: 40 }}>
           <button onClick={() => onView(null)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 800, color: COLORS.teal }}>
             Continue to my dashboard →
           </button>
         </div>
+      )}
+      {awaitingApproval && trainingCertStatus === "pending" && (
+        <p style={{ marginTop: 40, fontSize: 12.5, color: COLORS.inkFaint, lineHeight: 1.6 }}>
+          Your dashboard link will reappear here once your admin approves your certificate.
+        </p>
       )}
     </Shell>
   );

@@ -5,13 +5,15 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "../supabaseClient";
-import { mapUserRow, mapChildRow } from "../lib/mappers";
+import { mapUserRow, mapChildRow, mapPurchaseRequestRow, mapTrainingCertificateRow } from "../lib/mappers";
 import RoleSidebar from "./RoleSidebar";
 import RoleHero from "./RoleHero";
 import StatRing from "./StatRing";
 import ChildrenTable from "./ChildrenTable";
 import FlagsAlerts from "./FlagsAlerts";
 import SummaryReport from "./SummaryReport";
+import TrainingModulesAdmin from "./TrainingModulesAdmin";
+import ScreenerContentAdmin from "./ScreenerContentAdmin";
 import "./TeacherHome.css";
 import "./AdminHome.css";
 import "./RoleHomeKit.css";
@@ -19,7 +21,7 @@ import "./RoleHomeKit.css";
 // Roles an admin can hand out. "admin" is deliberately left out of the
 // reassignment dropdown — promoting/demoting other admins from this list
 // is easy to fat-finger, so that stays a database-level action for now.
-const ASSIGNABLE_ROLES = ["educator", "psychologist", "analyst"];
+const ASSIGNABLE_ROLES = ["educator", "psychologist", "admin"];
 
 const T = {
   en: {
@@ -395,7 +397,40 @@ const NAV_ICONS = {
       />
     </svg>
   ),
+
+  training: (
+    <svg viewBox="0 0 16 16" fill="none">
+      <path d="M1.5 5.5L8 2.5l6.5 3L8 8.5l-6.5-3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+      <path d="M4 7.2V10c0 1 1.8 2 4 2s4-1 4-2V7.2" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  ),
+
+  screenerContent: (
+    <svg viewBox="0 0 16 16" fill="none">
+      <rect x="1.5" y="1.5" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+      <rect x="8.5" y="1.5" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+      <rect x="1.5" y="8.5" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M11.5 8.5v6M8.5 11.5h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  ),
+
+  purchases: (
+    <svg viewBox="0 0 16 16" fill="none">
+      <path d="M2 4.5l1-2.5h10l1 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M2 4.5h12v8.5a1 1 0 01-1 1H3a1 1 0 01-1-1V4.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M5.5 7a2.5 2.5 0 005 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  ),
 };
+
+// A readable default Product number so the admin isn't stuck typing one from
+// scratch — they can still overwrite it with whatever numbering scheme the
+// physical screener kits actually use.
+function generateProductNumber() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I — easy to read off a sticker
+  const seg = (n) => Array.from({ length: n }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  return `PB-${seg(4)}-${seg(4)}`;
+}
 
 const ROLE_COLORS = {
   educator: "#F26522",
@@ -413,6 +448,25 @@ export default function AdminHome({ user, profile }) {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [rejectTarget, setRejectTarget] = useState(null);
+
+  // Purchase requests ("Buy The Puzzle Box Screener" form submissions)
+  const [purchaseRequests, setPurchaseRequests] = useState([]);
+  const [reviewRequest, setReviewRequest] = useState(null);   // request currently open in the modal
+  const [prNumber, setPrNumber] = useState("");
+  const [prNotes, setPrNotes] = useState("");
+  const [prSaving, setPrSaving] = useState(false);
+  const [prError, setPrError] = useState("");
+
+  // Training certifications — results surfaced from useTrainingProgress /
+  // training_certificates (migrations 015 & 018). A trainee's completion
+  // lands here as "pending"; nothing is visible to them until an admin
+  // reviews it and approves.
+  const [trainingCertificates, setTrainingCertificates] = useState([]);
+  const [reviewCertificate, setReviewCertificate] = useState(null); // certificate row open in the modal
+  const [certModuleBreakdown, setCertModuleBreakdown] = useState(null); // per-module quiz results for that trainee
+  const [certBreakdownLoading, setCertBreakdownLoading] = useState(false);
+  const [certSaving, setCertSaving] = useState(false);
+  const [certError, setCertError] = useState("");
 
   const t = T[lang];
 
@@ -456,8 +510,38 @@ export default function AdminHome({ user, profile }) {
       }
     };
 
+    const loadPurchaseRequests = async () => {
+      const { data, error } = await supabase
+        .from("purchase_requests")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error loading purchase requests:", error);
+        return;
+      }
+
+      if (isMounted) setPurchaseRequests(data.map(mapPurchaseRequestRow));
+    };
+
+    const loadTrainingCertificates = async () => {
+      const { data, error } = await supabase
+        .from("training_certificates")
+        .select("*")
+        .order("requested_at", { ascending: false });
+
+      if (error) {
+        console.error("Error loading training certificates:", error);
+        return;
+      }
+
+      if (isMounted) setTrainingCertificates(data.map(mapTrainingCertificateRow));
+    };
+
     loadUsers();
     loadChildren();
+    loadPurchaseRequests();
+    loadTrainingCertificates();
 
     const usersChannel = supabase
       .channel("admin-users-changes")
@@ -485,10 +569,38 @@ export default function AdminHome({ user, profile }) {
       )
       .subscribe();
 
+    const purchaseRequestsChannel = supabase
+      .channel("admin-purchase-requests-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "purchase_requests",
+        },
+        () => loadPurchaseRequests()
+      )
+      .subscribe();
+
+    const trainingCertificatesChannel = supabase
+      .channel("admin-training-certificates-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "training_certificates",
+        },
+        () => loadTrainingCertificates()
+      )
+      .subscribe();
+
     return () => {
       isMounted = false;
       supabase.removeChannel(usersChannel);
       supabase.removeChannel(childrenChannel);
+      supabase.removeChannel(purchaseRequestsChannel);
+      supabase.removeChannel(trainingCertificatesChannel);
     };
   }, []);
 
@@ -509,6 +621,16 @@ export default function AdminHome({ user, profile }) {
   const pendingUsers = useMemo(
     () => users.filter((u) => !u.isVerified),
     [users]
+  );
+
+  const pendingPurchaseRequests = useMemo(
+    () => purchaseRequests.filter((r) => r.status === "pending" || !r.status),
+    [purchaseRequests]
+  );
+
+  const pendingTrainingCertificates = useMemo(
+    () => trainingCertificates.filter((c) => c.status === "pending" || !c.status),
+    [trainingCertificates]
   );
 
   // "Open" mirrors the definition FlagsAlerts already uses: flagged and
@@ -627,6 +749,181 @@ export default function AdminHome({ user, profile }) {
     setRejectTarget(null);
   };
 
+  const openRequest = (req) => {
+    setReviewRequest(req);
+    setPrNumber(req.productNumber || generateProductNumber());
+    setPrNotes(req.adminNotes || "");
+    setPrError("");
+  };
+
+  const closeRequest = () => {
+    setReviewRequest(null);
+    setPrNumber("");
+    setPrNotes("");
+    setPrError("");
+  };
+
+  // Fulfilling a request issues the Product number: it's written to
+  // screener_products (the table redeem_product_number() checks against —
+  // see migration 003), so it works the moment the buyer types it in after
+  // logging in. It also shows up automatically on their own Buy page (the
+  // PurchaseContent component matches purchase_requests by the buyer's
+  // email) — no email step needed, nothing to send from here.
+  const handleFulfil = async () => {
+    if (!reviewRequest) return;
+    const number = prNumber.trim().toUpperCase();
+    if (!number) {
+      setPrError("Enter a Product number before marking this fulfilled.");
+      return;
+    }
+
+    setPrSaving(true);
+    setPrError("");
+
+    const productRow = {
+      product_number: number,
+      notes: `Issued to ${reviewRequest.organisation || reviewRequest.name} — purchase request from ${reviewRequest.email}`,
+      active: true,
+    };
+
+    // Deliberately NOT using .upsert()/onConflict here. screener_products has
+    // no SELECT policy on purpose (migration 003 — numbers can't be listed
+    // from the browser, only checked one at a time via redeem_product_number).
+    // Postgres' INSERT ... ON CONFLICT DO UPDATE needs a SELECT policy under
+    // RLS to resolve the conflict check, even for a number that doesn't
+    // already exist — without one it always throws "new row violates
+    // row-level security policy", which is what was happening here. A plain
+    // INSERT, falling back to a plain UPDATE on an actual duplicate, needs
+    // only the INSERT/UPDATE policies we already have and sidesteps that
+    // Postgres/RLS interaction entirely.
+    const { error: insertErr } = await supabase.from("screener_products").insert(productRow);
+    let productErr = insertErr;
+
+    if (insertErr && insertErr.code === "23505") {
+      // Number already exists (e.g. re-fulfilling, or a rare random clash) — update it instead.
+      const { error: updateProductErr } = await supabase
+        .from("screener_products")
+        .update(productRow)
+        .eq("product_number", number);
+      productErr = updateProductErr;
+    }
+
+    if (productErr) {
+      console.error("Error creating screener product:", productErr.message);
+      setPrError(`Couldn't save that Product number: ${productErr.message}`);
+      setPrSaving(false);
+      return;
+    }
+
+    const { error: updateErr } = await supabase
+      .from("purchase_requests")
+      .update({
+        status: "fulfilled",
+        product_number: number,
+        admin_notes: prNotes.trim() || null,
+        fulfilled_by: user?.email || null,
+        fulfilled_at: new Date().toISOString(),
+      })
+      .eq("id", reviewRequest.id);
+
+    setPrSaving(false);
+
+    if (updateErr) {
+      console.error("Error marking purchase request fulfilled:", updateErr.message);
+      setPrError("The Product number was saved, but updating the request failed — try again.");
+      return;
+    }
+
+    setReviewRequest((r) => (r ? { ...r, status: "fulfilled", productNumber: number, adminNotes: prNotes.trim() || null } : r));
+  };
+
+  const handleDeclineRequest = async () => {
+    if (!reviewRequest) return;
+    setPrSaving(true);
+    const { error } = await supabase
+      .from("purchase_requests")
+      .update({ status: "declined", admin_notes: prNotes.trim() || null, fulfilled_by: user?.email || null, fulfilled_at: new Date().toISOString() })
+      .eq("id", reviewRequest.id);
+    setPrSaving(false);
+
+    if (error) {
+      console.error("Error declining purchase request:", error.message);
+      setPrError("Couldn't update the request — try again.");
+      return;
+    }
+    setReviewRequest((r) => (r ? { ...r, status: "declined", adminNotes: prNotes.trim() || null } : r));
+  };
+
+  // Opens a trainee's certificate request and loads their per-module quiz
+  // results (training_progress, joined with training_modules for the
+  // title/order) so the admin can actually see what they're approving,
+  // not just a bare "they're done" flag.
+  const openCertificate = async (cert) => {
+    setReviewCertificate(cert);
+    setCertError("");
+    setCertModuleBreakdown(null);
+    setCertBreakdownLoading(true);
+
+    const { data, error } = await supabase
+      .from("training_progress")
+      .select("status, best_score_percent, quiz_passed_at, module_id, training_modules(title, sort_order)")
+      .eq("user_id", cert.userId);
+
+    setCertBreakdownLoading(false);
+
+    if (error) {
+      console.error("Error loading training progress for certificate review:", error.message);
+      setCertModuleBreakdown([]);
+      return;
+    }
+
+    const rows = (data || [])
+      .map((r) => ({
+        title: r.training_modules?.title || "Untitled module",
+        sortOrder: r.training_modules?.sort_order ?? 0,
+        status: r.status,
+        bestScorePercent: r.best_score_percent,
+      }))
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+
+    setCertModuleBreakdown(rows);
+  };
+
+  const closeCertificate = () => {
+    setReviewCertificate(null);
+    setCertModuleBreakdown(null);
+    setCertError("");
+  };
+
+  // Approving is the only action here — there's nothing to "decline":
+  // the row only exists because every published module's quiz was
+  // already passed. Approving just releases the certificate the trainee
+  // sees on their own Training tab (see MemberArea.js's
+  // progressApi.certificate?.status === "approved" check) — still no
+  // email step, matching how Product numbers are delivered.
+  const handleApproveCertificate = async () => {
+    if (!reviewCertificate) return;
+    setCertSaving(true);
+    setCertError("");
+    const { error } = await supabase
+      .from("training_certificates")
+      .update({
+        status: "approved",
+        issued_at: new Date().toISOString(),
+        reviewed_by: user?.email || null,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq("user_id", reviewCertificate.userId);
+    setCertSaving(false);
+
+    if (error) {
+      console.error("Error approving training certificate:", error.message);
+      setCertError("Couldn't approve this certificate — try again.");
+      return;
+    }
+    setReviewCertificate((c) => (c ? { ...c, status: "approved" } : c));
+  };
+
   const roleLabel = (role) =>
     t[`role_${role}`] || role || "—";
 
@@ -662,6 +959,54 @@ export default function AdminHome({ user, profile }) {
       icon: NAV_ICONS.reports,
     },
     {
+      id: "training-modules",
+      label: "Training Modules",
+      section: t.section2,
+      icon: NAV_ICONS.training,
+    },
+    {
+      id: "training-certifications",
+      label: (
+        <span style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+          Training Certifications
+          {pendingTrainingCertificates.length > 0 && (
+            <span style={{
+              marginLeft: "auto", background: "#F2652233", color: "#F26522",
+              borderRadius: 20, fontSize: 10.5, fontWeight: 800, padding: "1px 7px",
+            }}>
+              {pendingTrainingCertificates.length}
+            </span>
+          )}
+        </span>
+      ),
+      section: t.section2,
+      icon: NAV_ICONS.training,
+    },
+    {
+      id: "screener-content",
+      label: "Screener Content",
+      section: t.section2,
+      icon: NAV_ICONS.screenerContent,
+    },
+    {
+      id: "purchase-requests",
+      label: (
+        <span style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+          Purchase Requests
+          {pendingPurchaseRequests.length > 0 && (
+            <span style={{
+              marginLeft: "auto", background: "#F2652233", color: "#F26522",
+              borderRadius: 20, fontSize: 10.5, fontWeight: 800, padding: "1px 7px",
+            }}>
+              {pendingPurchaseRequests.length}
+            </span>
+          )}
+        </span>
+      ),
+      section: t.section2,
+      icon: NAV_ICONS.purchases,
+    },
+    {
       id: "profile",
       label: t.navProfile,
       section: t.section3,
@@ -693,10 +1038,18 @@ export default function AdminHome({ user, profile }) {
               {activePage === "children" && t.navChildren}
               {activePage === "flags" && t.navFlags}
               {activePage === "reports" && t.navReports}
+              {activePage === "training-modules" && "Training Modules"}
+              {activePage === "training-certifications" && "Training Certifications"}
+              {activePage === "screener-content" && "Screener Content"}
+              {activePage === "purchase-requests" && "Purchase Requests"}
               {activePage === "profile" && t.navProfile}
             </div>
 
             <div className="page-sub">
+              {activePage === "training-modules" && "Add, reorder, publish and edit the modules shown on the Training page — no code or database changes needed."}
+              {activePage === "training-certifications" && "Trainees who've passed every module's quiz land here. Review their results and approve to release their certificate."}
+              {activePage === "screener-content" && "Manage the PuzzleBox Screener's sections, questions and scoring rules — no code or database changes needed."}
+              {activePage === "purchase-requests" && "Requests submitted from the \"Buy The Puzzle Box Screener\" page. Fulfil a request to issue its Product number."}
               {activePage === "users" && t.usersSub}
               {activePage === "children" && t.childrenSub}
               {activePage === "flags" && t.flagsSub}
@@ -1254,6 +1607,118 @@ export default function AdminHome({ user, profile }) {
           <ChildrenTable children={children} lang={lang} />
         )}
 
+        {activePage === "training-modules" && (
+          <TrainingModulesAdmin />
+        )}
+
+        {activePage === "training-certifications" && (
+          trainingCertificates.length === 0 ? (
+            <div className="rh-card">
+              <div className="rh-empty">
+                <div className="rh-empty-icon">🎓</div>
+                <div className="rh-empty-title">No certifications yet</div>
+                <div className="rh-empty-sub">Once a trainee passes every published module's quiz, they'll show up here for review.</div>
+              </div>
+            </div>
+          ) : (
+            <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+              <div style={{ overflowX: "auto" }}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Trainee</th>
+                      <th>Status</th>
+                      <th>Requested</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trainingCertificates.map((c) => (
+                      <tr key={c.userId}>
+                        <td>
+                          <div style={{ fontWeight: 700, fontSize: 13 }}>{c.userName || "—"}</div>
+                          <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{c.userEmail}</div>
+                        </td>
+                        <td>
+                          {c.status === "approved"
+                            ? <span style={{ fontWeight: 700, fontSize: 12, color: "var(--teal)" }}>✓ Approved</span>
+                            : <span style={{ fontWeight: 700, fontSize: 12, color: "var(--orange)" }}>● Pending review</span>}
+                        </td>
+                        <td style={{ fontSize: 12, color: "var(--ink-faint)" }}>
+                          {c.requestedAt ? new Date(c.requestedAt).toLocaleDateString() : "—"}
+                        </td>
+                        <td>
+                          <button className="btn btn-sm" style={{ background: "var(--purple-lt, #F0E8F7)", color: "var(--purple, #6B2F8A)", border: "none" }} onClick={() => openCertificate(c)}>
+                            {c.status === "approved" ? "View" : "Review"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
+        )}
+
+        {activePage === "screener-content" && (
+          <ScreenerContentAdmin />
+        )}
+
+        {activePage === "purchase-requests" && (
+          purchaseRequests.length === 0 ? (
+            <div className="rh-card">
+              <div className="rh-empty">
+                <div className="rh-empty-icon">📦</div>
+                <div className="rh-empty-title">No purchase requests yet</div>
+                <div className="rh-empty-sub">Requests submitted from the Buy page will show up here.</div>
+              </div>
+            </div>
+          ) : (
+            <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+              <div style={{ overflowX: "auto" }}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Requested by</th>
+                      <th>Organisation</th>
+                      <th>Screeners</th>
+                      <th>Status</th>
+                      <th>Requested</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {purchaseRequests.map((r) => (
+                      <tr key={r.id}>
+                        <td>
+                          <div style={{ fontWeight: 700, fontSize: 13 }}>{r.name}</div>
+                          <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{r.email}</div>
+                        </td>
+                        <td style={{ fontSize: 12.5, color: "var(--ink-mid)" }}>{r.organisation || "—"}</td>
+                        <td style={{ fontSize: 12.5, color: "var(--ink-mid)" }}>{r.numberOfScreeners || "—"}</td>
+                        <td>
+                          {r.status === "fulfilled" && <span style={{ fontWeight: 700, fontSize: 12, color: "var(--teal)" }}>✓ Fulfilled</span>}
+                          {r.status === "declined" && <span style={{ fontWeight: 700, fontSize: 12, color: "var(--pink)" }}>✕ Declined</span>}
+                          {(r.status === "pending" || !r.status) && <span style={{ fontWeight: 700, fontSize: 12, color: "var(--orange)" }}>● Pending</span>}
+                        </td>
+                        <td style={{ fontSize: 12, color: "var(--ink-faint)" }}>
+                          {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "—"}
+                        </td>
+                        <td>
+                          <button className="btn btn-sm" style={{ background: "var(--purple-lt, #F0E8F7)", color: "var(--purple, #6B2F8A)", border: "none" }} onClick={() => openRequest(r)}>
+                            {r.status === "pending" || !r.status ? "Review" : "View"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
+        )}
+
         {activePage === "flags" && (
           <FlagsAlerts children={children} lang={lang} />
         )}
@@ -1401,6 +1866,166 @@ export default function AdminHome({ user, profile }) {
                 {t.reject}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* PURCHASE REQUEST MODAL */}
+      {reviewRequest && (
+        <div className="modal-overlay" onClick={closeRequest}>
+          <div className="modal" style={{ maxWidth: 520 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">{reviewRequest.name}</div>
+              <button className="modal-close" onClick={closeRequest}>✕</button>
+            </div>
+
+            <div style={{ display: "grid", gap: 4, marginBottom: 18, fontSize: 13.5 }}>
+              <div><strong>Email:</strong> {reviewRequest.email}</div>
+              <div><strong>Organisation / school:</strong> {reviewRequest.organisation || "—"}</div>
+              {reviewRequest.phone && <div><strong>Phone:</strong> {reviewRequest.phone}</div>}
+              <div><strong>Screeners requested:</strong> {reviewRequest.numberOfScreeners || "—"}</div>
+              {reviewRequest.message && (
+                <div style={{ marginTop: 6, padding: "10px 12px", borderRadius: 10, background: "var(--surface)", color: "var(--ink-mid)" }}>
+                  {reviewRequest.message}
+                </div>
+              )}
+            </div>
+
+            {reviewRequest.status === "fulfilled" ? (
+              <>
+                <div style={{
+                  padding: "14px 16px", borderRadius: 12, marginBottom: 14,
+                  background: "var(--teal-lt, #E0F5F3)", color: "var(--ink)",
+                }}>
+                  <div style={{ fontWeight: 800, fontSize: 12.5, color: "var(--teal)", marginBottom: 4 }}>✓ FULFILLED</div>
+                  <div style={{ fontFamily: "monospace", fontSize: 15, fontWeight: 700, letterSpacing: "0.03em" }}>{reviewRequest.productNumber}</div>
+                </div>
+                <p style={{ fontSize: 11.5, color: "var(--ink-faint)", lineHeight: 1.6 }}>
+                  Nothing further to do — {reviewRequest.email} will see this Product number automatically on their own Buy page once they log in.
+                </p>
+              </>
+            ) : reviewRequest.status === "declined" ? (
+              <div style={{ padding: "14px 16px", borderRadius: 12, background: "var(--pink-lt, #FCE6EE)", color: "var(--ink)", fontWeight: 700, fontSize: 13 }}>
+                ✕ This request was declined.
+              </div>
+            ) : (
+              <>
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 800, color: "var(--ink-mid)", marginBottom: 6 }}>Product number</label>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input
+                      className="search-input"
+                      style={{ fontFamily: "monospace", fontWeight: 700 }}
+                      value={prNumber}
+                      onChange={(e) => setPrNumber(e.target.value)}
+                    />
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPrNumber(generateProductNumber())}>
+                      ↻ New
+                    </button>
+                  </div>
+                  <p style={{ fontSize: 11.5, color: "var(--ink-faint)", marginTop: 6 }}>
+                    This is what they'll enter after logging in to unlock training — it should match the number on the physical kit you're shipping them.
+                  </p>
+                </div>
+
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 800, color: "var(--ink-mid)", marginBottom: 6 }}>Admin notes (optional)</label>
+                  <textarea
+                    className="search-input"
+                    rows={2}
+                    style={{ resize: "vertical" }}
+                    value={prNotes}
+                    onChange={(e) => setPrNotes(e.target.value)}
+                  />
+                </div>
+
+                {prError && (
+                  <div style={{ fontSize: 13, color: "var(--pink)", background: "var(--pink-lt)", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
+                    {prError}
+                  </div>
+                )}
+
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                  <button className="btn btn-ghost" disabled={prSaving} onClick={handleDeclineRequest}>
+                    Decline
+                  </button>
+                  <button className="btn btn-teal" disabled={prSaving} onClick={handleFulfil}>
+                    {prSaving ? "Saving…" : "Mark Fulfilled"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TRAINING CERTIFICATE REVIEW MODAL */}
+      {reviewCertificate && (
+        <div className="modal-overlay" onClick={closeCertificate}>
+          <div className="modal" style={{ maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">{reviewCertificate.userName || reviewCertificate.userEmail}</div>
+              <button className="modal-close" onClick={closeCertificate}>✕</button>
+            </div>
+
+            <div style={{ display: "grid", gap: 4, marginBottom: 18, fontSize: 13.5 }}>
+              <div><strong>Email:</strong> {reviewCertificate.userEmail}</div>
+              <div><strong>Requested:</strong> {reviewCertificate.requestedAt ? new Date(reviewCertificate.requestedAt).toLocaleString() : "—"}</div>
+            </div>
+
+            <div style={{ fontSize: 12, fontWeight: 800, color: "var(--ink-mid)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Module results
+            </div>
+
+            {certBreakdownLoading ? (
+              <p style={{ fontSize: 13, color: "var(--ink-mid)" }}>Loading results…</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 18 }}>
+                {(certModuleBreakdown || []).map((m, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "8px 12px", borderRadius: 10, background: "var(--surface)", fontSize: 13,
+                  }}>
+                    <span>{m.title}</span>
+                    <span style={{ fontWeight: 700, color: m.status === "quiz_passed" ? "var(--teal)" : "var(--ink-faint)" }}>
+                      {m.status === "quiz_passed" ? `✓ Passed${m.bestScorePercent != null ? ` · ${m.bestScorePercent}%` : ""}` : "Not completed"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {reviewCertificate.status === "approved" ? (
+              <div style={{
+                padding: "14px 16px", borderRadius: 12,
+                background: "var(--teal-lt, #E0F5F3)", color: "var(--ink)",
+              }}>
+                <div style={{ fontWeight: 800, fontSize: 12.5, color: "var(--teal)", marginBottom: 4 }}>✓ APPROVED</div>
+                <div style={{ fontSize: 12.5 }}>
+                  Certificate released to {reviewCertificate.userEmail}
+                  {reviewCertificate.reviewedAt ? ` on ${new Date(reviewCertificate.reviewedAt).toLocaleDateString()}` : ""}.
+                </div>
+              </div>
+            ) : (
+              <>
+                {certError && (
+                  <div style={{ fontSize: 13, color: "var(--pink)", background: "var(--pink-lt)", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
+                    {certError}
+                  </div>
+                )}
+                <p style={{ fontSize: 11.5, color: "var(--ink-faint)", lineHeight: 1.6, marginBottom: 14 }}>
+                  Approving releases the certificate on {reviewCertificate.userEmail}'s own Training tab — nothing is emailed.
+                </p>
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                  <button className="btn btn-ghost" disabled={certSaving} onClick={closeCertificate}>
+                    Not yet
+                  </button>
+                  <button className="btn btn-teal" disabled={certSaving} onClick={handleApproveCertificate}>
+                    {certSaving ? "Saving…" : "Approve & issue certificate"}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

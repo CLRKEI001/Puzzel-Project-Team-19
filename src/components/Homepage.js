@@ -355,7 +355,7 @@ export function VideoHero({ actions = [] }) {
         preload="auto"
         autoPlay muted loop playsInline
         aria-hidden="true"
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", transform: "scale(1.04)" }}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", transform: "scale(1.04) rotate(180deg)" }}
       />
 
       {/* Even shade across the frame so centred text reads anywhere */}
@@ -561,10 +561,19 @@ function OurStory({ onNavigate }) {
 }
 
 // ---- 5. What we do: soft tinted cards ------------------------------------
+// COLORS.pinkLight/tealLight/purpleLight (var(--pink-lt) etc.) are pastel
+// tints that stay pale on purpose in dark mode too — that's fine for a small
+// badge, but as a big card background it turns into a glaring light patch
+// with near-invisible text (COLORS.ink flips light in dark mode). cardTint()
+// mixes the accent colour toward COLORS.white instead of a literal white, so
+// it lands on the same soft pastel in light mode but a muted dark tone in
+// dark mode — letting the existing theme-aware ink text stay legible either way.
+const cardTint = (color) => `color-mix(in srgb, ${color} 10%, ${COLORS.white})`;
+
 const WHAT_WE_DO = [
-  { title: "Puzzle Play", desc: "Lesson plans, multilingual videos and training quizzes so educators can run puzzle-based activities in class.", color: COLORS.pink, bg: COLORS.pinkLight, page: "pp-home", cta: "Explore Puzzle Play" },
-  { title: "The Puzzle Box", desc: "Our screener: structured assessments with timers, observation notes and results across four developmental domains.", color: COLORS.teal, bg: COLORS.tealLight, page: "pb-home", cta: "Explore The Puzzle Box" },
-  { title: "Research and insight", desc: "Anonymised dashboards and exports for researchers, policy makers and project sponsors.", color: COLORS.purple, bg: COLORS.purpleLight },
+  { title: "Puzzle Play", desc: "Lesson plans, multilingual videos and training quizzes so educators can run puzzle-based activities in class.", color: COLORS.pink, bg: cardTint(COLORS.pink), page: "pp-home", cta: "Explore Puzzle Play" },
+  { title: "The Puzzle Box", desc: "Our screener: structured assessments with timers, observation notes and results across four developmental domains.", color: COLORS.teal, bg: cardTint(COLORS.teal), page: "pb-home", cta: "Explore The Puzzle Box" },
+  { title: "Research and insight", desc: "Anonymised dashboards and exports for researchers, policy makers and project sponsors.", color: COLORS.purple, bg: cardTint(COLORS.purple) },
 ];
 
 function WhatWeDo({ onNavigate }) {
@@ -614,8 +623,14 @@ function WhatWeDo({ onNavigate }) {
 
 // Pastel tint of a theme colour. The theme colours are CSS variables, so the
 // mixing is done by the browser with color-mix. amount 0 = original, 1 = white.
+// Mixes toward COLORS.white (var(--white)) rather than a literal "white" —
+// in light mode --white is #fff so this looks identical to before, but in
+// dark mode --white is a dark navy, so these pieces come out as a muted dark
+// tone instead of a glaring pale patch, and the title/desc text on top (which
+// already reads its colour from the theme-aware COLORS.ink) stays legible in
+// both themes instead of going near-invisible.
 const lighten = (color, amount = 0.5) =>
-  `color-mix(in srgb, ${color} ${Math.round((1 - amount) * 100)}%, white)`;
+  `color-mix(in srgb, ${color} ${Math.round((1 - amount) * 100)}%, ${COLORS.white})`;
 
 const VISION_ITEMS = [
   { title: "The Puzzle Box", desc: "ECD developmental screening\nfor 5 to 6 year olds.", color: COLORS.teal, page: "pb-home", row: 0, col: 0, edges: { top: 0, right: 1, bottom: 1, left: 0 } },
@@ -743,7 +758,7 @@ function VisionSection({ onNavigate }) {
                   <div role="tooltip" style={{
                     position: "absolute", left: "50%", top: isMobile ? "8%" : "10%",
                     transform: "translateX(-50%)", zIndex: 5, pointerEvents: "none",
-                    background: COLORS.ink, color: "#fff", fontFamily: FONTS.heading,
+                    background: COLORS.dark, color: "#fff", fontFamily: FONTS.heading,
                     fontSize: 12, fontWeight: 800, letterSpacing: 0.3, whiteSpace: "nowrap",
                     padding: "6px 12px", borderRadius: 999, boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
                   }}>

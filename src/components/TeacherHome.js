@@ -14,15 +14,8 @@
 //   collection.
 
 import React, { useState, useEffect, useMemo } from "react";
-import { db } from "../firebase";
-import {
-  collection,
-  onSnapshot,
-  query,
-  where,
-} from "firebase/firestore";
 import { supabase } from "../supabaseClient";
-import { mapChildRow, mapPuzzleboxScreeningRow } from "../lib/mappers";
+import { mapChildRow, mapPuzzleboxScreeningRow, mapMessageRow } from "../lib/mappers";
 
 import RoleSidebar from "./RoleSidebar";
 import RoleHero from "./RoleHero";
@@ -843,6 +836,10 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
   const [sessions, setSessions] = useState([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
 
+  // The session (if any) whose psychologist feedback is open in the
+  // "View Feedback" modal — see the Screening History table below.
+  const [viewingFeedback, setViewingFeedback] = useState(null);
+
   const [newStudent, setNewStudent] = useState({
     name: "",
     school: "",
@@ -873,41 +870,58 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
 
 
   // ============================================================
-  // FIRESTORE — PSYCHOLOGIST MESSAGES
+  // SUPABASE — MESSAGES FROM THE PSYCHOLOGIST
+  //
+  // This used to read a Firestore "messages" collection that nothing in
+  // the app ever actually wrote to (the psychologist's review only ever
+  // inserted into the Supabase `messages` table, and only for parent/
+  // headmistress recipients — never "teacher"). So this tab was
+  // structurally guaranteed to always be empty. Now reads the same
+  // Supabase table everything else already uses, scoped to messages
+  // addressed to this teacher; PsychologistHome.js's submitReview now
+  // always sends one here on every review, regardless of whether the
+  // parent/headmistress boxes are checked.
   // ============================================================
 
   useEffect(() => {
     if (!user?.email) return;
+    let isMounted = true;
 
-    const q = query(
-      collection(db, "messages"),
-      where("teacherEmail", "==", user.email)
-    );
+    const loadMessages = async () => {
+      const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("recipient_role", "teacher")
+        .eq("recipient_email", user.email)
+        .order("sent_at", { ascending: false });
 
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        const data = snap.docs
-          .map((d) => ({
-            id: d.id,
-            ...d.data(),
-          }))
-          .sort(
-            (a, b) =>
-              (b.sentAt?.seconds || 0) -
-              (a.sentAt?.seconds || 0)
-          );
-
-        setMessages(data);
-        setLoadingMessages(false);
-      },
-      (error) => {
+      if (error) {
         console.error("Error loading teacher messages:", error);
+        if (isMounted) setLoadingMessages(false);
+        return;
+      }
+
+      if (isMounted) {
+        setMessages((data || []).map(mapMessageRow));
         setLoadingMessages(false);
       }
-    );
+    };
 
-    return () => unsub();
+    loadMessages();
+
+    const channel = supabase
+      .channel("teacher-messages")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "messages", filter: `recipient_email=eq.${user.email}` },
+        () => loadMessages()
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
   }, [user?.email]);
 
 
@@ -1104,17 +1118,21 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
 
   // ============================================================
   // MY CLASS — scope the shared `children` table down to this
-  // teacher's own students (see the comment on the loadStudents
-  // effect above for why this is a client-side name match rather
-  // than a query filter).
+  // teacher's own students. Prefer the real `teacher_email` column
+  // (migration 009, stamped on every new child going forward). Older
+  // rows created before that column existed have it as NULL, so for
+  // those specifically we still fall back to the old examiner-name
+  // match rather than losing them from every teacher's class.
   // ============================================================
 
   const myStudents = useMemo(() => {
     const mine = displayName.trim().toLowerCase();
-    return students.filter(
-      (s) => (s.examiner || "").trim().toLowerCase() === mine
+    return students.filter((s) =>
+      s.teacherEmail
+        ? s.teacherEmail === user?.email
+        : (s.examiner || "").trim().toLowerCase() === mine
     );
-  }, [students, displayName]);
+  }, [students, displayName, user?.email]);
 
   // Flags raised on this teacher's own children — flagged and not
   // yet resolved, same definition FlagsAlerts/AdminHome use elsewhere.
@@ -1123,22 +1141,57 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
     [myStudents]
   );
 
+  // Screening History is scoped to this teacher's own students, not every
+  // screening this teacher account has ever started — the two can differ
+  // (e.g. sessions run against the shared demo/seed children before "My
+  // Class" ownership existed). `sessions` itself is already filtered to
+  // this teacher server-side (teacher_email); this narrows it further to
+  // children currently in myStudents.
+  const myStudentIds = useMemo(
+    () => new Set(myStudents.map((s) => s.id)),
+    [myStudents]
+  );
+
+  const myStudentSessions = useMemo(
+    () => sessions.filter((s) => myStudentIds.has(s.childId)),
+    [sessions, myStudentIds]
+  );
+
+  // The "Stage" column on My Class was reading child.stage — a separate,
+  // static field on the `children` row (set once, at "stage1"/Not Started,
+  // when the student is added) that the PuzzleBox screening flow never
+  // touches. So a child's badge never moved off "Not Started" no matter
+  // how far their actual screening progressed. This maps each child to
+  // their most recent PuzzleBox session instead, so the badge reflects
+  // in_progress / awaiting_review / reviewed once one exists — child.stage
+  // is only used as a fallback for children with no PuzzleBox session yet.
+  const latestSessionByChild = useMemo(() => {
+    const map = {};
+    for (const s of myStudentSessions) {
+      const existing = map[s.childId];
+      const ts = s.updatedAt || s.startedAt || "";
+      const existingTs = existing ? existing.updatedAt || existing.startedAt || "" : "";
+      if (!existing || ts > existingTs) map[s.childId] = s;
+    }
+    return map;
+  }, [myStudentSessions]);
+
   // Screening sessions, split the way the Screening History tab
   // presents them: still open vs. done on this teacher's end
   // (submitted, whether or not the psychologist has reviewed it yet).
   const inProgressSessions = useMemo(
-    () => sessions.filter((s) => s.status === "in_progress"),
-    [sessions]
+    () => myStudentSessions.filter((s) => s.status === "in_progress"),
+    [myStudentSessions]
   );
 
   const completedSessions = useMemo(
     () =>
-      sessions.filter(
+      myStudentSessions.filter(
         (s) =>
           s.status === "awaiting_review" ||
           s.status === "reviewed"
       ),
-    [sessions]
+    [myStudentSessions]
   );
 
   // Fastest way to answer "does this child already have an
@@ -1315,6 +1368,12 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
       // educator if they leave Examiner blank.
       examiner:
         newStudent.examiner || displayName,
+
+      // Real ownership key (see migration 009) — this is what "My Class"
+      // now filters on, instead of the fragile examiner-name match below.
+      // Only stamped on create; editing an existing record (which may
+      // have been added by someone else) doesn't reassign ownership.
+      ...(editingStudentId ? {} : { teacher_email: user?.email || null }),
 
       age:
         parseInt(newStudent.age, 10) || 5,
@@ -2076,15 +2135,26 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                       {filteredStudents.map(
                         (child, i) => {
 
+                          const latestSession =
+                            latestSessionByChild[child.id];
+
                           const stage =
                             child.stage ||
                             "stage4";
 
-                          const sc =
-                            stageColors[
-                              stage
-                            ] ||
-                            stageColors.stage4;
+                          const sc = latestSession
+                            ? sessionStatusColors[latestSession.status] ||
+                              sessionStatusColors.in_progress
+                            : stageColors[stage] ||
+                              stageColors.stage4;
+
+                          const stageLabel = latestSession
+                            ? latestSession.status === "reviewed"
+                              ? t.statusReviewed
+                              : latestSession.status === "awaiting_review"
+                              ? t.statusAwaitingReview
+                              : t.statusInProgress
+                            : t[stage] || stage;
 
                           return (
                             <tr
@@ -2150,8 +2220,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                                       sc.color,
                                   }}
                                 >
-                                  {t[stage] ||
-                                    stage}
+                                  {stageLabel}
                                 </span>
 
                               </td>
@@ -2299,7 +2368,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                   </div>
                 </div>
 
-              ) : sessions.length === 0 ? (
+              ) : myStudentSessions.length === 0 ? (
 
                 <div className="empty-state">
                   <div className="empty-state-icon">
@@ -2330,7 +2399,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                     </thead>
 
                     <tbody>
-                      {sessions.map((s) => {
+                      {myStudentSessions.map((s) => {
                         const sc =
                           sessionStatusColors[s.status] ||
                           sessionStatusColors.in_progress;
@@ -2341,6 +2410,17 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                             : s.status === "awaiting_review"
                             ? t.statusAwaitingReview
                             : t.statusInProgress;
+
+                        // Shown as a tooltip on the pill — the three
+                        // statuses this app actually uses (a 4th,
+                        // "completed", is in the database's check
+                        // constraint but nothing in the app sets it).
+                        const statusExplainer =
+                          s.status === "reviewed"
+                            ? "The psychologist has reviewed this screening — click \"View Feedback\" for their notes."
+                            : s.status === "awaiting_review"
+                            ? "Submitted — waiting for a psychologist to review it. Nothing more to do on your end."
+                            : "You've started this screening but haven't submitted it yet — click Resume to pick up where you left off.";
 
                         return (
                           <tr key={s.id}>
@@ -2359,6 +2439,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
 
                             <td>
                               <span
+                                title={statusExplainer}
                                 style={{
                                   display: "inline-block",
                                   padding: "5px 12px",
@@ -2367,6 +2448,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                                   fontWeight: 700,
                                   background: sc.bg,
                                   color: sc.color,
+                                  cursor: "help",
                                 }}
                               >
                                 {statusLabel}
@@ -2402,6 +2484,14 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                                   {t.resume}
                                 </button>
                               )}
+                              {s.status === "reviewed" && (
+                                <button
+                                  className="btn btn-teal btn-sm"
+                                  onClick={() => setViewingFeedback(s)}
+                                >
+                                  View Feedback
+                                </button>
+                              )}
                             </td>
                           </tr>
                         );
@@ -2415,6 +2505,60 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
               )}
 
             </div>
+
+            {/* PSYCHOLOGIST FEEDBACK MODAL — the review a psychologist left
+                on this screening (review_verdict / review_notes on the
+                puzzlebox_screenings row itself), so it's visible from the
+                teacher's own Screening History instead of only existing on
+                the psychologist's side. */}
+            {viewingFeedback && (
+              <div className="modal-overlay" onClick={() => setViewingFeedback(null)}>
+                <div className="modal" style={{ maxWidth: 480 }} onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <div className="modal-title">
+                      Psychologist's Feedback — {viewingFeedback.childName}
+                    </div>
+                    <button className="modal-close" onClick={() => setViewingFeedback(null)}>✕</button>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        padding: "5px 12px",
+                        borderRadius: 20,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        background:
+                          viewingFeedback.reviewVerdict === "concerns" ? "var(--pink-lt)" : "var(--teal-lt)",
+                        color: viewingFeedback.reviewVerdict === "concerns" ? "var(--pink)" : "var(--teal)",
+                      }}
+                    >
+                      {viewingFeedback.reviewVerdict === "concerns"
+                        ? "Developmental concerns flagged"
+                        : viewingFeedback.reviewVerdict === "fine"
+                        ? "No concerns"
+                        : "No verdict recorded"}
+                    </span>
+                  </div>
+
+                  <div style={{ fontSize: 12.5, color: "var(--ink-mid)", marginBottom: 14 }}>
+                    {viewingFeedback.reviewedBy && <>Reviewed by {viewingFeedback.reviewedBy}</>}
+                    {viewingFeedback.reviewedAt && (
+                      <> on {new Date(viewingFeedback.reviewedAt).toLocaleDateString()}</>
+                    )}
+                  </div>
+
+                  <div style={{ fontSize: 13.5, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                    {viewingFeedback.reviewNotes || "No written notes were left with this review."}
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}>
+                    <button className="btn btn-ghost" onClick={() => setViewingFeedback(null)}>Close</button>
+                  </div>
+                </div>
+              </div>
+            )}
 
           </>
         )}
@@ -3393,15 +3537,26 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
 
                 {(() => {
 
+                  const latestSession =
+                    latestSessionByChild[selectedStudent.id];
+
                   const stage =
                     selectedStudent.stage ||
                     "stage4";
 
-                  const sc =
-                    stageColors[
-                      stage
-                    ] ||
-                    stageColors.stage4;
+                  const sc = latestSession
+                    ? sessionStatusColors[latestSession.status] ||
+                      sessionStatusColors.in_progress
+                    : stageColors[stage] ||
+                      stageColors.stage4;
+
+                  const stageLabel = latestSession
+                    ? latestSession.status === "reviewed"
+                      ? t.statusReviewed
+                      : latestSession.status === "awaiting_review"
+                      ? t.statusAwaitingReview
+                      : t.statusInProgress
+                    : t[stage] || stage;
 
                   return (
                     <span
@@ -3420,8 +3575,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                           sc.color,
                       }}
                     >
-                      {t[stage] ||
-                        stage}
+                      {stageLabel}
                     </span>
                   );
 

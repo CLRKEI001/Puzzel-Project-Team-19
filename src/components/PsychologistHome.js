@@ -180,6 +180,15 @@ const MEMBER_ICONS = {
   buy: <svg viewBox="0 0 16 16" fill="none"><path d="M2 2.5h1.7l1.3 7h7l1.2-4.8H4.4" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" /><circle cx="6" cy="13" r="1" fill="currentColor" /><circle cx="11" cy="13" r="1" fill="currentColor" /></svg>,
 };
 
+// mm:ss for a raw response's recorded seconds, in the per-question
+// breakdown on the review modal.
+function formatSecs(totalSeconds) {
+  const s = Math.max(0, Math.floor(totalSeconds || 0));
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  return `${String(m).padStart(2, "0")}:${String(rem).padStart(2, "0")}`;
+}
+
 function memberNavItems(onOpenMember) {
   if (!onOpenMember) return [];
   return [
@@ -213,6 +222,7 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
   const [headEmail, setHeadEmail] = useState("");
   const [savingReview, setSavingReview] = useState(false);
   const [reviewSaved, setReviewSaved] = useState(null); // { sharedWith: [...] } once saved
+  const [showBreakdown, setShowBreakdown] = useState(false); // per-question answers, collapsed by default
  
   const t = T[lang];
   const langLabels = { en: "EN", af: "AF", xh: "XH" };
@@ -309,6 +319,7 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
     setShareParent(false); setParentName(""); setParentEmail("");
     setShareHead(false); setHeadName(""); setHeadEmail("");
     setReviewSaved(null);
+    setShowBreakdown(false);
 
     if (!notification.readAt) {
       supabase.from("messages").update({ read_at: new Date().toISOString() }).eq("id", notification.id)
@@ -363,17 +374,67 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
         .eq("id", reviewScreening.id);
       if (updateErr) throw updateErr;
 
-      if (recipients.length > 0) {
-        const verdictLabel = verdict === "fine" ? t.verdictFine : t.verdictConcerns;
-        const body =
-          `${reviewScreening.childName}'s PuzzleBox screening has been reviewed. Outcome: ${verdictLabel}.` +
-          (reviewNotes ? ` ${reviewNotes}` : "");
+      // Flag the child's record when the verdict raises concerns, so the
+      // Flags queue (FlagsAlerts.js) and the dashboards actually reflect a
+      // real PuzzleBox review instead of only ever showing manually-flagged
+      // records. Deliberately one-directional: a "fine" verdict here never
+      // un-flags a child, in case they were flagged for a separate reason.
+      if (verdict === "concerns" && reviewScreening.childId) {
+        const { error: flagErr } = await supabase
+          .from("children")
+          .update({ flagged: true })
+          .eq("id", reviewScreening.childId);
+        if (flagErr) console.error("Could not flag the child's record:", flagErr.message);
+      }
+
+      // Safety net: clear the "awaiting review" notification badge for
+      // this screening regardless of how the psychologist got here (opening
+      // it via the notification list already marks it read on open, but
+      // this covers every other route into the review modal too).
+      const { error: readErr } = await supabase
+        .from("messages")
+        .update({ read_at: nowIso })
+        .eq("screening_id", reviewScreening.id)
+        .eq("message_type", "screening_ready_for_review")
+        .is("read_at", null);
+      if (readErr) console.error("Could not clear the notification:", readErr.message);
+
+      const verdictLabel = verdict === "fine" ? t.verdictFine : t.verdictConcerns;
+      const body =
+        `${reviewScreening.childName}'s PuzzleBox screening has been reviewed. Outcome: ${verdictLabel}.` +
+        (reviewNotes ? ` ${reviewNotes}` : "");
+
+      // The teacher who submitted this screening always gets a message
+      // back — this used to only happen if the parent/headmistress boxes
+      // below were checked, which meant "reviewed" showed on the
+      // teacher's side with no way to actually see what the psychologist
+      // said (see the "View Feedback" button in their Screening History,
+      // which reads the same review_verdict/review_notes columns — this
+      // is the Messages-tab equivalent of that).
+      const allRecipients = [...recipients];
+      if (reviewScreening.teacherEmail) {
+        allRecipients.push({
+          role: "teacher",
+          name: reviewScreening.teacherName,
+          email: reviewScreening.teacherEmail,
+          label: null, // not part of the "shared with" summary shown below — that's about parent/head only
+        });
+      }
+
+      if (allRecipients.length > 0) {
         const { error: insertErr } = await supabase.from("messages").insert(
-          recipients.map((r) => ({
+          allRecipients.map((r) => ({
             screening_id: reviewScreening.id,
             child_id: reviewScreening.childId,
             child_name: reviewScreening.childName,
+            child_score: reviewScreening.rawScore,
             school: reviewScreening.school,
+            // NOT NULL on this table regardless of who the message is
+            // addressed to — every message row is anchored to the
+            // screening's teacher, same as the original "ready for
+            // review" notification PuzzleBoxScreener.js sends.
+            teacher_email: reviewScreening.teacherEmail,
+            teacher_name: reviewScreening.teacherName,
             recipient_role: r.role,
             recipient_email: r.email,
             recipient_name: r.name,
@@ -755,6 +816,54 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                     <span className="report-row-value">{reviewScreening.observations || t.noObservations}</span>
                   </div>
                 </div>
+
+                {/* PER-QUESTION BREAKDOWN — the raw total/band above can be
+                    hard to act on alone; this shows exactly which items
+                    scored low, using content_snapshot (the exact question
+                    set/wording this screening was scored against, frozen
+                    at submit time) matched up with the recorded responses. */}
+                {reviewScreening.contentSnapshot?.sections?.length > 0 && (
+                  <div style={{ marginBottom: 18 }}>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      style={{ width: "100%", justifyContent: "space-between", display: "flex" }}
+                      onClick={() => setShowBreakdown((v) => !v)}
+                    >
+                      <span>{showBreakdown ? "Hide" : "Show"} per-question answers</span>
+                      <span>{showBreakdown ? "▲" : "▼"}</span>
+                    </button>
+                    {showBreakdown && (
+                      <div style={{ marginTop: 10, maxHeight: 260, overflowY: "auto", border: "1.5px solid var(--border)", borderRadius: 10, padding: "4px 14px" }}>
+                        {reviewScreening.contentSnapshot.sections.map((section) => (
+                          <div key={section.id || section.title} style={{ marginBottom: 12 }}>
+                            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.4px", color: "var(--ink-faint)", margin: "10px 0 4px" }}>
+                              {section.title}
+                            </div>
+                            {section.questions.map((q) => {
+                              const r = reviewScreening.responses?.[q.id] || {};
+                              const answer =
+                                r.checked?.length
+                                  ? r.checked.join(", ")
+                                  : r.rawValueSeconds != null
+                                  ? formatSecs(r.rawValueSeconds)
+                                  : typeof r.score === "number"
+                                  ? r.score
+                                  : "—";
+                              return (
+                                <div key={q.id} className="report-row" style={{ padding: "6px 0" }}>
+                                  <span className="report-row-label" style={{ fontSize: 12.5 }}>{q.label}</span>
+                                  <span className="report-row-value" style={{ fontSize: 12.5, fontWeight: 800 }}>
+                                    {typeof r.score === "number" ? `Score: ${r.score}` : answer}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div style={{ marginBottom: 18 }}>
                   <label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.6px", color: "var(--ink-mid)", display: "block", marginBottom: 8 }}>

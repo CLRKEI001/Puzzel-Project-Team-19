@@ -2,6 +2,17 @@ import React, { useState, useEffect } from "react";
 import {
   COLORS, FONTS, PUBLIC_FONT_IMPORT, PuzzlePiece, SectionHeading, Navbar, Footer, CallToAction, useIsMobile,
 } from "./SiteChrome";
+import { useTrainingModules } from "../lib/useTrainingModules.js";
+
+// Modules are managed by an admin (Admin → Training Modules) and read here
+// from Supabase via useTrainingModules — see
+// supabase/migrations/004_training_modules.sql. `moduleColor` maps the
+// small fixed set of colour keys an admin can choose from back to this
+// site's actual brand colours.
+function moduleColor(colorKey) {
+  const key = colorKey || "teal";
+  return { color: COLORS[key] || COLORS.teal, bg: COLORS[`${key}Light`] || COLORS.tealLight };
+}
 
 function TrainingHero() {
   const [visible, setVisible] = useState(false);
@@ -278,51 +289,55 @@ function RequirementsSection({ onApply }) {
   );
 }
 
-// The seven training modules
-export const MODULES = [
-  { number: "01", title: "Introduction to The Puzzle Box", color: COLORS.teal, bg: COLORS.tealLight },
-  { number: "02", title: "Research Background & Psychometric Properties", color: COLORS.pink, bg: COLORS.pinkLight },
-  { number: "03", title: "Test Equipment & Setting Up", color: COLORS.purple, bg: COLORS.purpleLight },
-  { number: "04", title: "Administration", color: COLORS.orange, bg: COLORS.orangeLight },
-  { number: "05", title: "Interpretation", color: COLORS.teal, bg: COLORS.tealLight },
-  { number: "06", title: "Online Navigation", color: COLORS.pink, bg: COLORS.pinkLight },
-  { number: "07", title: "Report Writing & Referral", color: COLORS.purple, bg: COLORS.purpleLight },
-];
-
 function ModulesSection() {
+  const { modules, loading } = useTrainingModules();
+
   return (
     <section style={{ padding: "90px 40px", background: COLORS.white, position: "relative", overflow: "hidden" }}>
       <PuzzlePiece size={120} color={COLORS.orange} rotate={-20} style={{ position: "absolute", bottom: -20, right: -30 }} />
       <div style={{ maxWidth: 1300, margin: "0 auto", position: "relative" }}>
         <SectionHeading
           eyebrow="Curriculum"
-          title="Seven training modules"
+          title={`${modules.length || "Seven"} training module${modules.length === 1 ? "" : "s"}`}
           lead="The programme takes you from first principles through to confident administration, interpretation and reporting. Modules are completed in order, followed by the certification assessment."
         />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 18 }}>
-          {MODULES.map(mod => (
-            <div key={mod.number} style={{
-              padding: "22px 24px", borderRadius: 16,
-              background: COLORS.surface, border: `1px solid ${COLORS.border}`,
-              display: "flex", alignItems: "center", gap: 18, transition: "all 0.2s",
-            }}
-              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.08)"; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
-            >
-              <div style={{
-                width: 48, height: 48, borderRadius: 12, background: mod.bg,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 16, fontWeight: 900, color: mod.color,
-                fontFamily: FONTS.heading, flexShrink: 0,
-              }}>
-                {mod.number}
-              </div>
-              <h3 style={{ fontFamily: FONTS.heading, fontSize: 15, fontWeight: 800, color: COLORS.ink, lineHeight: 1.35 }}>
-                {mod.title}
-              </h3>
-            </div>
-          ))}
-        </div>
+        {loading ? (
+          <p style={{ color: COLORS.inkMid, fontSize: 14 }}>Loading modules…</p>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 18 }}>
+            {modules.map((mod, i) => {
+              const { color, bg } = moduleColor(mod.colorKey);
+              const number = String(mod.sortOrder ?? i + 1).padStart(2, "0");
+              return (
+                <div key={mod.id} style={{
+                  padding: "22px 24px", borderRadius: 16,
+                  background: COLORS.surface, border: `1px solid ${COLORS.border}`,
+                  display: "flex", alignItems: "center", gap: 18, transition: "all 0.2s",
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.08)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
+                >
+                  <div style={{
+                    width: 48, height: 48, borderRadius: 12, background: bg,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 16, fontWeight: 900, color,
+                    fontFamily: FONTS.heading, flexShrink: 0,
+                  }}>
+                    {number}
+                  </div>
+                  <div>
+                    <h3 style={{ fontFamily: FONTS.heading, fontSize: 15, fontWeight: 800, color: COLORS.ink, lineHeight: 1.35, marginBottom: mod.description ? 4 : 0 }}>
+                      {mod.title}
+                    </h3>
+                    {mod.description && (
+                      <p style={{ fontSize: 13, color: COLORS.inkMid, lineHeight: 1.5 }}>{mod.description}</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </section>
   );

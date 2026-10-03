@@ -18,11 +18,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "../supabaseClient";
-import {
-  puzzleBoxContentV1,
-  scoreFromAgeTable,
-  interpretationBands,
-} from "../data/puzzleBoxContent.v1";
+import { useScreenerContent, scoreFromAgeTable } from "../lib/useScreenerContent";
 import { SinglePuzzlePiece } from "./puzzlePiece";
 import "./PuzzleBoxScreener.css";
 
@@ -99,9 +95,9 @@ function useDebouncedSave(fn, delay = 700) {
 }
 
 // Sums up every question's derived score into a raw total.
-function computeRawScore(responses) {
+function computeRawScore(content, responses) {
   let total = 0;
-  for (const section of puzzleBoxContentV1.sections) {
+  for (const section of content.sections) {
     for (const q of section.questions) {
       const r = responses[q.id];
       if (r && typeof r.score === "number") total += r.score;
@@ -110,7 +106,7 @@ function computeRawScore(responses) {
   return total;
 }
 
-function computeBand(age, rawScore) {
+function computeBand(interpretationBands, age, rawScore) {
   const rows = interpretationBands[age];
   if (!rows) return null;
   for (const row of rows) {
@@ -121,6 +117,13 @@ function computeBand(age, rawScore) {
   return null;
 }
 
+// The puzzle itself is meant to be completed within 10 minutes — past that
+// the screening record should carry an "Over Time" flag the psychologist
+// can see (puzzlebox_screenings.puzzle_time_seconds / puzzle_over_time,
+// migration 002 — present in the schema from the start but never actually
+// written to until now).
+const PUZZLE_TIME_LIMIT_SECONDS = 600;
+
 function formatTimer(ms) {
   const totalSeconds = Math.floor(ms / 1000);
   const m = Math.floor(totalSeconds / 60);
@@ -130,6 +133,12 @@ function formatTimer(ms) {
 
 export default function PuzzleBoxScreener({ user, profile, onExit, initialChild }) {
   const t = T.en;
+  // Content — sections, questions, scoring tables — is admin-managed via
+  // Admin → Screener Content (see supabase/migrations/007_screener_content.sql).
+  // Falls back to the original hardcoded content if Supabase can't be
+  // reached, so a screening in progress never breaks because of that.
+  const { content, interpretationBands, loading: contentLoading } = useScreenerContent();
+
   // When a caller (e.g. the "Screen" button on a specific child's row)
   // hands us a child up front, skip straight past the search/select step.
   const [view, setView] = useState(initialChild ? "confirm" : "select"); // select | confirm | form | submitted
@@ -138,6 +147,12 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
   const [loadingChildren, setLoadingChildren] = useState(false);
   const [selectedChild, setSelectedChild] = useState(initialChild || null);
   const [existingSession, setExistingSession] = useState(null);
+  // Past (non in-progress) screenings for the selected child — shown on the
+  // confirm step so re-screening a child is an informed choice, not a
+  // surprise. The DB has always allowed multiple screenings per child
+  // (no unique constraint on child_id); this just surfaces that history
+  // instead of the teacher re-screening blind.
+  const [priorScreenings, setPriorScreenings] = useState([]);
 
   const [session, setSession] = useState(null); // the puzzlebox_screenings row
   const [responses, setResponses] = useState({});
@@ -156,7 +171,12 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
   const teacherEmail = user?.email || "";
   const teacherName = profile?.name || user?.email?.split("@")[0] || "Educator";
 
-  const sections = puzzleBoxContentV1.sections;
+  // content is null while still loading from Supabase (see
+  // useScreenerContent above) — sections/currentSection fall back to
+  // empty/undefined until then, and every place that reads them below
+  // is guarded for that (either optional-chained, or the render itself
+  // shows a loading state before touching them).
+  const sections = content?.sections || [];
   const currentSection = sections[sectionIndex];
   // Any section with a time-scored question (section 1's puzzle, section 7's
   // fence sticks, and any added later) gets the timer wired to that
@@ -169,7 +189,18 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
     let active = true;
     setLoadingChildren(true);
     const run = async () => {
-      let query = supabase.from("children").select("*").order("name", { ascending: true }).limit(50);
+      // Scoped to this teacher's own children — same rule TeacherHome's
+      // "My Class" uses: match on the real teacher_email (migration 009)
+      // where it's set, and for older rows added before that column
+      // existed (NULL), fall back to an examiner-name match instead of
+      // showing them to every teacher. Seed/demo data and children
+      // explicitly owned by a different teacher are excluded either way.
+      let query = supabase
+        .from("children")
+        .select("*")
+        .or(`teacher_email.eq.${teacherEmail},and(teacher_email.is.null,examiner.ilike.${teacherName})`)
+        .order("name", { ascending: true })
+        .limit(50);
       if (search.trim()) {
         query = query.or(`name.ilike.%${search.trim()}%,school.ilike.%${search.trim()}%`);
       }
@@ -204,6 +235,16 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
         .maybeSingle();
       if (active) setExistingSession(data || null);
     })();
+    (async () => {
+      const { data } = await supabase
+        .from("puzzlebox_screenings")
+        .select("id, status, completed_at, interpretation_band")
+        .eq("child_id", initialChild.id)
+        .neq("status", "in_progress")
+        .order("completed_at", { ascending: false })
+        .limit(5);
+      if (active) setPriorScreenings(data || []);
+    })();
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -221,6 +262,14 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
       .limit(1)
       .maybeSingle();
     setExistingSession(data || null);
+    const { data: prior } = await supabase
+      .from("puzzlebox_screenings")
+      .select("id, status, completed_at, interpretation_band")
+      .eq("child_id", child.id)
+      .neq("status", "in_progress")
+      .order("completed_at", { ascending: false })
+      .limit(5);
+    setPriorScreenings(prior || []);
     setView("confirm");
   };
 
@@ -244,7 +293,7 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
         child_age: selectedChild.age,
         teacher_email: teacherEmail,
         teacher_name: teacherName,
-        content_version: puzzleBoxContentV1.version,
+        content_version: content?.version || "1.0",
         status: "in_progress",
         responses: {},
       })
@@ -341,12 +390,24 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
     const mins = Math.floor(totalSeconds / 60);
     const secs = totalSeconds % 60;
     if (timerQuestion) setTimeValue(timerQuestion, mins, secs);
-    currentSection.questions.forEach((q) => {
+    currentSection?.questions.forEach((q) => {
       if (q.id === timerQuestion?.id) return;
       updateResponse(q.id, { timeSeconds: totalSeconds });
     });
+    // Only the puzzle section itself (isPuzzleTimerSection) drives the
+    // session-level puzzle_time_seconds / puzzle_over_time columns — those
+    // are specifically about the puzzle task, not every timed section.
+    if (currentSection?.isPuzzleTimerSection) {
+      debouncedPersist({
+        puzzle_time_seconds: totalSeconds,
+        puzzle_over_time: totalSeconds > PUZZLE_TIME_LIMIT_SECONDS,
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timerMs, timerRunning]);
+
+  const isPuzzleOverTime =
+    !!currentSection?.isPuzzleTimerSection && Math.floor(timerMs / 1000) > PUZZLE_TIME_LIMIT_SECONDS;
 
   const startTimer = () => {
     if (timerRunning) return;
@@ -368,7 +429,7 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
     setTimerRunning(false);
     setTimerMs(0);
     if (timerQuestion) setTimeValue(timerQuestion, 0, 0);
-    currentSection.questions.forEach((q) => {
+    currentSection?.questions.forEach((q) => {
       if (q.id === timerQuestion?.id) return;
       updateResponse(q.id, { timeSeconds: 0 });
     });
@@ -387,8 +448,8 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
 
   // ── Submit ────────────────────────────────────────────────────────
   const doSubmit = async () => {
-    const rawScore = computeRawScore(responses);
-    const band = computeBand(selectedChild?.age, rawScore);
+    const rawScore = computeRawScore(content, responses);
+    const band = computeBand(interpretationBands, selectedChild?.age, rawScore);
     const { error: submitErr } = await supabase
       .from("puzzlebox_screenings")
       .update({
@@ -398,7 +459,7 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
         completed_at: new Date().toISOString(),
         raw_score: rawScore,
         interpretation_band: band?.band || null,
-        content_snapshot: puzzleBoxContentV1,
+        content_snapshot: content,
       })
       .eq("id", session.id);
 
@@ -611,6 +672,18 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
               <div><div className="pbs-confirm-label">{t.language}</div><div>{selectedChild.language || "—"}</div></div>
             </div>
           </div>
+          {priorScreenings.length > 0 && (
+            <div className="card" style={{ marginTop: 12, padding: "12px 16px", background: "var(--teal-lt, #E6F7F5)" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--teal)", marginBottom: 4 }}>
+                Already screened {priorScreenings.length} time{priorScreenings.length === 1 ? "" : "s"} before
+              </div>
+              <div style={{ fontSize: 12, color: "var(--ink-mid)" }}>
+                Most recent: {priorScreenings[0].completed_at ? new Date(priorScreenings[0].completed_at).toLocaleDateString() : "—"}
+                {priorScreenings[0].interpretation_band ? ` — ${priorScreenings[0].interpretation_band}` : ""}
+                {priorScreenings[0].status === "awaiting_review" ? " (still awaiting review)" : ""}
+              </div>
+            </div>
+          )}
           {error && <div className="pbs-error">{error}</div>}
           <div className="pbs-confirm-actions">
             <button className="btn btn-ghost" onClick={() => setView("select")}>{t.goBack}</button>
@@ -637,12 +710,27 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
   }
 
   // view === "form"
+  if (contentLoading || !currentSection) {
+    return (
+      <div className="pbs-shell">
+        <div className="pbs-body pbs-body-narrow">
+          <p className="pbs-loading">Loading screener content…</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="pbs-shell">
       <div className={`pbs-timer-panel ${timerRunning ? "running" : ""}`}>
         <div className="pbs-timer-label">Timer</div>
         <div className="pbs-timer-display">{formatTimer(timerMs)}</div>
         {timerQuestion && <div className="pbs-timer-target">for "{timerQuestion.label}"</div>}
+        {isPuzzleOverTime && (
+          <div className="pbs-timer-target" style={{ color: "var(--pink)", fontWeight: 800 }}>
+            ⚠ Over time (10 min limit)
+          </div>
+        )}
         <div className="pbs-timer-controls">
           {!timerRunning ? (
             <button className="btn btn-teal btn-sm" onClick={startTimer}>

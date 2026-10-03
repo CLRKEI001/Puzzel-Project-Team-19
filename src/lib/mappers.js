@@ -34,7 +34,11 @@ export function mapChildRow(r) {
     resolved: r.resolved,
     date: r.date,
     examiner: r.examiner,
+    teacherEmail: r.teacher_email,
     stage: r.stage,
+    consentFormUrl: r.consent_form_url,
+    consentFileName: r.consent_file_name,
+    consentUploadedAt: r.consent_uploaded_at,
     createdAt: r.created_at,
   };
 }
@@ -140,5 +144,36 @@ export function mapUserRow(r) {
     staffNumber: r.staff_number,
     isVerified: r.is_verified,
     createdAt: r.created_at,
+  };
+}
+
+export function mapPurchaseRequestRow(r) {
+  return {
+    id: r.id,
+    name: r.name,
+    email: r.email,
+    organisation: r.organisation,
+    phone: r.phone,
+    numberOfScreeners: r.number_of_screeners,
+    message: r.message,
+    status: r.status,
+    productNumber: r.product_number,
+    adminNotes: r.admin_notes,
+    fulfilledBy: r.fulfilled_by,
+    fulfilledAt: r.fulfilled_at,
+    createdAt: r.created_at,
+  };
+}
+
+export function mapTrainingCertificateRow(r) {
+  return {
+    userId: r.user_id,
+    userEmail: r.user_email,
+    userName: r.user_name,
+    status: r.status, // "pending" | "approved"
+    requestedAt: r.requested_at,
+    issuedAt: r.issued_at,
+    reviewedBy: r.reviewed_by,
+    reviewedAt: r.reviewed_at,
   };
 }

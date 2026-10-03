@@ -6,6 +6,7 @@ import { COLORS, FONT_IMPORT, BrandLogo, useIsMobile } from "./SiteChrome";
 import { PurchaseContent } from "./PuzzleBoxPurchase";
 import { useTrainingModules } from "../lib/useTrainingModules";
 import { useTrainingProgress } from "../lib/useTrainingProgress";
+import { useTrainingContentBlocks } from "../lib/useTrainingContentBlocks.js";
 import TrainingModuleQuiz from "./TrainingModuleQuiz";
 import TrainingModuleContent from "./TrainingModuleContent";
 import TrainingCertificate from "./TrainingCertificate";
@@ -157,7 +158,17 @@ function Landing({ profile, onView }) {
 // already used) upgrades that to "quiz_passed".
 function ModuleDetail({ user, mod, modules, onBack, onOpenModule, progressApi }) {
   const { color, bg } = moduleColor(mod.colorKey);
-  const content = getModuleContent(mod.sortOrder);
+  // Content now lives in the database (training_content_blocks — see
+  // src/lib/useTrainingContentBlocks.js and Admin -> Training -> Content)
+  // so an admin can edit it without a code change. Falls back to the
+  // original code-file content (src/data/trainingContent.v1.js) for any
+  // module the seed migration (021_seed_training_content_blocks.sql)
+  // hasn't been run for yet, so nothing breaks in between.
+  const dbContent = useTrainingContentBlocks(mod.id);
+  const staticContent = getModuleContent(mod.sortOrder);
+  const content = !dbContent.loading && dbContent.blocks.length > 0
+    ? { blocks: dbContent.blocks.map((b) => b.data) }
+    : staticContent;
   const progressRow = progressApi.progress.get(mod.id);
 
   const orderedIds = (modules || []).map((m) => m.id);

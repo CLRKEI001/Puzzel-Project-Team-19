@@ -11,6 +11,7 @@ import React, { useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useTrainingModules, COLOR_KEYS } from "../lib/useTrainingModules";
 import TrainingQuizEditor from "./TrainingQuizEditor";
+import TrainingContentEditor from "./TrainingContentEditor";
 
 const inputStyle = {
   width: "100%",
@@ -54,6 +55,7 @@ export default function TrainingModulesAdmin() {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [busyId, setBusyId] = useState(null); // row currently reordering/toggling
   const [quizModuleId, setQuizModuleId] = useState(null); // module whose quiz panel is open
+  const [contentModuleId, setContentModuleId] = useState(null); // module whose content panel is open
 
   const openAdd = () => {
     setForm(EMPTY_FORM);
@@ -262,6 +264,13 @@ export default function TrainingModulesAdmin() {
                       >
                         {quizModuleId === mod.id ? "Hide Quiz" : "Quiz"}
                       </button>
+                      <button
+                        className="btn btn-sm"
+                        style={{ marginLeft: 6, background: contentModuleId === mod.id ? "var(--teal)" : "var(--teal-lt)", color: contentModuleId === mod.id ? "#fff" : "var(--teal)", border: "none" }}
+                        onClick={() => setContentModuleId(contentModuleId === mod.id ? null : mod.id)}
+                      >
+                        {contentModuleId === mod.id ? "Hide Content" : "Content"}
+                      </button>
                       <button className="btn btn-ghost btn-sm" style={{ marginLeft: 6 }} onClick={() => openEdit(mod)}>
                         Edit
                       </button>
@@ -278,6 +287,13 @@ export default function TrainingModulesAdmin() {
                     <tr>
                       <td colSpan={4} style={{ padding: 0 }}>
                         <TrainingQuizEditor moduleId={mod.id} />
+                      </td>
+                    </tr>
+                  )}
+                  {contentModuleId === mod.id && (
+                    <tr>
+                      <td colSpan={4} style={{ padding: 0 }}>
+                        <TrainingContentEditor moduleId={mod.id} colorKey={mod.colorKey} />
                       </td>
                     </tr>
                   )}

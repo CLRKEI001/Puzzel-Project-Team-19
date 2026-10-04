@@ -23,6 +23,12 @@
 .pbs-topbar-sub { font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
 .pbs-topbar-right { display: flex; align-items: center; gap: 12px; }
 
+.pbs-session-timer {
+  font-size: 13px; font-weight: 800; color: var(--ink);
+  font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 4px;
+}
+.pbs-submitted-time { font-size: 13px; font-weight: 700; color: var(--ink-faint); margin-top: -8px; }
+
 .pbs-save-indicator { font-size: 12px; font-weight: 700; color: var(--ink-faint); }
 .pbs-save-saving { color: var(--orange); }
 .pbs-save-error { color: var(--pink); }

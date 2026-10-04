@@ -23,6 +23,10 @@ function mapProgressRow(row) {
     bestScorePercent: row.best_score_percent,
     viewedAt: row.viewed_at,
     quizPassedAt: row.quiz_passed_at,
+    // Which training_questions row/version each question was at on the
+    // most recent attempt — see migration 023. Lets a later question edit
+    // never retroactively change what an already-completed attempt meant.
+    questionVersions: Array.isArray(row.question_versions) ? row.question_versions : [],
   };
 }
 
@@ -65,7 +69,7 @@ export function useTrainingProgress(userId) {
     if (!err) refresh();
   }, [userId, progress, refresh]);
 
-  const recordQuizResult = useCallback(async (moduleId, { percent, passed }) => {
+  const recordQuizResult = useCallback(async (moduleId, { percent, passed, questionVersions }) => {
     if (!userId || !moduleId) return;
     const existing = progress?.get(moduleId);
     const bestScorePercent = Math.max(percent, existing?.bestScorePercent || 0);
@@ -75,6 +79,10 @@ export function useTrainingProgress(userId) {
       status: passed ? "quiz_passed" : (existing?.status || "viewed"),
       best_score_percent: bestScorePercent,
       quiz_passed_at: passed ? new Date().toISOString() : existing?.quizPassedAt || null,
+      // Always snapshot the version this attempt was actually scored
+      // against (migration 023) — kept even on a failed attempt, since
+      // that's still a completed, recorded attempt.
+      question_versions: questionVersions || [],
     };
     const { error: err } = await supabase
       .from("training_progress")

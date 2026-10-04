@@ -10,7 +10,7 @@
 import React, { useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useTrainingModules, COLOR_KEYS } from "../lib/useTrainingModules";
-import TrainingQuizEditor from "./TrainingQuizEditor";
+import TrainingQuestionEditor from "./TrainingQuestionEditor";
 import TrainingContentEditor from "./TrainingContentEditor";
 
 const inputStyle = {
@@ -286,7 +286,7 @@ export default function TrainingModulesAdmin() {
                   {quizModuleId === mod.id && (
                     <tr>
                       <td colSpan={4} style={{ padding: 0 }}>
-                        <TrainingQuizEditor moduleId={mod.id} />
+                        <TrainingQuestionEditor moduleId={mod.id} />
                       </td>
                     </tr>
                   )}

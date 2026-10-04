@@ -2,6 +2,7 @@
 // verified login. Allows administrators to approve pending accounts,
 // manage users, and view a system-wide overview.
 // I have removed the "full analytics for now" section, since we don't have any analytics yet. This will be added back in later.
+// Flags & Alerts has also been removed from this screen.
 
 import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "../supabaseClient";
@@ -10,7 +11,6 @@ import RoleSidebar from "./RoleSidebar";
 import RoleHero from "./RoleHero";
 import StatRing from "./StatRing";
 import ChildrenTable from "./ChildrenTable";
-import FlagsAlerts from "./FlagsAlerts";
 import SummaryReport from "./SummaryReport";
 import TrainingModulesAdmin from "./TrainingModulesAdmin";
 import ScreenerContentAdmin from "./ScreenerContentAdmin";
@@ -30,7 +30,6 @@ const T = {
     navHome: "My Home",
     navUsers: "User Management",
     navChildren: "All Children",
-    navFlags: "Flags & Alerts",
     navReports: "Reports",
     navProfile: "My Profile",
 
@@ -45,7 +44,6 @@ const T = {
     heroSub: "System-wide overview for the PuzzleBox pilot.",
     usersSub: "Approve new accounts and manage roles across the platform.",
     childrenSub: "Every child registered across every teacher and school, not just one class.",
-    flagsSub: "Flags and open follow-ups across the whole program.",
     reportsSub: "Export summary reports across the whole program.",
     profileSub: "Your account details and verification status.",
 
@@ -53,13 +51,11 @@ const T = {
     statPending: "Pending Approval",
     statChildren: "Children Registered",
     statScreened: "Screened This Period",
-    statFlagged: "Open Flags",
 
     total: "total",
     needsAction: "needs action",
     allTime: "all time",
     thisMonth: "this month",
-    unresolved: "unresolved",
 
     pendingApprovals: "Pending Approvals",
     noPending: "All caught up",
@@ -93,8 +89,6 @@ const T = {
     manageUsersSub: "Approve staff, assign roles, review access.",
     viewChildren: "View All Children",
     viewChildrenSub: "Search and filter every registered child.",
-    viewFlags: "View Flags & Alerts",
-    viewFlagsSub: "See who needs a follow-up right now.",
 
     role_educator: "Educator",
     role_psychologist: "Psychologist",
@@ -125,7 +119,6 @@ const T = {
     navHome: "My Tuisblad",
     navUsers: "Gebruikerbestuur",
     navChildren: "Alle Kinders",
-    navFlags: "Vlae & Waarskuwings",
     navReports: "Verslae",
     navProfile: "My Profiel",
 
@@ -141,7 +134,6 @@ const T = {
     usersSub:
       "Keur nuwe rekeninge goed en bestuur rolle regoor die platform.",
     childrenSub: "Elke kind wat geregistreer is, regoor alle onderwysers en skole.",
-    flagsSub: "Vlae en oop opvolgings regoor die hele program.",
     reportsSub: "Voer opsommingsverslae regoor die hele program uit.",
     profileSub: "Jou rekeningbesonderhede en verifikasiestatus.",
 
@@ -149,13 +141,11 @@ const T = {
     statPending: "Wag op Goedkeuring",
     statChildren: "Kinders Geregistreer",
     statScreened: "Gesif Vanjaar Maand",
-    statFlagged: "Oop Vlae",
 
     total: "totaal",
     needsAction: "aksie nodig",
     allTime: "nog altyd",
     thisMonth: "hierdie maand",
-    unresolved: "onopgelos",
 
     pendingApprovals: "Hangende Goedkeurings",
     noPending: "Alles op datum",
@@ -189,8 +179,6 @@ const T = {
     manageUsersSub: "Keur personeel goed, wys rolle toe.",
     viewChildren: "Bekyk Alle Kinders",
     viewChildrenSub: "Soek en filtreer elke geregistreerde kind.",
-    viewFlags: "Bekyk Vlae & Waarskuwings",
-    viewFlagsSub: "Sien wie nou opvolging benodig.",
 
     role_educator: "Opvoeder",
     role_psychologist: "Sielkundige",
@@ -221,7 +209,6 @@ const T = {
     navHome: "Ikhaya Lam",
     navUsers: "Ulawulo Lwabasebenzisi",
     navChildren: "Bonke Abantwana",
-    navFlags: "Izikhombisi",
     navReports: "Iingxelo",
     navProfile: "Iprofayile Yam",
 
@@ -237,7 +224,6 @@ const T = {
     usersSub:
       "Vumela iiakhawunti ezintsha kwaye ulawule iindima kwiplatform.",
     childrenSub: "Wonke umntwana obhalisiweyo kubo bonke ootitshala nezikolo.",
-    flagsSub: "Izikhombisi nokulandelwa okuvulekileyo kwinkqubo iphela.",
     reportsSub: "Khuphela iingxelo ezishwankathelweyo kwinkqubo iphela.",
     profileSub:
       "Iinkcukacha zeakhawunti yakho nemeko yokuqinisekiswa.",
@@ -246,13 +232,11 @@ const T = {
     statPending: "Kulindele Ukuvunywa",
     statChildren: "Abantwana Ababhalisiweyo",
     statScreened: "Abahloliweyo Kule Nyanga",
-    statFlagged: "Izikhombisi Ezivulekileyo",
 
     total: "iyonke",
     needsAction: "kufuna isenzo",
     allTime: "sonke isihlandlo",
     thisMonth: "le nyanga",
-    unresolved: "engasombululwanga",
 
     pendingApprovals: "Ezilindele Ukuvunywa",
     noPending: "Konke kulungile",
@@ -288,8 +272,6 @@ const T = {
       "Vumela abasebenzi, wabele iindima.",
     viewChildren: "Jonga Bonke Abantwana",
     viewChildrenSub: "Khangela kwaye uhlungе wonke umntwana obhalisiweyo.",
-    viewFlags: "Jonga Izikhombisi",
-    viewFlagsSub: "Bona ukuba ngubani ofuna ukulandelwa ngoku.",
 
     role_educator: "Umfundisi",
     role_psychologist: "Isazi Sengqondo",
@@ -363,13 +345,6 @@ const NAV_ICONS = {
       <rect x="1.5" y="3" width="13" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
       <path d="M1.5 6h13" stroke="currentColor" strokeWidth="1.5" />
       <path d="M4 9.5h4M4 11.5h2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  ),
-
-  flags: (
-    <svg viewBox="0 0 16 16" fill="none">
-      <path d="M3 1.5v13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M3 2.5h8.5l-2 2.75 2 2.75H3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
     </svg>
   ),
 
@@ -631,14 +606,6 @@ export default function AdminHome({ user, profile }) {
   const pendingTrainingCertificates = useMemo(
     () => trainingCertificates.filter((c) => c.status === "pending" || !c.status),
     [trainingCertificates]
-  );
-
-  // "Open" mirrors the definition FlagsAlerts already uses: flagged and
-  // not yet resolved. This is what the sidebar badge and the overview
-  // stat ring both count.
-  const openFlaggedChildren = useMemo(
-    () => children.filter((c) => c.flagged && !c.resolved),
-    [children]
   );
 
   // Screenings completed this period = assessment date falls within the
@@ -947,12 +914,6 @@ export default function AdminHome({ user, profile }) {
       icon: NAV_ICONS.children,
     },
     {
-      id: "flags",
-      label: t.navFlags,
-      section: t.section2,
-      icon: NAV_ICONS.flags,
-    },
-    {
       id: "reports",
       label: t.navReports,
       section: t.section2,
@@ -1036,9 +997,8 @@ export default function AdminHome({ user, profile }) {
             <div className="page-title">
               {activePage === "users" && t.navUsers}
               {activePage === "children" && t.navChildren}
-              {activePage === "flags" && t.navFlags}
               {activePage === "reports" && t.navReports}
-              {activePage === "training-modules" && "Training Modules"}
+               {activePage === "training-modules" && "Training Modules"} 
               {activePage === "training-certifications" && "Training Certifications"}
               {activePage === "screener-content" && "Screener Content"}
               {activePage === "purchase-requests" && "Purchase Requests"}
@@ -1046,13 +1006,12 @@ export default function AdminHome({ user, profile }) {
             </div>
 
             <div className="page-sub">
-              {activePage === "training-modules" && "Add, reorder, publish and edit the modules shown on the Training page — no code or database changes needed."}
+              {activePage === "training-modules" && "Add, reorder, publish and edit the modules shown on the Training page."} 
               {activePage === "training-certifications" && "Trainees who've passed every module's quiz land here. Review their results and approve to release their certificate."}
-              {activePage === "screener-content" && "Manage the PuzzleBox Screener's sections, questions and scoring rules — no code or database changes needed."}
+              {activePage === "screener-content" && "Manage the PuzzleBox Screener's sections, questions and scoring rules."}
               {activePage === "purchase-requests" && "Requests submitted from the \"Buy The Puzzle Box Screener\" page. Fulfil a request to issue its Product number."}
               {activePage === "users" && t.usersSub}
               {activePage === "children" && t.childrenSub}
-              {activePage === "flags" && t.flagsSub}
               {activePage === "reports" && t.reportsSub}
               {activePage === "profile" && t.profileSub}
             </div>
@@ -1109,13 +1068,6 @@ export default function AdminHome({ user, profile }) {
                 max={30}
                 color="#fff"
                 label={t.statScreened}
-              />
-
-              <StatRing
-                value={openFlaggedChildren.length}
-                max={10}
-                color="#fff"
-                label={t.statFlagged}
               />
             </RoleHero>
 
@@ -1328,6 +1280,7 @@ export default function AdminHome({ user, profile }) {
                     onClick={() =>
                       setActivePage("children")
                     }
+                    style={{ marginBottom: 0 }}
                   >
                     <div className="th-quicklink-icon">
                       👧
@@ -1340,32 +1293,6 @@ export default function AdminHome({ user, profile }) {
 
                       <div className="th-quicklink-sub">
                         {t.viewChildrenSub}
-                      </div>
-                    </div>
-
-                    <div className="th-quicklink-arrow">
-                      →
-                    </div>
-                  </button>
-
-                  <button
-                    className="th-quicklink"
-                    onClick={() =>
-                      setActivePage("flags")
-                    }
-                    style={{ marginBottom: 0 }}
-                  >
-                    <div className="th-quicklink-icon">
-                      🚩
-                    </div>
-
-                    <div>
-                      <div className="th-quicklink-title">
-                        {t.viewFlags}
-                      </div>
-
-                      <div className="th-quicklink-sub">
-                        {t.viewFlagsSub}
                       </div>
                     </div>
 
@@ -1717,10 +1644,6 @@ export default function AdminHome({ user, profile }) {
               </div>
             </div>
           )
-        )}
-
-        {activePage === "flags" && (
-          <FlagsAlerts children={children} lang={lang} />
         )}
 
         {activePage === "reports" && (

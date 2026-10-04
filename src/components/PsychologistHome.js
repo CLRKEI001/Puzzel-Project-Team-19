@@ -36,6 +36,7 @@ const T = {
     noFlaggedSub: "Children flagged for developmental concerns will appear here.",
     needsReview: "Needs Review", noNotifications: "No screenings waiting on review",
     noNotificationsSub: "When a teacher finishes a PuzzleBox screening, it'll show up here.",
+    deleteNotif: "Delete notification", deleteNotifConfirm: "Delete this notification? This only removes it from your list — the screening itself isn't affected.",
     quickLinks: "Quick Links", openDashboard: "Open Full Analytics Dashboard",
     openDashboardSub: "Screening results, trends, and student records.",
     openFlags: "Flags & Alerts", openFlagsSub: "Send diagnosis reports to teachers.",
@@ -79,6 +80,7 @@ const T = {
     recentlyFlagged: "Onlangs Gevlagde Kinders", noFlagged: "Geen gevlagde kinders",
     noFlaggedSub: "Kinders wat gevlag word sal hier verskyn.",
     needsReview: "Benodig Hersiening", noNotifications: "Geen sifting wag op hersiening nie",
+    deleteNotif: "Skrap kennisgewing", deleteNotifConfirm: "Skrap hierdie kennisgewing? Dit verwyder dit net van jou lys — die sifting self word nie geraak nie.",
     noNotificationsSub: "Wanneer 'n onderwyser 'n sifting voltooi, verskyn dit hier.",
     quickLinks: "Vinnige Skakels", openDashboard: "Maak Volledige Paneelbord Oop",
     openDashboardSub: "Siftingsresultate, neigings en leerlingrekords.",
@@ -123,6 +125,7 @@ const T = {
     recentlyFlagged: "Abantwana Abakhonjwe Kutsha Nje", noFlagged: "Akukho bantwana abakhonjiweyo",
     noFlaggedSub: "Abantwana abakhonjiweyo baya kubonakala apha.",
     needsReview: "Kufuneka Uphononongo", noNotifications: "Akukho hlolo lulindele uphononongo",
+    deleteNotif: "Cima isaziso", deleteNotifConfirm: "Cima esi saziso? Oku kuyasisusa kuphela kuluhlu lwakho — uhlolo ngokwalo aluchaphazeleki.",
     noNotificationsSub: "Xa utitshala egqiba uhlolo, luya kubonakala apha.",
     quickLinks: "Amakhonkco Akhawulezayo", openDashboard: "Vula Ideshibhodi Epheleleyo",
     openDashboardSub: "Iziphumo zohlolo, iinkqubela neerekhodi zabafundi.",
@@ -345,6 +348,22 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
     setReviewing(null);
     setReviewScreening(null);
     setReviewSaved(null);
+  };
+
+  // Removes a notification from this psychologist's list only — it's just
+  // the "messages" row that generated the notification, so the underlying
+  // screening (and the teacher's own view of it) is completely unaffected.
+  const deleteNotification = async (notification) => {
+    if (!window.confirm(t.deleteNotifConfirm)) return;
+    setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
+    const { error: delErr } = await supabase.from("messages").delete().eq("id", notification.id);
+    if (delErr) {
+      console.error("Could not delete notification:", delErr.message);
+      // Put it back — the delete didn't actually happen.
+      setNotifications((prev) =>
+        prev.some((n) => n.id === notification.id) ? prev : [...prev, notification].sort((a, b) => (b.sentAt || "").localeCompare(a.sentAt || ""))
+      );
+    }
   };
 
   const submitReview = async () => {
@@ -574,7 +593,7 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                 />
                 <TodayList
                   title={t.recentlyFlagged}
-                  emptyIcon=""
+                  emptyIcon="✅"
                   emptyTitle={t.noFlagged}
                   emptySub={t.noFlaggedSub}
                   items={flaggedChildren.slice(0, 5).map((c) => ({
@@ -662,6 +681,21 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                     {n.sentAt ? new Date(n.sentAt).toLocaleDateString() : ""}
                   </div>
                   {!n.readAt && <span className="pill pill-teal">New</span>}
+                  <button
+                    type="button"
+                    title={t.deleteNotif}
+                    aria-label={t.deleteNotif}
+                    onClick={(e) => { e.stopPropagation(); deleteNotification(n); }}
+                    style={{
+                      flexShrink: 0, width: 28, height: 28, borderRadius: "50%", border: "none",
+                      background: "transparent", color: "var(--ink-faint)", cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15,
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--pink-lt)"; e.currentTarget.style.color = "var(--pink)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--ink-faint)"; }}
+                  >
+                    ✕
+                  </button>
                 </div>
               ))
             )}
@@ -781,7 +815,7 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
               </div>
             ) : reviewSaved ? (
               <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}></div>
+                <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
                 <div style={{ fontFamily: "Nunito", fontSize: 19, fontWeight: 900, color: "var(--ink)", marginBottom: 6 }}>{t.reviewSaved}</div>
                 <div style={{ fontSize: 13, color: "var(--ink-faint)", marginBottom: 20 }}>{t.reviewSavedSub}</div>
                 {reviewSaved.sharedWith.length > 0 && (

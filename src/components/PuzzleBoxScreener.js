@@ -168,6 +168,20 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
   const [timerMs, setTimerMs] = useState(0);
   const timerIntervalRef = useRef(null);
 
+  // ── Continuous overall session timer ─────────────────────────────
+  // Separate from the per-section timer above: this one never resets
+  // between sections, so it answers "how long did the whole screening
+  // take" — see total_time_seconds (migration 025).
+  const [sessionTimerMs, setSessionTimerMs] = useState(0);
+  const sessionTimerIntervalRef = useRef(null);
+
+  // ── Per-section elapsed time ──────────────────────────────────────
+  // Most questions are plain 0-2 observational scores with no time of
+  // their own — this is how the review screen can still show "how long
+  // did section N take" without inventing a time for every question.
+  // Keyed by section id, accumulates (never resets) across revisits.
+  const [sectionTimes, setSectionTimes] = useState({});
+
   const teacherEmail = user?.email || "";
   const teacherName = profile?.name || user?.email?.split("@")[0] || "Educator";
 
@@ -280,6 +294,8 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
       setSession(existingSession);
       setResponses(existingSession.responses || {});
       setObservations(existingSession.observations || "");
+      setSessionTimerMs((existingSession.total_time_seconds || 0) * 1000);
+      setSectionTimes(existingSession.section_times || {});
       setView("form");
       return;
     }
@@ -360,23 +376,70 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
   };
 
   // ── Live puzzle timer ────────────────────────────────────────────
-  // Stops the interval and drops back to idle whenever the teacher leaves
-  // this section, and loads any previously recorded time (e.g. resuming a
-  // saved session) as the timer's starting point.
+  // Resets whenever the teacher moves to a new section (loading any
+  // previously recorded time, e.g. resuming a saved session, as the
+  // starting point) and now auto-starts immediately instead of waiting
+  // for a manual "Start" click every time — teachers were having to
+  // remember to press Start on every single section. Pause/Reset are
+  // still there for a genuine interruption.
   useEffect(() => {
+    if (view !== "form") return;
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
-    setTimerRunning(false);
     setTimerMs(timerQuestion ? (responses[timerQuestion.id]?.rawValueSeconds || 0) * 1000 : 0);
+    setTimerRunning(true);
+    const sectionId = currentSection?.id;
+    timerIntervalRef.current = setInterval(() => {
+      setTimerMs((ms) => ms + 1000);
+      if (sectionId) {
+        setSectionTimes((prev) => ({ ...prev, [sectionId]: (prev[sectionId] || 0) + 1 }));
+      }
+    }, 1000);
+    // currentSection?.id is included (not just sectionIndex) because content
+    // loads asynchronously (useScreenerContent) — if this effect's first run
+    // lands before content has arrived, currentSection is still undefined
+    // and sectionId would be captured as undefined forever, since nothing
+    // would ever re-run this effect once content shows up. Re-running when
+    // the id itself changes (content finishes loading, or a real section
+    // change) fixes that without re-running on every unrelated render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sectionIndex]);
+  }, [sectionIndex, view, currentSection?.id]);
 
   // Clean up the interval if the component unmounts mid-timer.
   useEffect(() => () => {
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
   }, []);
+
+  // ── Continuous overall session timer ─────────────────────────────
+  // Starts the moment the screening form opens (new or resumed) and
+  // keeps ticking across every section change — unlike the per-section
+  // timer above, this one is never reset, so its value at submit time is
+  // "how long the whole screening took".
+  useEffect(() => {
+    if (view !== "form" || !session?.id) return;
+    sessionTimerIntervalRef.current = setInterval(() => {
+      setSessionTimerMs((ms) => ms + 1000);
+    }, 1000);
+    return () => {
+      if (sessionTimerIntervalRef.current) clearInterval(sessionTimerIntervalRef.current);
+      sessionTimerIntervalRef.current = null;
+    };
+  }, [view, session?.id]);
+
+  // Persists the running total and the per-section breakdown together as
+  // they tick (debounced, same pattern as every other autosaved field) so
+  // "time so far" survives a refresh and resume, not only a clean submit.
+  // These two update on the same 1-second cadence, so they're sent in one
+  // patch rather than two separate debounced calls — debouncedPersist
+  // shares a single pending timer, and two calls in the same tick would
+  // just have the second silently cancel the first.
+  useEffect(() => {
+    if (view !== "form" || !session?.id) return;
+    debouncedPersist({ total_time_seconds: Math.floor(sessionTimerMs / 1000), section_times: sectionTimes });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionTimerMs, sectionTimes]);
 
   // While running, every tick updates the on-screen clock and writes the
   // elapsed time into every question on the page — the official time-scored
@@ -460,6 +523,8 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
         raw_score: rawScore,
         interpretation_band: band?.band || null,
         content_snapshot: content,
+        total_time_seconds: Math.floor(sessionTimerMs / 1000),
+        section_times: sectionTimes,
       })
       .eq("id", session.id);
 
@@ -703,6 +768,7 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
           <div className="pbs-submitted-icon">✓</div>
           <h2 className="pbs-h2">{t.submitted}</h2>
           <p className="pbs-sub">{selectedChild?.name} {t.submittedSub} {selectedChild?.school || "the child's record"}.</p>
+          <p className="pbs-submitted-time">Total time taken: {formatTimer(sessionTimerMs)}</p>
           <button className="btn btn-teal" onClick={onExit}>{t.submittedBackHome}</button>
         </div>
       </div>
@@ -723,7 +789,7 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
   return (
     <div className="pbs-shell">
       <div className={`pbs-timer-panel ${timerRunning ? "running" : ""}`}>
-        <div className="pbs-timer-label">Timer</div>
+        <div className="pbs-timer-label">Section timer</div>
         <div className="pbs-timer-display">{formatTimer(timerMs)}</div>
         {timerQuestion && <div className="pbs-timer-target">for "{timerQuestion.label}"</div>}
         {isPuzzleOverTime && (
@@ -748,6 +814,9 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
           <div className="pbs-topbar-sub">{t.sectionOf} {sectionIndex + 1} {t.of} {sections.length} · {currentSection.title}</div>
         </div>
         <div className="pbs-topbar-right">
+          <span className="pbs-session-timer" title="Total time on this screening, across every section">
+            ⏱ {formatTimer(sessionTimerMs)}
+          </span>
           <span className={`pbs-save-indicator pbs-save-${saveStatus}`}>
             {saveStatus === "saving" ? t.saving : saveStatus === "error" ? "⚠" : t.saved}
           </span>

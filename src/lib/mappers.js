@@ -57,6 +57,8 @@ export function mapPuzzleboxScreeningRow(r) {
     responses: r.responses,
     puzzleTimeSeconds: r.puzzle_time_seconds,
     puzzleOverTime: r.puzzle_over_time,
+    totalTimeSeconds: r.total_time_seconds,
+    sectionTimes: r.section_times,
     observations: r.observations,
     rawScore: r.raw_score,
     interpretationBand: r.interpretation_band,

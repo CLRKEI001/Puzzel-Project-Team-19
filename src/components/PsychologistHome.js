@@ -49,6 +49,7 @@ const T = {
     profileName: "Full Name", profileEmail: "Email Address", profileRole: "Role",
     profileStaff: "Staff Number", profileStatus: "Verification Status", verified: "Verified",
     reviewTitle: "Review Screening", submittedBy: "Submitted by", rawScoreLabel: "Raw score",
+    timeTakenLabel: "Time taken", puzzleTimeLabel: "Puzzle time", overTimeFlag: "Over time",
     resultBand: "Result", observationsLabel: "Teacher's observations", noObservations: "None noted.",
     verdictQuestion: "How does this screening look?", verdictFine: "Everything is fine",
     verdictConcerns: "There are concerns", notesLabel: "Notes (optional)",
@@ -92,6 +93,7 @@ const T = {
     profileName: "Volle Naam", profileEmail: "E-pos", profileRole: "Rol",
     profileStaff: "Personeelnommer", profileStatus: "Verifikasiestatus", verified: "Geverifieer",
     reviewTitle: "Hersien Sifting", submittedBy: "Ingedien deur", rawScoreLabel: "Rou telling",
+    timeTakenLabel: "Tyd geneem", puzzleTimeLabel: "Legkaart tyd", overTimeFlag: "Oortyd",
     resultBand: "Resultaat", observationsLabel: "Onderwyser se waarnemings", noObservations: "Geen aangeteken nie.",
     verdictQuestion: "Hoe lyk hierdie sifting?", verdictFine: "Alles is reg",
     verdictConcerns: "Daar is kommer", notesLabel: "Notas (opsioneel)",
@@ -135,6 +137,7 @@ const T = {
     profileName: "Igama Elipheleleyo", profileEmail: "I-imeyile", profileRole: "Indima",
     profileStaff: "Inombolo Yomsebenzi", profileStatus: "Imeko Yokuqinisekiswa", verified: "Kuqinisekisiwe",
     reviewTitle: "Phonononga Uhlolo", submittedBy: "Ithunyelwe ngu", rawScoreLabel: "Amanqaku aluhlaza",
+    timeTakenLabel: "Ixesha elithathiweyo", puzzleTimeLabel: "Ixesha lephazili", overTimeFlag: "Lidlulile ixesha",
     resultBand: "Isiphumo", observationsLabel: "Uphawu lukatitshala", noObservations: "Akukho kubhaliweyo.",
     verdictQuestion: "Lujongeka njani olu hlolo?", verdictFine: "Yonke into ilungile",
     verdictConcerns: "Kukho inkxalabo", notesLabel: "Amanqaku (ukhetho)",
@@ -571,7 +574,7 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                 />
                 <TodayList
                   title={t.recentlyFlagged}
-                  emptyIcon="✅"
+                  emptyIcon=""
                   emptyTitle={t.noFlagged}
                   emptySub={t.noFlaggedSub}
                   items={flaggedChildren.slice(0, 5).map((c) => ({
@@ -778,7 +781,7 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
               </div>
             ) : reviewSaved ? (
               <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
+                <div style={{ fontSize: 48, marginBottom: 12 }}></div>
                 <div style={{ fontFamily: "Nunito", fontSize: 19, fontWeight: 900, color: "var(--ink)", marginBottom: 6 }}>{t.reviewSaved}</div>
                 <div style={{ fontSize: 13, color: "var(--ink-faint)", marginBottom: 20 }}>{t.reviewSavedSub}</div>
                 {reviewSaved.sharedWith.length > 0 && (
@@ -808,6 +811,25 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                     <span className="report-row-value">{reviewScreening.rawScore ?? "—"}</span>
                   </div>
                   <div className="report-row">
+                    <span className="report-row-label">{t.timeTakenLabel}</span>
+                    <span className="report-row-value">
+                      {reviewScreening.totalTimeSeconds != null ? formatSecs(reviewScreening.totalTimeSeconds) : "—"}
+                    </span>
+                  </div>
+                  {reviewScreening.puzzleTimeSeconds != null && (
+                    <div className="report-row">
+                      <span className="report-row-label">{t.puzzleTimeLabel}</span>
+                      <span className="report-row-value">
+                        {formatSecs(reviewScreening.puzzleTimeSeconds)}
+                        {reviewScreening.puzzleOverTime && (
+                          <span style={{ color: "var(--orange)", fontWeight: 700, marginLeft: 6, fontSize: 11.5 }}>
+                            ⚑ {t.overTimeFlag}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  <div className="report-row">
                     <span className="report-row-label">{t.resultBand}</span>
                     <span className="report-row-value">{bandLabels[reviewScreening.interpretationBand] || reviewScreening.interpretationBand || "—"}</span>
                   </div>
@@ -834,32 +856,37 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                     </button>
                     {showBreakdown && (
                       <div style={{ marginTop: 10, maxHeight: 260, overflowY: "auto", border: "1.5px solid var(--border)", borderRadius: 10, padding: "4px 14px" }}>
-                        {reviewScreening.contentSnapshot.sections.map((section) => (
+                        {reviewScreening.contentSnapshot.sections.map((section) => {
+                          const sectionSecs = reviewScreening.sectionTimes?.[section.id];
+                          return (
                           <div key={section.id || section.title} style={{ marginBottom: 12 }}>
-                            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.4px", color: "var(--ink-faint)", margin: "10px 0 4px" }}>
-                              {section.title}
+                            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.4px", color: "var(--ink-faint)", margin: "10px 0 4px", display: "flex", justifyContent: "space-between" }}>
+                              <span>{section.title}</span>
+                              {sectionSecs != null && <span style={{ fontVariantNumeric: "tabular-nums" }}>{formatSecs(sectionSecs)}</span>}
                             </div>
                             {section.questions.map((q) => {
                               const r = reviewScreening.responses?.[q.id] || {};
-                              const answer =
-                                r.checked?.length
-                                  ? r.checked.join(", ")
-                                  : r.rawValueSeconds != null
-                                  ? formatSecs(r.rawValueSeconds)
-                                  : typeof r.score === "number"
-                                  ? r.score
-                                  : "—";
+                              const hasScore = typeof r.score === "number";
+                              // Per-question time used to be shown here too, but for the
+                              // only two questions that ever had one (the puzzle, fence
+                              // sticks) it just duplicated the section header's time right
+                              // above — so this row sticks to score/checklist only now.
+                              const parts = [];
+                              if (hasScore) parts.push(`Score: ${r.score}`);
+                              if (r.checked?.length) parts.push(r.checked.join(", "));
+                              const answer = parts.length ? parts.join(" · ") : "—";
                               return (
                                 <div key={q.id} className="report-row" style={{ padding: "6px 0" }}>
                                   <span className="report-row-label" style={{ fontSize: 12.5 }}>{q.label}</span>
                                   <span className="report-row-value" style={{ fontSize: 12.5, fontWeight: 800 }}>
-                                    {typeof r.score === "number" ? `Score: ${r.score}` : answer}
+                                    {answer}
                                   </span>
                                 </div>
                               );
                             })}
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>

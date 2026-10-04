@@ -1099,7 +1099,7 @@ export default function AdminHome({ user, profile }) {
                   ) : pendingUsers.length === 0 ? (
                     <div className="rh-empty">
                       <div className="rh-empty-icon">
-                        ✅
+                        
                       </div>
 
                       <div className="rh-empty-title">

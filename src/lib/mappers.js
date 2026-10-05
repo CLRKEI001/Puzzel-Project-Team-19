@@ -39,6 +39,9 @@ export function mapChildRow(r) {
     consentFormUrl: r.consent_form_url,
     consentFileName: r.consent_file_name,
     consentUploadedAt: r.consent_uploaded_at,
+    consentVerified: r.consent_verified,
+    consentVerificationNotes: r.consent_verification_notes,
+    consentVerifiedAt: r.consent_verified_at,
     createdAt: r.created_at,
   };
 }

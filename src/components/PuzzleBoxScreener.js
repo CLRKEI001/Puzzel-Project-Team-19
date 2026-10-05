@@ -19,6 +19,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "../supabaseClient";
 import { useScreenerContent, scoreFromAgeTable } from "../lib/useScreenerContent";
+import { mapChildRow } from "../lib/mappers";
 import { SinglePuzzlePiece } from "./puzzlePiece";
 import "./PuzzleBoxScreener.css";
 
@@ -81,6 +82,10 @@ const T = {
     exitConfirm: "Leave the screening? Your progress has already been saved and you can resume later.",
     notAgeSupported: "This screener's age-based scoring covers 5 and 6 year olds — a raw time/count is still recorded for this child, but no 0–2 score can be derived automatically.",
     checklistCount: "checked",
+    consentMissingTitle: "No consent form on file",
+    consentMissingBody: "A signed parent/guardian consent form is required before this child can be screened. Go to My Class, open this child's record, and upload one — you can also download a blank form to send home.",
+    consentIncompleteTitle: "Consent form incomplete",
+    consentVerifiedBadge: "Consent form on file ✓",
   },
 };
 
@@ -224,7 +229,11 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
         setError("Could not load children: " + qErr.message);
         setChildren([]);
       } else {
-        setChildren(data || []);
+        // Mapped to camelCase so selectedChild is shaped identically whether
+        // it came from this search or was handed in as initialChild (which
+        // TeacherHome.js already maps via mapChildRow) — consentVerified
+        // and friends are read off selectedChild below either way.
+        setChildren((data || []).map(mapChildRow));
       }
       setLoadingChildren(false);
     };
@@ -290,6 +299,13 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
   // ── Start (or resume) the screening session ──────────────────────────
   const beginScreening = async (resume) => {
     setError("");
+    // Defense in depth — the confirm screen's button is already disabled
+    // without a verified consent form, but a screening must never actually
+    // start without one regardless of how this function gets called.
+    if (!selectedChild?.consentVerified) {
+      setError(t.consentMissingBody);
+      return;
+    }
     if (resume && existingSession) {
       setSession(existingSession);
       setResponses(existingSession.responses || {});
@@ -533,6 +549,19 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
       return;
     }
 
+    // Move the child's Stage badge (Student Records / Full Analytics
+    // Dashboard) forward to "Processing" — it's a separate, manually-set
+    // field on `children` left over from before PuzzleBox screenings got
+    // their own table, and nothing was ever advancing it automatically.
+    // Without this, a child who'd actually been screened (and even fully
+    // reviewed by a psychologist) still showed "Not Started" there forever.
+    // Non-fatal if it fails — the screening itself is already saved above.
+    const { error: stageErr } = await supabase
+      .from("children")
+      .update({ stage: "stage3" })
+      .eq("id", selectedChild.id);
+    if (stageErr) console.error("Could not update the child's stage:", stageErr.message);
+
     // Let the psychologist know there's a screening waiting on them. If
     // this insert fails for some reason, the screening itself is already
     // safely saved above — don't block the teacher's flow on it.
@@ -737,6 +766,20 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
               <div><div className="pbs-confirm-label">{t.language}</div><div>{selectedChild.language || "—"}</div></div>
             </div>
           </div>
+          {selectedChild.consentVerified ? (
+            <div className="card" style={{ marginTop: 12, padding: "10px 16px", background: "var(--teal-lt, #E6F7F5)", color: "var(--teal)", fontSize: 12.5, fontWeight: 700 }}>
+              {t.consentVerifiedBadge}
+            </div>
+          ) : (
+            <div className="card pbs-consent-block" style={{ marginTop: 12, padding: "14px 16px", background: "var(--pink-lt, #FFE6EF)" }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "var(--pink)" }}>
+                {selectedChild.consentFormUrl ? t.consentIncompleteTitle : t.consentMissingTitle}
+              </div>
+              <div style={{ fontSize: 12.5, color: "var(--ink-mid)", marginTop: 4, lineHeight: 1.5 }}>
+                {selectedChild.consentVerificationNotes || t.consentMissingBody}
+              </div>
+            </div>
+          )}
           {priorScreenings.length > 0 && (
             <div className="card" style={{ marginTop: 12, padding: "12px 16px", background: "var(--teal-lt, #E6F7F5)" }}>
               <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--teal)", marginBottom: 4 }}>
@@ -752,7 +795,12 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
           {error && <div className="pbs-error">{error}</div>}
           <div className="pbs-confirm-actions">
             <button className="btn btn-ghost" onClick={() => setView("select")}>{t.goBack}</button>
-            <button className="btn btn-teal" onClick={() => beginScreening(!!existingSession)}>
+            <button
+              className="btn btn-teal"
+              onClick={() => beginScreening(!!existingSession)}
+              disabled={!selectedChild.consentVerified}
+              title={selectedChild.consentVerified ? undefined : t.consentMissingBody}
+            >
               {existingSession ? t.resumeScreening : t.startScreening}
             </button>
           </div>

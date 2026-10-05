@@ -409,6 +409,19 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
         if (flagErr) console.error("Could not flag the child's record:", flagErr.message);
       }
 
+      // Move the child's Stage badge (Student Records / Full Analytics
+      // Dashboard) to "Completed" — same gap as the "Processing" update in
+      // PuzzleBoxScreener.js on submit: this field is separate from the
+      // actual puzzlebox_screenings data and nothing was moving it forward,
+      // so a fully reviewed/diagnosed child still showed "Not Started".
+      if (reviewScreening.childId) {
+        const { error: stageErr } = await supabase
+          .from("children")
+          .update({ stage: "stage4" })
+          .eq("id", reviewScreening.childId);
+        if (stageErr) console.error("Could not update the child's stage:", stageErr.message);
+      }
+
       // Safety net: clear the "awaiting review" notification badge for
       // this screening regardless of how the psychologist got here (opening
       // it via the notification list already marks it read on open, but

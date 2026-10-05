@@ -171,8 +171,8 @@ const T = {
       "View and screen the children in your own class.",
 
     myStudents: "My Class",
-    myStudentsSub:
-      "Children added or screened by you — not the full PuzzleBox dataset.",
+  
+      
 
     filterStatus: "All Stages",
 
@@ -1460,6 +1460,13 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
             ? { ...s, consentFormUrl: result.url, consentFileName: result.fileName, consentVerified: result.valid, consentVerificationNotes: result.notes }
             : s
         )
+      );
+      // The Student Record modal (if open on this same child) holds its own
+      // copy of the row, so patch it too.
+      setSelectedStudent((prev) =>
+        prev && prev.id === consentPromptChild.id
+          ? { ...prev, consentFormUrl: result.url, consentFileName: result.fileName, consentVerified: result.valid, consentVerificationNotes: result.notes }
+          : prev
       );
     } catch (err) {
       setConsentPromptError(err.message || "Could not save the consent form.");
@@ -3480,7 +3487,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
       ====================================================== */}
 
       {consentPromptChild && (
-        <div className="modal-overlay" onClick={() => !consentPromptSaving && closeConsentPrompt()}>
+        <div className="modal-overlay" style={{ zIndex: 300 }} onClick={() => !consentPromptSaving && closeConsentPrompt()}>
           <div className="modal" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title">Upload a consent form for {consentPromptChild.name}?</div>
@@ -3902,6 +3909,70 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
 
               </div>
 
+            </div>
+
+
+            {/* CONSENT FORM */}
+
+            <div
+              style={{
+                padding: "12px 14px",
+                borderRadius: 12,
+                marginBottom: 20,
+                background: selectedStudent.consentVerified
+                  ? "var(--teal-lt)"
+                  : selectedStudent.consentFormUrl
+                  ? "var(--pink-lt)"
+                  : "#F4F4F4",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <label style={labelStyle}>Consent form</label>
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: selectedStudent.consentVerified
+                      ? "var(--teal)"
+                      : selectedStudent.consentFormUrl
+                      ? "var(--pink)"
+                      : "var(--ink-mid)",
+                  }}
+                >
+                  {selectedStudent.consentVerified
+                    ? "✓ Verified"
+                    : selectedStudent.consentFormUrl
+                    ? "✗ Incomplete — " + (selectedStudent.consentVerificationNotes || "some required fields look blank.")
+                    : "No consent form uploaded yet"}
+                </div>
+                {selectedStudent.consentFormUrl && (
+                  <a
+                    href={selectedStudent.consentFormUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ fontSize: 12, color: "var(--ink-mid)" }}
+                  >
+                    View uploaded file
+                  </a>
+                )}
+              </div>
+
+              <button
+                className="btn btn-sm btn-ghost"
+                onClick={() =>
+                  setConsentPromptChild({
+                    id: selectedStudent.id,
+                    name: selectedStudent.name,
+                  })
+                }
+              >
+                📎 {selectedStudent.consentFormUrl ? "Replace form" : "Upload consent form"}
+              </button>
             </div>
 
 

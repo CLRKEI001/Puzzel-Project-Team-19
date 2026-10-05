@@ -20,7 +20,16 @@ function useCountUp(target, duration = 1200) {
   return value;
 }
 
-// Circular progress ring component
+// This draws a circular progress ring using SVG.
+// The maths works like this:
+// — A circle has a circumference of 2 * PI * radius
+// — strokeDasharray sets the total length of the dashed stroke to exactly
+//   the full circumference, making the entire circle one long dash
+// — strokeDashoffset shifts that dash backwards by a calculated amount
+//   so only the percentage portion of the circle is visible
+// — The circle is rotated -90deg so it starts at the top instead of the right
+// — transition: stroke-dashoffset 1.2s ease animates the ring filling up
+//   smoothly when the component first renders
 function CircleRing({ value, max, color, size = 90, stroke = 8 }) {
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -54,7 +63,18 @@ function CircleRing({ value, max, color, size = 90, stroke = 8 }) {
   );
 }
 
-// Gauge/semicircle meter component
+// This draws a semicircle (half ring) instead of a full circle.
+// Instead of using a <circle> element it uses a <path> element with
+// an Arc command (A) to draw exactly half a circle.
+// The d attribute describes the path:
+// M 6 ${size/2}           — Move to the left starting point
+// A radius radius          — Draw an arc with this radius
+// 0 0 1                   — Rotation=0, large-arc-flag=0, sweep-flag=1 (clockwise)
+// ${size-6} ${size/2}     — End point on the right side
+// circumference here is Math.PI * radius (half of the full 2*PI*radius)
+// because we only draw half the circle.
+// The same strokeDasharray/strokeDashoffset trick as CircleRing is used
+// to control how much of the half-circle arc is filled.
 function GaugeMeter({ value, color, size = 90 }) {
   const radius = (size - 12) / 2;
   const circumference = Math.PI * radius; // half circle
@@ -85,7 +105,14 @@ function GaugeMeter({ value, color, size = 90 }) {
   );
 }
 
-// Mini sparkline component
+// A sparkline is a tiny minimalist line chart with no axes or labels.
+// It takes an array of numbers and draws a connected line through them.
+// The maths normalises each value to fit within the SVG height:
+// y = height - ((v - min) / range) * (height - 8) - 4
+// This maps the smallest value to the bottom and largest to the top.
+// pts builds an array of "x,y" coordinate strings then .join(" ") turns
+// them into the space-separated format that SVG polyline expects.
+// A small dot is drawn on the last point to show the most recent value.
 function Sparkline({ data, color, width = 55, height = 100 }) {
   if (!data || data.length < 2) return null;
   const max = Math.max(...data);

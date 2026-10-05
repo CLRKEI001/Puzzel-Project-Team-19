@@ -74,11 +74,13 @@ const AMBIENT_PIECES = [
   { top: "60%", left: "42%", size: 140, rotate: 22,  delay: "-6s",  duration: "34s", color: "var(--teal, #009B8D)",   opacity: 0.14, blur: 10 },
 ];
 
+
 export default function Login({ onVerified, onBack, tier = null, initialMode = "login" }) {
   const tierInfo = TIERS[tier] || null;
   const visibleRoles = tierInfo ? ROLES.filter((r) => tierInfo.roles.includes(r.value)) : ROLES;
 
   const [mode, setMode] = useState(initialMode); // login | register | forgot
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
@@ -225,6 +227,26 @@ export default function Login({ onVerified, onBack, tier = null, initialMode = "
           </div>
           <h1>The Puzzle Box</h1>
           <p></p>
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              style={{
+                marginTop: 22,
+                background: "rgba(255,255,255,0.12)",
+                border: "1px solid rgba(255,255,255,0.35)",
+                color: "#fff",
+                fontFamily: "inherit",
+                fontSize: 13,
+                fontWeight: 700,
+                padding: "9px 18px",
+                borderRadius: 10,
+                cursor: "pointer",
+              }}
+            >
+              ← Back to homepage
+            </button>
+          )}
         </div>
       </div>
 

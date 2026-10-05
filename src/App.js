@@ -295,6 +295,7 @@ function App() {
           // where a celebratory animation would be misleading.
           if (verifiedProfile?.isVerified) setTransitioning(true);
         }}
+        onBack={() => setPublicPage("home")}
       />
     );
   }

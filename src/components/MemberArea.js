@@ -4,7 +4,7 @@ import { signOut } from "firebase/auth";
 import { supabase } from "../supabaseClient";
 import { COLORS, FONT_IMPORT, BrandLogo, useIsMobile } from "./SiteChrome";
 import { PurchaseContent } from "./PuzzleBoxPurchase";
-import { useTrainingModules } from "../lib/useTrainingModules";
+import { useTrainingModules, audienceForRole } from "../lib/useTrainingModules";
 import { useTrainingProgress } from "../lib/useTrainingProgress";
 import { useTrainingContentBlocks } from "../lib/useTrainingContentBlocks.js";
 import TrainingModuleQuiz from "./TrainingModuleQuiz";
@@ -140,7 +140,7 @@ function Landing({ profile, onView }) {
           desc="See what's included and request a screener."
           onClick={() => onView("purchase")} />
         <BigButton color={COLORS.teal} title="Training"
-          desc="Unlock the certification modules with your Product number."
+          desc={profile?.role === "psychologist" ? "Work through the Tier 2 psychologist modules and earn your certification." : "Unlock the certification modules with your Product number."}
           onClick={() => onView("training")} />
       </div>
       <button onClick={() => onView(null)} style={{
@@ -165,7 +165,8 @@ function ModuleDetail({ user, mod, modules, onBack, onOpenModule, progressApi })
   // module the seed migration (021_seed_training_content_blocks.sql)
   // hasn't been run for yet, so nothing breaks in between.
   const dbContent = useTrainingContentBlocks(mod.id);
-  const staticContent = getModuleContent(mod.sortOrder);
+  // The code-file fallback only describes the educator course
+  const staticContent = mod.audience === "psychologist" ? null : getModuleContent(mod.sortOrder);
   const content = !dbContent.loading && dbContent.blocks.length > 0
     ? { blocks: dbContent.blocks.map((b) => b.data) }
     : staticContent;
@@ -266,7 +267,12 @@ function Training({ user, profile, onCertificateStatusChange }) {
   const [error, setError] = useState("");
   const [openModuleId, setOpenModuleId] = useState(null);
 
+  // Psychologists (Tier 2) don't need a Product number — it only unlocks
+  // training for educators, who are supplied one with their screener.
+  const needsProductNumber = profile?.role !== "psychologist";
+
   useEffect(() => {
+    if (!needsProductNumber) { setState("unlocked"); return undefined; }
     let cancelled = false;
     (async () => {
       try {
@@ -281,7 +287,7 @@ function Training({ user, profile, onCertificateStatusChange }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [user.uid]);
+  }, [user.uid, needsProductNumber]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -301,7 +307,9 @@ function Training({ user, profile, onCertificateStatusChange }) {
     setBusy(false);
   };
 
-  const { modules, loading: modulesLoading } = useTrainingModules();
+  // Educators and psychologists each get their own track of modules
+  const audience = audienceForRole(profile?.role);
+  const { modules, loading: modulesLoading } = useTrainingModules(audience);
   const progressApi = useTrainingProgress(user.uid);
   const publishedModules = modules.filter((m) => m.status === "published");
 
@@ -361,7 +369,7 @@ function Training({ user, profile, onCertificateStatusChange }) {
 
   return (
     <>
-      <span style={{ display: "inline-block", padding: "4px 14px", borderRadius: 16, background: COLORS.tealLight, color: COLORS.teal, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 14 }}>Training unlocked</span>
+      <span style={{ display: "inline-block", padding: "4px 14px", borderRadius: 16, background: COLORS.tealLight, color: COLORS.teal, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 14 }}>Training unlocked{audience === "psychologist" ? " · Psychologist track" : ""}</span>
       <h1 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 32, fontWeight: 900, color: COLORS.ink, marginBottom: 10 }}>Training modules</h1>
       <p style={{ fontSize: 15.5, color: COLORS.inkMid, lineHeight: 1.75, maxWidth: 640, marginBottom: 10 }}>
         Complete the modules in order, followed by each module's quiz, to earn your certification.
@@ -381,7 +389,7 @@ function Training({ user, profile, onCertificateStatusChange }) {
             const isPublished = mod.status === "published";
             const row = progressApi.progress.get(mod.id);
             const isDone = row?.status === "quiz_passed";
-            const hasRichContent = !!getModuleContent(mod.sortOrder);
+            const hasRichContent = mod.audience === "psychologist" ? true : !!getModuleContent(mod.sortOrder);
             return (
               <div
                 key={mod.id}

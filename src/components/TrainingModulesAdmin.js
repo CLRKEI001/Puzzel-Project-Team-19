@@ -45,7 +45,10 @@ const COLOR_SWATCH = {
 const EMPTY_FORM = { title: "", description: "", colorKey: "teal", status: "coming_soon", videoUrl: "", contentUrl: "" };
 
 export default function TrainingModulesAdmin() {
-  const { modules, loading, error, refresh } = useTrainingModules();
+  const { modules: allModules, loading, error, refresh } = useTrainingModules();
+  // Educators and psychologists have separate tracks — edit one at a time
+  const [audience, setAudience] = useState("educator");
+  const modules = allModules.filter((m) => m.audience === audience);
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -106,7 +109,7 @@ export default function TrainingModulesAdmin() {
       ({ error: saveError } = await supabase.from("training_modules").update(payload).eq("id", editingId));
     } else {
       const nextOrder = modules.reduce((max, m) => Math.max(max, m.sortOrder || 0), 0) + 1;
-      ({ error: saveError } = await supabase.from("training_modules").insert({ ...payload, sort_order: nextOrder }));
+      ({ error: saveError } = await supabase.from("training_modules").insert({ ...payload, audience, sort_order: nextOrder }));
     }
 
     if (saveError) {
@@ -163,6 +166,22 @@ export default function TrainingModulesAdmin() {
 
   return (
     <>
+      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+        {[["educator", "Educator training (Tier 1)"], ["psychologist", "Psychologist training (Tier 2)"]].map(([key, label]) => (
+          <button
+            key={key}
+            className="btn btn-sm"
+            onClick={() => { setAudience(key); closeForm(); setQuizModuleId(null); setContentModuleId(null); }}
+            style={{
+              background: audience === key ? "var(--teal)" : "var(--surface)",
+              color: audience === key ? "#fff" : "var(--ink-mid)", border: "none", fontWeight: 800,
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="search-bar">
         <span style={{ fontSize: 13, color: "var(--ink-mid)", fontWeight: 600 }}>
           {sorted.length} module{sorted.length === 1 ? "" : "s"}

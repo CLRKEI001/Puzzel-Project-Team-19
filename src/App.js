@@ -271,7 +271,7 @@ function App() {
       <Login
         tier={loginCtx?.tier || null}
         initialMode={loginCtx?.mode || "login"}
-        onBack={() => setShowLogin(false)}
+        onBack={() => { setShowLogin(false); setPublicPage("home"); }}
         onVerified={async (verifiedProfile) => {
           setProfile(verifiedProfile);
           // Teachers: resolve straight to Training or the dashboard, never
@@ -295,7 +295,6 @@ function App() {
           // where a celebratory animation would be misleading.
           if (verifiedProfile?.isVerified) setTransitioning(true);
         }}
-        onBack={() => setPublicPage("home")}
       />
     );
   }

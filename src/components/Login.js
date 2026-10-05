@@ -253,15 +253,6 @@ export default function Login({ onVerified, onBack, tier = null, initialMode = "
       {/* ── RIGHT: form ── */}
       <div className="pb-login-panel">
         <div className="pb-login-card">
-          <button
-            type="button"
-            className="pb-back-home"
-            onClick={onBack}
-            aria-label="Back to home"
-            title="Back to home"
-          >
-            <span aria-hidden="true">←</span>
-          </button>
           <div style={{ position: "absolute", top: 24, right: 24, zIndex: 2 }}>
             <ThemeToggle />
           </div>

@@ -23,14 +23,17 @@ import { mapChildRow } from "./mappers";
 // Only screenings the teacher actually submitted — never in-progress drafts.
 const SUBMITTED = ["awaiting_review", "reviewed", "completed"];
 
-// The old six "domains" → which PuzzleBox sections feed each one.
+// The old six "domains" → which PuzzleBox section domains feed each one.
+// Matched on each section's own `domain` field (saved in the screening's
+// snapshot), not on its id: section ids are database UUIDs, so they can't be
+// relied on to read "sec_puzzle" etc.
 const DOMAIN_SECTIONS = {
-  cognitive: ["sec_puzzle", "sec_counting_position", "sec_visual_discrimination", "sec_memory_observation", "sec_sequencing"],
-  motor: ["sec_fine_motor"],
-  language_score: ["sec_language"],
-  social: ["sec_social"],
-  emotion: ["sec_emotion"],
-  moral: ["sec_moral"],
+  cognitive: ["cognitive"],
+  motor: ["fine_motor"],
+  language_score: ["language"],
+  social: ["social"],
+  emotion: ["emotional"],
+  moral: ["moral"],
 };
 
 const BAND_STATUS = {
@@ -67,18 +70,18 @@ function scoreBreakdown(screening) {
       const r = responses[q.id];
       if (r && typeof r.score === "number") se += r.score;
     }
-    bySection[sec.id] = { earned: se, possible: sp };
+    bySection[sec.id] = { earned: se, possible: sp, domain: sec.domain };
     earned += se;
     possible += sp;
   }
   const domains = {};
-  for (const [key, ids] of Object.entries(DOMAIN_SECTIONS)) {
+  for (const [key, sectionDomains] of Object.entries(DOMAIN_SECTIONS)) {
     let de = 0;
     let dp = 0;
-    ids.forEach((id) => {
-      if (bySection[id]) {
-        de += bySection[id].earned;
-        dp += bySection[id].possible;
+    Object.values(bySection).forEach((sec) => {
+      if (sectionDomains.includes(sec.domain)) {
+        de += sec.earned;
+        dp += sec.possible;
       }
     });
     domains[key] = pct(de, dp);

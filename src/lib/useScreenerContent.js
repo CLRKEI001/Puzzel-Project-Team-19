@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { puzzleBoxContentV1, interpretationBands as fallbackBands } from "../data/puzzleBoxContent.v1";
+import { applyShowcaseMode } from "./showcaseMode";
 
 // Loads the screener's content — sections, questions, scoring rules,
 // interpretation bands — from the tables created by
@@ -47,6 +48,14 @@ export function useScreenerContent() {
   const [bands, setBands] = useState(null);
   const [error, setError] = useState("");
 
+  // Single exit point so showcase mode (src/lib/showcaseMode.js) applies to
+  // every source of content, including the built-in fallback.
+  const publish = useCallback((c, b) => {
+    const shown = applyShowcaseMode(c, b);
+    setContent(shown.content);
+    setBands(shown.bands);
+  }, []);
+
   const refresh = useCallback(async () => {
     const [
       { data: meta, error: metaErr },
@@ -66,16 +75,14 @@ export function useScreenerContent() {
     if (firstError) {
       console.error("Error loading screener content:", firstError);
       setError("Could not load screener content — using the built-in default.");
-      setContent(puzzleBoxContentV1);
-      setBands(fallbackBands);
+      publish(puzzleBoxContentV1, fallbackBands);
       return;
     }
 
     if (!sections || sections.length === 0) {
       // Migrations 007/008 not run yet, or content table cleared.
       setError("");
-      setContent(puzzleBoxContentV1);
-      setBands(fallbackBands);
+      publish(puzzleBoxContentV1, fallbackBands);
       return;
     }
 
@@ -131,15 +138,14 @@ export function useScreenerContent() {
     }
 
     setError("");
-    setContent({
+    publish({
       version: meta?.version || "1.0",
       status: "published",
       instructions: meta?.instructions || "",
       scoringLegend: meta?.scoring_legend || [],
       sections: builtSections,
-    });
-    setBands(Object.keys(bandsByAge).length > 0 ? bandsByAge : fallbackBands);
-  }, []);
+    }, Object.keys(bandsByAge).length > 0 ? bandsByAge : fallbackBands);
+  }, [publish]);
 
   useEffect(() => { refresh(); }, [refresh]);
 

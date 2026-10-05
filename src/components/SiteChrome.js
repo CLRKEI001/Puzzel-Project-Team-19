@@ -325,10 +325,10 @@ export function SectionHeading({ eyebrow, title, lead, align = "left", maxWidth 
 // null a colourful typographic wordmark is drawn instead, so dropping in the
 // real Puzzle Box / Puzzle Play artwork later is a one-line change here.
 export const BRANDS = {
-  tpp: { key: "tpp", name: "The Puzzle Project", home: "home", logoSrc: "/logo1.png" },
-  pb:  { key: "pb",  name: "The Puzzle Box",      home: "pb-home", logoSrc: null, // e.g. "/logo-puzzlebox.png"
+  tpp: { key: "tpp", name: "The Puzzle Project", home: "home", logoSrc: "/logo-puzzleproject.png", wide: true, logoH: 92 },
+  pb:  { key: "pb",  name: "The Puzzle Box",      home: "pb-home", logoSrc: "/logo-puzzlebox.png", wide: true, logoH: 72,
          wordmark: { small: "the", big: "PUZZLE", tail: "BOX" } },
-  pp:  { key: "pp",  name: "Puzzle Play",         home: "pp-home", logoSrc: null, // e.g. "/logo-puzzleplay.png"
+  pp:  { key: "pp",  name: "Puzzle Play",         home: "pp-home", logoSrc: "/logo-puzzleplay.png", wide: true,
          wordmark: { small: "", big: "PUZZLE", tail: "PLAY" } },
 };
 
@@ -347,7 +347,7 @@ export function BrandLogo({ site = "tpp", height = 115, width = 125, onDark = fa
       <img
         src={`${process.env.PUBLIC_URL || ""}${brand.logoSrc}`}
         alt={brand.name}
-        style={{ height, width, objectFit: "contain", display: "block", ...style }}
+        style={brand.wide ? { height: brand.logoH || Math.round(height * 0.52), width: "auto", display: "block", ...style } : { height, width, objectFit: "contain", display: "block", ...style }}
       />
     );
   }
@@ -660,7 +660,9 @@ export function Footer({ site = "tpp", onNavigate, onLoginClick }) {
         }}>
           <div>
             <div style={{ marginBottom: 16 }}>
-              <BrandLogo site={site} height={94} width={130} onDark />
+              {/* The footer is always The Puzzle Project's logo1.png, whichever site you're on */}
+              <img src={`${process.env.PUBLIC_URL || ""}/logo1.png`} alt="The Puzzle Project"
+                style={{ height: 150, width: "auto", display: "block", marginLeft: -12 }} />
             </div>
             <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", lineHeight: 1.75, maxWidth: 320 }}>
               Supporting early childhood development across South Africa through accessible, culturally relevant, play-based screening tools.

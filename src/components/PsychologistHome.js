@@ -156,7 +156,7 @@ const T = {
 };
  
 // Each analytics page is its own sidebar item (ids are "a-" + page).
-const ANALYTICS_PAGES = ["overview", "children", "results", "flags", "report"];
+const ANALYTICS_PAGES = ["overview", "results", "flags", "report"]; // Student Records ("children") sits in the Caseload group instead
 const ANALYTICS_SECTION = { en: "Analytics", af: "Ontleding", xh: "Uhlalutyo" };
 const ANALYTICS_ICONS = { overview: "aOverview", children: "aChildren", results: "aResults", flags: "aFlags", report: "aReport" };
 
@@ -506,6 +506,13 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
     return f.childName?.toLowerCase().includes(s) || f.school?.toLowerCase().includes(s);
   });
  
+  const analyticsItem = (id, section) => ({
+    id: "a-" + id,
+    label: (ANALYTICS_LABELS[lang] || ANALYTICS_LABELS.en)[id],
+    section: section || ANALYTICS_SECTION[lang] || ANALYTICS_SECTION.en,
+    icon: NAV_ICONS[ANALYTICS_ICONS[id]] || NAV_ICONS.dashboard,
+  });
+
   const navItems = [
     { id: "home", label: t.navHome, section: t.section1, icon: NAV_ICONS.home },
     {
@@ -519,13 +526,9 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
       section: t.section1,
       icon: NAV_ICONS.notifications,
     },
+    analyticsItem("children", t.section2),
     { id: "followups", label: t.navFollowUps, section: t.section2, icon: NAV_ICONS.followUps },
-    ...ANALYTICS_PAGES.map((id) => ({
-      id: "a-" + id,
-      label: (ANALYTICS_LABELS[lang] || ANALYTICS_LABELS.en)[id],
-      section: ANALYTICS_SECTION[lang] || ANALYTICS_SECTION.en,
-      icon: NAV_ICONS[ANALYTICS_ICONS[id]] || NAV_ICONS.dashboard,
-    })),
+    ...ANALYTICS_PAGES.map((id) => analyticsItem(id)),
     { id: "profile", label: t.navProfile, section: t.section3, icon: NAV_ICONS.profile },
     ...memberNavItems(onOpenMember),
   ];

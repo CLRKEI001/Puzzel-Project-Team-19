@@ -9,9 +9,8 @@
 // Loads real children from Supabase and stays live via Realtime, same as
 // Dashboard.js did.
 
-import React, { useState, useEffect } from "react";
-import { supabase } from "../supabaseClient";
-import { mapChildRow } from "../lib/mappers";
+import React from "react";
+import { useAnalyticsData } from "../lib/analyticsData";
 import Overview from "./Overview";
 import ChildrenTable from "./ChildrenTable";
 import ScreenerResults from "./ScreenerResults";
@@ -36,46 +35,17 @@ export const ANALYTICS_SUBS = {
 // is its own page — this component just loads the data and shows the panel.
 export default function AnalyticsPanels({ lang = "en", page = "overview" }) {
   const tab = page;
-  const [children, setChildren] = useState([]);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadChildren = async () => {
-      const { data, error } = await supabase
-        .from("children")
-        .select("*")
-        .order("created_at", { ascending: true });
-      if (error) {
-        console.error("Error loading children:", error);
-        return;
-      }
-      if (isMounted) setChildren((data || []).map(mapChildRow));
-    };
-
-    loadChildren();
-
-    const channel = supabase
-      .channel("analytics-panels-children")
-      .on("postgres_changes", { event: "*", schema: "public", table: "children" }, () => {
-        loadChildren();
-      })
-      .subscribe();
-
-    return () => {
-      isMounted = false;
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  // One shared, real-data source for every analytics page (see lib/analyticsData.js).
+  const { allChildren, screenedChildren, sessions } = useAnalyticsData();
 
   return (
     <section className="rh-analytics" id="rh-analytics">
       <div className="rh-analytics-body">
-        {tab === "overview" && <Overview children={children} lang={lang} />}
-        {tab === "children" && <ChildrenTable children={children} lang={lang} />}
-        {tab === "results" && <ScreenerResults lang={lang} />}
-        {tab === "flags" && <FlagsAlerts children={children} lang={lang} />}
-        {tab === "report" && <SummaryReport children={children} lang={lang} />}
+        {tab === "overview" && <Overview children={screenedChildren} lang={lang} />}
+        {tab === "children" && <ChildrenTable children={allChildren} lang={lang} />}
+        {tab === "results" && <ScreenerResults lang={lang} sessions={sessions} />}
+        {tab === "flags" && <FlagsAlerts children={screenedChildren} lang={lang} />}
+        {tab === "report" && <SummaryReport children={screenedChildren} lang={lang} />}
       </div>
     </section>
   );

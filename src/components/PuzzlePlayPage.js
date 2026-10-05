@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  COLORS, FONTS, PUBLIC_FONT_IMPORT, PuzzlePiece, PuzzlePhoto, SectionHeading, Navbar, Footer, CallToAction, CONTACT_EMAIL, useIsMobile,
+  COLORS, FONTS, PUBLIC_FONT_IMPORT, PuzzlePiece, SectionHeading, piecePath, gridEdges, Navbar, Footer, CallToAction, CONTACT_EMAIL, useIsMobile,
 } from "./SiteChrome";
 
 // ---------------------------------------------------------------------------
@@ -37,97 +37,168 @@ function PlayShell({ current, onNavigate, onNavigateToLogin, children }) {
   );
 }
 
-function PlayHero({ badge, title, lead, children, accent = COLORS.pink }) {
+// Consistent page container — every section lines up on the same left edge
+function Wrap({ children, style = {} }) {
   const isMobile = useIsMobile(640);
   return (
+    <div style={{ maxWidth: 1240, margin: "0 auto", padding: isMobile ? "0 22px" : "0 40px", ...style }}>
+      {children}
+    </div>
+  );
+}
+
+// The four termly puzzles, snapped together as one 2 x 2 jigsaw
+function PuzzleCluster({ size = 400 }) {
+  const rows = 2, cols = 2;
+  return (
+    <svg viewBox="-28 -28 256 256" width={size} height={size} role="img"
+      aria-label="Four puzzle pieces — Shapes, Soccer, Farm and Underwater"
+      className="pp-cluster" style={{ overflow: "visible", maxWidth: "100%", height: "auto" }}>
+      {PLAY_PUZZLES.map((pz, i) => {
+        const r = Math.floor(i / cols), c = i % cols;
+        return (
+          <g key={pz.key} transform={`translate(${c * 100} ${r * 100})`}>
+           <g className="pp-piece" style={{ animationDelay: `${i * 0.12}s` }}>
+            <path d={piecePath(gridEdges(r, c, rows, cols))} fill={pz.color}
+              stroke="#fff" strokeWidth="3" strokeLinejoin="round" />
+            <text x="50" y="44" textAnchor="middle" fill="#fff" fillOpacity="0.8"
+              style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", fontFamily: FONTS.body }}>
+              Term {pz.term}
+            </text>
+            <text x="50" y="62" textAnchor="middle" fill="#fff"
+              style={{ fontSize: 15, fontWeight: 900, fontFamily: FONTS.heading }}>
+              {pz.name}
+            </text>
+           </g>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+// COLORS are CSS variables, so mix them with transparency instead of appending hex alpha
+const tint = (c, pct) => `color-mix(in srgb, ${c} ${pct}%, transparent)`;
+
+const PLAY_CSS = `
+  @keyframes pp-pop { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes pp-float { 0%,100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-8px) rotate(-3deg); } }
+  .pp-cluster { filter: drop-shadow(0 22px 34px rgba(110,30,60,.22)); animation: pp-float 7s ease-in-out infinite; }
+  .pp-piece { opacity: 0; animation: pp-pop .7s ease forwards; transform-box: fill-box; }
+  .pp-btn { transition: transform .18s ease, box-shadow .18s ease; }
+  .pp-btn:hover { transform: translateY(-2px); }
+  .pp-card { transition: transform .25s ease, box-shadow .25s ease; }
+  .pp-card:hover { transform: translateY(-6px); box-shadow: 0 22px 44px rgba(60,20,40,.13) !important; }
+  @media (prefers-reduced-motion: reduce) { .pp-cluster, .pp-piece { animation: none; opacity: 1; } .pp-btn:hover, .pp-card:hover { transform: none; } }
+`;
+
+// Hero used by every Puzzle Play page. Pass `art` for the split layout with the
+// puzzle cluster (home); without it the hero is a compact centred header.
+function PlayHero({ title, lead, children, eyebrow, art, accent = COLORS.pink }) {
+  const isMobile = useIsMobile(860);
+  const split = !!art && !isMobile;
+  return (
     <section style={{
-      paddingTop: 84,
-      background: `linear-gradient(180deg, ${COLORS.white} 0%, ${COLORS.surface} 100%)`,
-      position: "relative", overflow: "hidden",
+      paddingTop: 120, position: "relative", overflow: "hidden",
+      background: `radial-gradient(900px 420px at 88% 0%, rgba(232,23,93,0.10), transparent 60%),
+                   radial-gradient(700px 380px at 0% 100%, rgba(26,148,128,0.10), transparent 60%),
+                   linear-gradient(180deg, ${COLORS.white} 0%, ${COLORS.surface} 100%)`,
     }}>
-      <PuzzlePiece size={150} color={accent} rotate={12} style={{ position: "absolute", top: 50, right: -40 }} />
-      <div style={{ maxWidth: 1300, margin: "0 auto", padding: isMobile ? "48px 20px 40px" : "72px 40px 56px", position: "relative" }}>
-        <span style={{
-          display: "inline-block", padding: "7px 16px", borderRadius: 20,
-          background: COLORS.pinkLight, border: "1px solid rgba(232,23,93,0.25)",
-          fontSize: 12, fontWeight: 800, color: COLORS.pink, marginBottom: 24,
+      <style>{PLAY_CSS}</style>
+      <PuzzlePiece size={90} color={COLORS.teal} rotate={-14} fillOpacity={0.12} style={{ position: "absolute", bottom: 20, left: "44%" }} />
+      <PuzzlePiece size={70} color={COLORS.orange} rotate={22} fillOpacity={0.14} style={{ position: "absolute", top: 150, right: "4%" }} />
+      <Wrap style={{ position: "relative" }}>
+        <div style={{
+          display: "grid", gridTemplateColumns: split ? "1.1fr 0.9fr" : "1fr",
+          alignItems: "center", gap: split ? 40 : 28,
+          padding: isMobile ? "28px 0 56px" : (art ? "40px 0 88px" : "40px 0 72px"),
+          textAlign: !art && !isMobile ? "left" : "left",
         }}>
-          {badge}
-        </span>
-        <h1 style={{
-          fontFamily: FONTS.heading, fontSize: "clamp(34px, 4.4vw, 56px)",
-          fontWeight: 900, color: COLORS.ink, lineHeight: 1.08, letterSpacing: "-0.03em", marginBottom: 20,
-        }}>
-          {title}
-        </h1>
-        <p style={{ fontSize: 17, color: COLORS.inkMid, lineHeight: 1.75, maxWidth: 700 }}>{lead}</p>
-        {children}
-      </div>
+          <div>
+            {eyebrow && (
+              <p style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: "0.16em", textTransform: "uppercase", color: COLORS.maroon, marginBottom: 18 }}>
+                {eyebrow}
+              </p>
+            )}
+            <h1 style={{
+              fontFamily: FONTS.heading, fontSize: art ? "clamp(44px, 6.2vw, 84px)" : "clamp(36px, 4.6vw, 60px)",
+              fontWeight: 900, color: COLORS.ink, lineHeight: 1.02, letterSpacing: "-0.035em", marginBottom: 22,
+            }}>
+              {title}
+            </h1>
+            <p style={{ fontSize: art ? 19 : 17.5, color: COLORS.inkMid, lineHeight: 1.7, maxWidth: 560 }}>{lead}</p>
+            {children}
+          </div>
+          {art && (
+            <div style={{ display: "flex", justifyContent: "center", padding: isMobile ? "10px 0 0" : "0 20px 0 0" }}>
+              {art}
+            </div>
+          )}
+        </div>
+      </Wrap>
     </section>
   );
 }
 
-// "Full text to be confirmed" marker used where the wireframe says TBC
+// Quiet "to be confirmed" note (the sponsor's copy is still being written)
 function TbcNote({ children }) {
   return (
-    <div style={{
-      marginTop: 24, padding: "12px 16px", borderRadius: 12, display: "inline-block",
-      background: COLORS.orangeLight, border: "1px dashed rgba(242,101,34,0.5)",
-      fontSize: 13, color: COLORS.inkMid, lineHeight: 1.6,
-    }}>
-      <strong style={{ color: COLORS.orange }}>To be confirmed · </strong>{children}
-    </div>
+    <p style={{ marginTop: 26, fontSize: 13, color: COLORS.inkFaint, lineHeight: 1.6, fontStyle: "italic" }}>
+      <span style={{ color: COLORS.orange, fontWeight: 800, fontStyle: "normal" }}>To be confirmed · </span>{children}
+    </p>
   );
 }
 
 function PuzzleGrid({ onEnquire }) {
   const isMobile = useIsMobile(640);
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: isMobile ? 18 : 24 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: isMobile ? 18 : 26 }}>
       {PLAY_PUZZLES.map((pz, i) => (
-        <div key={pz.key} style={{
-          padding: "24px 22px", borderRadius: 20, background: COLORS.white,
-          border: `1px solid ${COLORS.border}`, borderTop: `4px solid ${pz.color}`,
-          boxShadow: "0 2px 16px rgba(0,0,0,0.04)", display: "flex", flexDirection: "column",
-          transition: "all 0.2s",
-        }}
-          onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 16px 40px rgba(0,0,0,0.10)"; }}
-          onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 16px rgba(0,0,0,0.04)"; }}
-        >
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
-            {/* Image slot — add `src` once the puzzle artwork is ready */}
-            <PuzzlePhoto
-              size={150}
-              label="Image TBC"
-              alt={`${pz.name} puzzle`}
-              color={pz.color}
-              edges={{ top: 0, right: i % 2 === 0 ? 1 : -1, bottom: 1, left: 0 }}
-            />
-          </div>
-          <span style={{
-            alignSelf: "flex-start", padding: "3px 12px", borderRadius: 14, marginBottom: 10,
-            background: `${pz.color}1F`, color: pz.color,
-            fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase",
+        <div key={pz.key} className="pp-card" style={{
+          borderRadius: 24, background: COLORS.white, overflow: "hidden",
+          border: `1px solid ${COLORS.border}`, boxShadow: "0 4px 22px rgba(60,20,40,0.06)",
+          display: "flex", flexDirection: "column",
+        }}>
+          <div style={{
+            background: `linear-gradient(160deg, ${tint(pz.color, 22)}, ${tint(pz.color, 6)})`,
+            padding: "26px 0 18px", display: "flex", justifyContent: "center",
           }}>
-            Term {pz.term}
-          </span>
-          <h3 style={{ fontFamily: FONTS.heading, fontSize: 20, fontWeight: 900, color: COLORS.ink, marginBottom: 6 }}>{pz.name}</h3>
-          <p style={{ fontSize: 14, color: COLORS.inkMid, lineHeight: 1.65, marginBottom: 18, flex: 1 }}>
-            {pz.pieces} piece puzzle + lesson plan
-          </p>
-          {onEnquire && (
-            <button onClick={() => onEnquire(pz)} style={{
-              padding: "11px 20px", borderRadius: 10, background: pz.color, color: COLORS.white,
-              border: "none", fontSize: 13.5, fontWeight: 800, cursor: "pointer", fontFamily: "inherit",
-            }}>
-              Enquire to purchase
-            </button>
-          )}
+            <svg viewBox="-28 -28 156 156" width={150} height={150} role="img" aria-label={`${pz.name} puzzle, ${pz.pieces} pieces`}
+              style={{ overflow: "visible", transform: `rotate(${i % 2 ? 6 : -6}deg)`, filter: `drop-shadow(0 10px 16px ${tint(pz.color, 35)})` }}>
+              <path d={piecePath({ top: -1, right: 1, bottom: 1, left: i % 2 ? 1 : -1 })} fill={pz.color} stroke="#fff" strokeWidth="3" strokeLinejoin="round" />
+              <text x="50" y="58" textAnchor="middle" fill="#fff" style={{ fontSize: 40, fontWeight: 900, fontFamily: FONTS.heading }}>{pz.pieces}</text>
+              <text x="50" y="76" textAnchor="middle" fill="#fff" fillOpacity="0.85"
+                style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.16em", fontFamily: FONTS.body }}>PIECES</text>
+            </svg>
+          </div>
+          <div style={{ padding: "22px 24px 26px", display: "flex", flexDirection: "column", flex: 1 }}>
+            <p style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: pz.color, marginBottom: 6 }}>
+              Term {pz.term}
+            </p>
+            <h3 style={{ fontFamily: FONTS.heading, fontSize: 24, fontWeight: 900, color: COLORS.ink, letterSpacing: "-0.02em", marginBottom: 8 }}>{pz.name}</h3>
+            <p style={{ fontSize: 14.5, color: COLORS.inkMid, lineHeight: 1.65, marginBottom: onEnquire ? 20 : 0, flex: 1 }}>
+              {pz.pieces}-piece puzzle with its own lesson plan
+            </p>
+            {onEnquire && (
+              <button className="pp-btn" onClick={() => onEnquire(pz)} style={{
+                padding: "12px 20px", borderRadius: 12, background: pz.color, color: "#fff",
+                border: "none", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "inherit",
+              }}>
+                Enquire to purchase
+              </button>
+            )}
+          </div>
         </div>
       ))}
     </div>
   );
 }
+
+const PLAY_FEATURES = [
+  { icon: "📘", color: COLORS.teal,   title: "Digital lesson plans", desc: "A ready-to-use plan for every puzzle, built for the classroom." },
+  { icon: "🎬", color: COLORS.pink,   title: "Multilingual videos",  desc: "Instructional videos that show educators how to run each activity." },
+  { icon: "✅", color: COLORS.purple, title: "Training quizzes",     desc: "Short quizzes that help educators feel confident before they start." },
+];
 
 // ---- PPlay p1 — home --------------------------------------------------------
 export function PuzzlePlayHome(props) {
@@ -137,36 +208,57 @@ export function PuzzlePlayHome(props) {
       {(go) => (
         <>
           <PlayHero
-            badge="Puzzle Play"
+            eyebrow="Grades 0 to 7 · Nationwide"
             title="Puzzle Play"
             lead="Nationwide puzzle development for Grades 0 to 7 — digital lesson plans, multilingual instructional videos and training quizzes that help educators run puzzle-based activities in the classroom."
+            art={<PuzzleCluster size={420} />}
           >
-            <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 32 }}>
-              <button onClick={() => go("pp-how")} style={{
-                padding: "14px 32px", borderRadius: 12, background: COLORS.white, color: COLORS.ink,
-                border: `1.5px solid ${COLORS.border}`, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
-              }}>
-                See how it works
-              </button>
-              <button onClick={() => go("pp-purchase")} style={{
-                padding: "14px 32px", borderRadius: 12, background: COLORS.pink, color: COLORS.white,
-                border: "none", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "inherit",
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 34 }}>
+              <button className="pp-btn" onClick={() => go("pp-purchase")} style={{
+                padding: "15px 34px", borderRadius: 14, background: COLORS.pink, color: "#fff",
+                border: "none", fontSize: 15.5, fontWeight: 800, cursor: "pointer", fontFamily: "inherit",
+                boxShadow: "0 10px 24px rgba(232,23,93,0.28)",
               }}>
                 Purchase
+              </button>
+              <button className="pp-btn" onClick={() => go("pp-how")} style={{
+                padding: "15px 34px", borderRadius: 14, background: "transparent", color: COLORS.ink,
+                border: `1.5px solid ${COLORS.ink}`, fontSize: 15.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+              }}>
+                See how it works
               </button>
             </div>
             <TbcNote>The full Puzzle Play introduction is still being written.</TbcNote>
           </PlayHero>
 
-          <section style={{ padding: isMobile ? "56px 20px" : "90px 40px", background: COLORS.white }}>
-            <div style={{ maxWidth: 1300, margin: "0 auto" }}>
+          <section style={{ padding: isMobile ? "56px 0" : "88px 0 40px", background: COLORS.white }}>
+            <Wrap>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: isMobile ? 24 : 40 }}>
+                {PLAY_FEATURES.map(f => (
+                  <div key={f.title} style={{ display: "flex", gap: 18, alignItems: "flex-start" }}>
+                    <div style={{
+                      width: 54, height: 54, borderRadius: 16, flexShrink: 0, fontSize: 25,
+                      background: tint(f.color, 14), display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>{f.icon}</div>
+                    <div>
+                      <h3 style={{ fontFamily: FONTS.heading, fontSize: 17, fontWeight: 900, color: COLORS.ink, marginBottom: 4 }}>{f.title}</h3>
+                      <p style={{ fontSize: 14.5, color: COLORS.inkMid, lineHeight: 1.65 }}>{f.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Wrap>
+          </section>
+
+          <section style={{ padding: isMobile ? "40px 0 64px" : "64px 0 104px", background: COLORS.white }}>
+            <Wrap>
               <SectionHeading
                 eyebrow="Four terms, four puzzles"
                 title="A new puzzle and lesson plan every term"
                 lead="Each term brings a new puzzle — a little bigger each time — with a lesson plan to go with it."
               />
               <PuzzleGrid />
-            </div>
+            </Wrap>
           </section>
         </>
       )}
@@ -187,14 +279,13 @@ export function PuzzlePlayHow(props) {
       {() => (
         <>
           <PlayHero
-            badge="Platform overview"
             title="How Puzzle Play works"
             lead="From choosing the puzzle to seeing your learners' progress."
           >
             <TbcNote>This outline is a draft — the full description is still to be provided.</TbcNote>
           </PlayHero>
-          <section style={{ padding: isMobile ? "56px 20px" : "90px 40px", background: COLORS.white }}>
-            <div style={{ maxWidth: 1300, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
+          <section style={{ padding: isMobile ? "56px 0" : "90px 0", background: COLORS.white }}>
+            <Wrap style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 22 }}>
               {steps.map(st => (
                 <div key={st.n} style={{ padding: "26px 24px", borderRadius: 16, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderTop: `4px solid ${st.color}` }}>
                   <div style={{ width: 38, height: 38, borderRadius: 10, background: st.color, color: COLORS.white, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontFamily: FONTS.heading, marginBottom: 14 }}>{st.n}</div>
@@ -202,7 +293,7 @@ export function PuzzlePlayHow(props) {
                   <p style={{ fontSize: 13.5, color: COLORS.inkMid, lineHeight: 1.65 }}>{st.desc}</p>
                 </div>
               ))}
-            </div>
+            </Wrap>
           </section>
         </>
       )}
@@ -223,17 +314,16 @@ export function PuzzlePlayPurchase(props) {
       {() => (
         <>
           <PlayHero
-            badge="Purchase"
             title="Purchase"
             lead="One puzzle and lesson plan for each school term."
           />
-          <section style={{ padding: isMobile ? "48px 20px 64px" : "72px 40px 96px", background: COLORS.surface }}>
-            <div style={{ maxWidth: 1300, margin: "0 auto" }}>
+          <section style={{ padding: isMobile ? "48px 0 64px" : "72px 0 96px", background: COLORS.surface }}>
+            <Wrap>
               <PuzzleGrid onEnquire={enquire} />
               <p style={{ fontSize: 12.5, color: COLORS.inkFaint, marginTop: 24, lineHeight: 1.6 }}>
                 There is no online checkout yet — purchase requests are handled by email. Prices to be confirmed.
               </p>
-            </div>
+            </Wrap>
           </section>
         </>
       )}
@@ -249,7 +339,6 @@ export function PuzzlePlayLogin(props) {
       {(go) => (
         <>
           <PlayHero
-            badge="Login"
             title="Puzzle Play login"
             lead="A place to record the results of individual learners based on the CAPS curriculum, and to see those results as graphs."
           />

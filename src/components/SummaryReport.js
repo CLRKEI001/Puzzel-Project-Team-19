@@ -52,7 +52,7 @@ function StatusPill({ status }) {
 }
 
 function ScoreBar({ value }) {
-  const color = value >= 75 ? "#0E7A6E" : value >= 50 ? "#F26522" : "#E8175D";
+  const color = value >= 50 ? "#0E7A6E" : value >= 35 ? "#F26522" : "#E8175D";
   return (
     <div style={{ display:"flex", alignItems:"center", gap:10 }}>
       <div style={{ flex:1, height:4, background:"#EBEBEB", borderRadius:99, overflow:"hidden" }}>
@@ -302,7 +302,7 @@ export default function SummaryReport({ children: propChildren, lang: initialLan
                       <p style={{ margin:"0 0 10px", fontSize:9, fontWeight:800,
                         letterSpacing:"0.1em", textTransform:"uppercase", color:"#AAA" }}>Total Score</p>
                       <div style={{ fontSize:64, fontWeight:900, lineHeight:1,
-                        color: child.total>=75?"#0E7A6E":child.total>=50?"#F26522":"#E8175D",
+                        color: child.total>=50?"#0E7A6E":child.total>=35?"#F26522":"#E8175D",
                       }}>{child.total}%</div>
                       <div style={{ marginTop:14 }}><StatusPill status={child.status} /></div>
                       {child.flagged && (
@@ -379,7 +379,7 @@ export default function SummaryReport({ children: propChildren, lang: initialLan
                             <td style={{ padding:"10px 12px", color:"#555" }}>{c.language}</td>
                             <td style={{ padding:"10px 12px" }}>
                               <span style={{ fontWeight:800,
-                                color:c.total>=75?"#0E7A6E":c.total>=50?"#F26522":"#E8175D" }}>
+                                color:c.total>=50?"#0E7A6E":c.total>=35?"#F26522":"#E8175D" }}>
                                 {c.total}%
                               </span>
                             </td>

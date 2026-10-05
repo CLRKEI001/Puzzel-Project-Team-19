@@ -112,9 +112,9 @@ const [sortOrder, setSortOrder] = useState("highest");
     const score = child[selectedDomain] || 0;
     const scoreMatch =
   selectedScore === "all" ? true
-  : selectedScore === "low" ? score < 40
-  : selectedScore === "mid" ? score >= 40 && score <= 60
-  : selectedScore === "high" ? score > 60
+  : selectedScore === "low" ? score < 35
+  : selectedScore === "mid" ? score >= 35 && score < 50
+  : selectedScore === "high" ? score >= 50
   : true;
 
     return statusMatch && domainMatch && scoreMatch;

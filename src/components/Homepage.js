@@ -208,6 +208,7 @@ export function Hero({ badge = TPP_HERO.badge, lead = TPP_HERO.lead, actions = [
       }}>
         {/* Left — message */}
         <div style={{ textAlign: isMobile ? "center" : "left" }}>
+          {badge && (
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 8,
             padding: "7px 16px", borderRadius: 20,
@@ -219,6 +220,7 @@ export function Hero({ badge = TPP_HERO.badge, lead = TPP_HERO.lead, actions = [
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS.teal }} />
             {badge}
           </div>
+          )}
 
           <h1 style={{
             fontFamily: FONTS.heading,
@@ -288,10 +290,7 @@ export function Hero({ badge = TPP_HERO.badge, lead = TPP_HERO.lead, actions = [
           borderTop: `1px solid ${COLORS.border}`, borderBottom: `1px solid ${COLORS.border}`,
         }}>
           {[
-            { value: "295+", label: "Children screened" },
-            { value: "4", label: "Partner schools" },
-            { value: "3", label: "Languages" },
-            { value: "4", label: "Developmental domains" },
+            
           ].map((s, i) => {
             const cols = isMobile ? 2 : 4;
             const isFirstInRow = i % cols === 0;

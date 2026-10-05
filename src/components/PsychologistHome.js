@@ -10,11 +10,11 @@ import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "../supabaseClient";
 import { mapChildRow, mapFollowUpRow, mapMessageRow, mapPuzzleboxScreeningRow } from "../lib/mappers";
 import RoleSidebar from "./RoleSidebar";
-import Dashboard from "./Dashboard";
+import AnalyticsPanels, { ANALYTICS_LABELS, ANALYTICS_SUBS } from "./AnalyticsPanels";
 import RoleHero from "./RoleHero";
 import StatRing from "./StatRing";
 import TodayList from "./TodayList";
-import "./TeacherHome.css"; // shared th-quicklink / th-back-fab styles
+import "./TeacherHome.css"; // shared th-quicklink styles
 import "./RoleHomeKit.css";
  
 const T = {
@@ -155,6 +155,11 @@ const T = {
   },
 };
  
+// Each analytics page is its own sidebar item (ids are "a-" + page).
+const ANALYTICS_PAGES = ["overview", "children", "results", "flags", "report"];
+const ANALYTICS_SECTION = { en: "Analytics", af: "Ontleding", xh: "Uhlalutyo" };
+const ANALYTICS_ICONS = { overview: "aOverview", children: "aChildren", results: "aResults", flags: "aFlags", report: "aReport" };
+
 const followUpColors = {
   fu1: { bg: "#F7F6FF", color: "#8888a8" },
   fu2: { bg: "#FEF0E7", color: "#F26522" },
@@ -176,6 +181,12 @@ const NAV_ICONS = {
   dashboard: <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5" /><rect x="9" y="1" width="6" height="6" rx="1.5" /><rect x="1" y="9" width="6" height="6" rx="1.5" /><rect x="9" y="9" width="6" height="6" rx="1.5" /></svg>,
   profile: <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" strokeWidth="1.5" /><path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>,
   notifications: <svg viewBox="0 0 16 16" fill="none"><path d="M4 6a4 4 0 018 0c0 3.5 1.2 4.5 1.2 4.5H2.8S4 9.5 4 6z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><path d="M6.5 13a1.7 1.7 0 003 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>,
+  // analytics pages
+  aOverview: <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5" /><rect x="9" y="1" width="6" height="6" rx="1.5" /><rect x="1" y="9" width="6" height="6" rx="1.5" /><rect x="9" y="9" width="6" height="6" rx="1.5" /></svg>,
+  aChildren: <svg viewBox="0 0 16 16" fill="none"><circle cx="5.5" cy="5" r="2.3" stroke="currentColor" strokeWidth="1.5" /><circle cx="11.5" cy="6" r="1.8" stroke="currentColor" strokeWidth="1.5" /><path d="M1.5 13c0-2.4 1.8-3.8 4-3.8s4 1.4 4 3.8M10 9.6c2.4-.3 4.5.9 4.5 3.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>,
+  aResults: <svg viewBox="0 0 16 16" fill="none"><path d="M2 14V8M6 14V3M10 14V6M14 14V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>,
+  aFlags: <svg viewBox="0 0 16 16" fill="none"><path d="M3.5 14V2.5M3.5 3h8l-2 3 2 3h-8" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" /></svg>,
+  aReport: <svg viewBox="0 0 16 16" fill="none"><path d="M4 1.5h5.5L13 5v9.5H4z M9.5 1.5V5H13M6 8.5h5M6 11h5" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" strokeLinecap="round" /></svg>,
 };
  
 
@@ -509,21 +520,15 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
       icon: NAV_ICONS.notifications,
     },
     { id: "followups", label: t.navFollowUps, section: t.section2, icon: NAV_ICONS.followUps },
-    { id: "dashboard", label: t.navDashboard, section: t.section2, icon: NAV_ICONS.dashboard },
+    ...ANALYTICS_PAGES.map((id) => ({
+      id: "a-" + id,
+      label: (ANALYTICS_LABELS[lang] || ANALYTICS_LABELS.en)[id],
+      section: ANALYTICS_SECTION[lang] || ANALYTICS_SECTION.en,
+      icon: NAV_ICONS[ANALYTICS_ICONS[id]] || NAV_ICONS.dashboard,
+    })),
     { id: "profile", label: t.navProfile, section: t.section3, icon: NAV_ICONS.profile },
     ...memberNavItems(onOpenMember),
   ];
- 
-  if (activePage === "dashboard") {
-    return (
-      <div className="th-dashboard-embed">
-        <button className="th-back-fab" onClick={() => setActivePage("home")}>
-          {t.backToHome}
-        </button>
-        <Dashboard user={user} />
-      </div>
-    );
-  }
  
   return (
     <div className="dashboard-layout rh-shell" style={{ "--rh-accent": "#E8175D", "--rh-accent-soft": "#FFE6EF" }}>
@@ -542,11 +547,13 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
               {activePage === "followups" && t.navFollowUps}
               {activePage === "profile" && t.navProfile}
               {activePage === "notifications" && t.navNotifications}
+              {activePage.startsWith("a-") && (ANALYTICS_LABELS[lang] || ANALYTICS_LABELS.en)[activePage.slice(2)]}
             </div>
             <div className="page-sub">
               {activePage === "followups" && t.followUpsSub}
               {activePage === "profile" && t.profileSub}
               {activePage === "notifications" && t.notifSub}
+              {activePage.startsWith("a-") && (ANALYTICS_SUBS[lang] || ANALYTICS_SUBS.en)[activePage.slice(2)]}
             </div>
           </div>
           <div className="topbar-right">
@@ -637,7 +644,7 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
  
                 <div className="rh-card">
                   <div className="rh-card-head"><div className="rh-card-title">{t.quickLinks}</div></div>
-                  <button className="th-quicklink" onClick={() => setActivePage("dashboard")}>
+                  <button className="th-quicklink" onClick={() => setActivePage("a-overview")}>
                     <div className="th-quicklink-icon">📊</div>
                     <div>
                       <div className="th-quicklink-title">{t.openDashboard}</div>
@@ -645,7 +652,7 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                     </div>
                     <div className="th-quicklink-arrow">→</div>
                   </button>
-                  <button className="th-quicklink" onClick={() => setActivePage("dashboard")} style={{ marginBottom: 0 }}>
+                  <button className="th-quicklink" onClick={() => setActivePage("a-flags")} style={{ marginBottom: 0 }}>
                     <div className="th-quicklink-icon">✉</div>
                     <div>
                       <div className="th-quicklink-title">{t.openFlags}</div>
@@ -656,7 +663,12 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                 </div>
               </div>
             </div>
+
           </>
+        )}
+
+        {activePage.startsWith("a-") && (
+          <AnalyticsPanels lang={lang} page={activePage.slice(2)} />
         )}
 
         {activePage === "notifications" && (

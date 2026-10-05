@@ -190,3 +190,58 @@
   font-size: 10px; font-weight: 800; line-height: 1;
 }
 .nav-item.active .nav-badge { background: rgba(255, 255, 255, 0.35); }
+/* ── ANALYTICS PANELS EMBEDDED IN A ROLE HOME ────────────────────────
+   AnalyticsPanels.js drops the old "Full Analytics Dashboard" pages into
+   the role home itself. These overrides (scoped to .rh-analytics so the
+   standalone Dashboard is untouched) give those panels the same visual
+   language as the rest of the home page: soft rounded white cards with no
+   hard borders, and the role's accent colour instead of a rainbow of
+   teal/purple/orange/pink stripes. */
+.rh-analytics { margin-top: 0; }
+.rh-analytics-head { margin-bottom: 14px; }
+.rh-analytics-title { font-family: "Nunito", sans-serif; font-size: 22px; font-weight: 900; color: var(--ink, #1a1a2e); }
+.rh-analytics-sub { font-size: 13px; color: var(--ink-faint, #8a8aa3); margin-top: 3px; }
+
+.rh-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.rh-tab {
+  border: none; cursor: pointer; font-family: inherit; font-size: 12.5px; font-weight: 800;
+  padding: 9px 16px; border-radius: 999px;
+  background: #fff; color: var(--ink-mid, #55557a);
+  box-shadow: 0 2px 10px rgba(20, 20, 43, 0.05);
+  transition: background 0.15s, color 0.15s, transform 0.15s;
+}
+.rh-tab:hover { transform: translateY(-1px); color: var(--ink, #1a1a2e); }
+.rh-tab.active {
+  background: var(--rh-accent, #E8175D); color: #fff;
+  box-shadow: 0 6px 16px -4px var(--rh-accent, rgba(232, 23, 93, 0.5));
+}
+
+.rh-analytics .card,
+.rh-analytics .stat-card,
+.rh-analytics .stat-card.c1,
+.rh-analytics .stat-card.c2,
+.rh-analytics .stat-card.c3,
+.rh-analytics .stat-card.c4 {
+  border: none;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 2px 14px rgba(20, 20, 43, 0.05);
+}
+.rh-analytics .stat-card::before { border-radius: 22px 22px 0 0; height: 4px; background: var(--rh-accent, #E8175D); }
+.rh-analytics .stat-card.c1::before,
+.rh-analytics .stat-card.c2::before,
+.rh-analytics .stat-card.c3::before,
+.rh-analytics .stat-card.c4::before { background: var(--rh-accent, #E8175D); }
+.rh-analytics .card-title { font-family: "Nunito", sans-serif; font-weight: 800; color: var(--ink, #1a1a2e); }
+.rh-analytics .btn-primary { background: var(--rh-accent, #E8175D); }
+.rh-analytics .filter-btn.active,
+.rh-analytics .tab-btn.active { background: var(--rh-accent, #E8175D); border-color: var(--rh-accent, #E8175D); color: #fff; }
+
+[data-theme="dark"] .rh-tab { background: #1f1f36; color: rgba(255, 255, 255, 0.7); box-shadow: none; }
+[data-theme="dark"] .rh-tab.active { background: var(--rh-accent, #E8175D); color: #fff; }
+[data-theme="dark"] .rh-analytics .card,
+[data-theme="dark"] .rh-analytics .stat-card,
+[data-theme="dark"] .rh-analytics .stat-card.c1,
+[data-theme="dark"] .rh-analytics .stat-card.c2,
+[data-theme="dark"] .rh-analytics .stat-card.c3,
+[data-theme="dark"] .rh-analytics .stat-card.c4 { background: #1f1f36; box-shadow: none; }

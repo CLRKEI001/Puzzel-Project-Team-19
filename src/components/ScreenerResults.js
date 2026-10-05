@@ -300,6 +300,7 @@ const [followUpFilter, setFollowUpFilter] = useState("");
   }
  
   return (
+    <>
     <div className="top-filter-bar" style={{ marginBottom: 20, display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 12 }}>
   <div className="filter-heading">Student Filters</div>
 
@@ -377,6 +378,7 @@ const [followUpFilter, setFollowUpFilter] = useState("");
   <div style={{ marginLeft: "auto", fontSize: 12, color: "var(--ink-faint)", fontWeight: 600, alignSelf: "center", whiteSpace: "nowrap" }}>
     {t.showing} {filtered.length} {t.of} {sessions.length} {t.sessions}
   </div>
+    </div>
 
  
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
@@ -549,7 +551,6 @@ const fc = followUpColors[followUpKey] || followUpColors.fu1;
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
- 

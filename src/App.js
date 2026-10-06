@@ -19,6 +19,7 @@ import TeacherHome from "./components/TeacherHome";
 import PsychologistHome from "./components/PsychologistHome";
 import AdminHome from "./components/AdminHome";
 import PuzzleTransition from "./components/PuzzleTransition";
+import TranslatorChat from "./components/TranslatorChat";
 
 // NEW — your teammate's public site pages. Adjust these paths if her files
 // don't actually live in ./components (e.g. change to "./pages/Homepage" etc.)
@@ -225,6 +226,7 @@ function App() {
       return (
         <>
           <MemberArea user={user} profile={profile} view={memberView} onView={setMemberView} />
+          <TranslatorChat />
           {transitioning && (
             <PuzzleTransition onComplete={() => setTransitioning(false)} />
           )}
@@ -258,6 +260,7 @@ function App() {
         ) : (
           <Dashboard user={user} profile={profile} />
         )}
+        {profile?.isVerified && <TranslatorChat />}
         {transitioning && (
           <PuzzleTransition onComplete={() => setTransitioning(false)} />
         )}

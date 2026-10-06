@@ -208,20 +208,19 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
     let active = true;
     setLoadingChildren(true);
     const run = async () => {
-      // Scoped to this teacher's own children — same rule TeacherHome's
-      // "My Class" uses: match on the real teacher_email (migration 009)
-      // where it's set, and for older rows added before that column
-      // existed (NULL), fall back to an examiner-name match instead of
-      // showing them to every teacher. Seed/demo data and children
-      // explicitly owned by a different teacher are excluded either way.
+      // Scoped to this teacher's own children (teacher_uid). The database
+      // enforces the same rule, so this filter just keeps the intent clear.
+      // Read from `children_named` so the teacher sees real names.
       let query = supabase
-        .from("children")
+        .from("children_named")
         .select("*")
-        .or(`teacher_email.eq.${teacherEmail},and(teacher_email.is.null,examiner.ilike.${teacherName})`)
-        .order("name", { ascending: true })
+        .eq("teacher_uid", user?.uid || "")
+        .order("real_name", { ascending: true })
         .limit(50);
-      if (search.trim()) {
-        query = query.or(`name.ilike.%${search.trim()}%,school.ilike.%${search.trim()}%`);
+      // Commas and brackets would break the filter syntax, so strip them.
+      const term = search.trim().replace(/[,()*%]/g, " ").trim();
+      if (term) {
+        query = query.or(`real_name.ilike.%${term}%,student_number.ilike.%${term}%,school.ilike.%${term}%`);
       }
       const { data, error: qErr } = await query;
       if (!active) return;
@@ -239,7 +238,7 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
     };
     const debounce = setTimeout(run, 250);
     return () => { active = false; clearTimeout(debounce); };
-  }, [search, view]);
+  }, [search, view, user?.uid]);
 
   // ── Deep link: caller handed us a specific child directly ───────────
   // Mirrors the lookup half of selectChild() below, just without the
@@ -574,7 +573,8 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
       teacher_email: teacherEmail,
       teacher_name: teacherName,
       diagnosis:
-        `${teacherName} finished a PuzzleBox screening for ${selectedChild.name} at ${selectedChild.school || "their school"}.` +
+        // Student number, not the name: psychologists only see student numbers.
+        `${teacherName} finished a PuzzleBox screening for ${selectedChild.studentNumber || "a child"} at ${selectedChild.school || "their school"}.` +
         (band ? ` Result: ${band.label}.` : "") +
         " Open it to review and share the outcome.",
       sent_by: "Teacher",

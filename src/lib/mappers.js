@@ -12,10 +12,17 @@
 // untouched — only the data-fetching/saving code at the top of each
 // component needs to change.
 
+// children.name holds the child's STUDENT NUMBER (e.g. FB-5-0042) — real
+// names live in child_identities, which only the child's own teacher and
+// psychologists can read (supabase/database/01 + 04). Rows read from the
+// `children_named` view carry that real name as `real_name`; for admins it
+// is null, so `name` falls back to the student number.
 export function mapChildRow(r) {
   return {
     id: r.id,
-    name: r.name,
+    name: r.real_name || r.name,
+    studentNumber: r.student_number || r.name,
+    dataSource: r.data_source, // "app" | "pilot" | "demo" (mock data for testing)
     school: r.school,
     province: r.province,
     age: r.age,
@@ -35,6 +42,7 @@ export function mapChildRow(r) {
     date: r.date,
     examiner: r.examiner,
     teacherEmail: r.teacher_email,
+    teacherUid: r.teacher_uid,
     stage: r.stage,
     consentFormUrl: r.consent_form_url,
     consentFileName: r.consent_file_name,

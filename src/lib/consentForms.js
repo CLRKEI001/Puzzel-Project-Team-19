@@ -96,3 +96,50 @@ export async function uploadAndVerifyConsentForm({ childId, file }) {
     notes: verification.notes,
   };
 }
+
+// ── Manual review fallback ───────────────────────────────────────────
+// When the AI check can't run because the service is overloaded / rate
+// limited / unavailable ("high demand", 429, 503 ...), the teacher can send
+// the already-uploaded form to the admin dashboard instead. The admin opens
+// the file and accepts or rejects it.
+const OVERLOAD_RE = /high demand|overload|too many requests|rate.?limit|quota|unavailable|try again later|\b(429|503)\b|could not automatically verify/i;
+
+export function isOverloadNote(notes) {
+  return OVERLOAD_RE.test(notes || "");
+}
+
+export async function requestManualConsentReview({ childId, requestedBy }) {
+  const { error } = await supabase
+    .from("children")
+    .update({
+      consent_review_status: "pending",
+      consent_review_requested_at: new Date().toISOString(),
+      consent_review_requested_by: requestedBy || null,
+      consent_reviewed_by: null,
+      consent_reviewed_at: null,
+      consent_review_note: null,
+    })
+    .eq("id", childId);
+  if (error) throw new Error("Could not send the form for manual review — " + error.message);
+}
+
+export async function resolveManualConsentReview({ childId, approve, reviewer, note }) {
+  const nowIso = new Date().toISOString();
+  const patch = {
+    consent_review_status: approve ? "approved" : "rejected",
+    consent_reviewed_by: reviewer || null,
+    consent_reviewed_at: nowIso,
+    consent_review_note: note || null,
+  };
+  if (approve) {
+    patch.consent_verified = true;
+    patch.consent_verified_at = nowIso;
+    patch.consent_verification_notes = "Manually approved by an admin" + (note ? " — " + note : "");
+  } else {
+    patch.consent_verified = false;
+    patch.consent_verification_notes = "Rejected by an admin" + (note ? " — " + note : "") + ". Please upload a corrected form.";
+  }
+  const { error } = await supabase.from("children").update(patch).eq("id", childId);
+  if (error) throw new Error(error.message);
+  return patch;
+}

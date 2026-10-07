@@ -200,7 +200,7 @@ export default function TrainingModulesAdmin() {
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         {loading ? (
           <div className="empty-state">
-            <div className="empty-state-icon" style={{ fontSize: 28 }}>⏳</div>
+            <div className="empty-state-icon" style={{ fontSize: 28 }}></div>
             <div className="empty-state-title">Loading modules...</div>
           </div>
         ) : sorted.length === 0 ? (

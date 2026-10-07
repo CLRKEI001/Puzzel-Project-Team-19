@@ -188,7 +188,7 @@ const [followUpFilter, setFollowUpFilter] = useState("");
         <div className="filter-heading">Student Filters</div>
         <div className="card">
           <div className="empty-state">
-            <div className="empty-state-icon">⏳</div>
+            <div className="empty-state-icon"></div>
             <div className="empty-state-title">Loading sessions...</div>
             <div className="empty-state-sub">Setting up database</div>
           </div>

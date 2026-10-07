@@ -42,6 +42,11 @@ export function mapChildRow(r) {
     consentVerified: r.consent_verified,
     consentVerificationNotes: r.consent_verification_notes,
     consentVerifiedAt: r.consent_verified_at,
+    consentReviewStatus: r.consent_review_status,
+    consentReviewRequestedAt: r.consent_review_requested_at,
+    consentReviewedBy: r.consent_reviewed_by,
+    consentReviewedAt: r.consent_reviewed_at,
+    consentReviewNote: r.consent_review_note,
     createdAt: r.created_at,
   };
 }

@@ -398,14 +398,26 @@ function FoundingStory() {
         gap: isMobile ? 40 : 72, alignItems: "center",
       }}>
         <Reveal style={{ display: "flex", justifyContent: "center" }}>
-          {/* Founder photo: add src="/images/gary-king.jpg" once the photo exists */}
-          <PuzzlePhoto
-            size={isMobile ? 240 : 340}
-            label="Photo of Gary King"
-            alt="Gary King, founder of The Puzzle Project"
-            color={COLORS.maroon}
-            style={{ filter: "drop-shadow(0 16px 36px rgba(60,40,20,0.16))" }}
-          />
+          <div style={{ position: "relative", width: isMobile ? 240 : 310, height: isMobile ? 300 : 390, margin: isMobile ? "0 0 18px" : "0 0 18px 18px" }}>
+            {/* offset arch behind the photo */}
+            <div aria-hidden="true" style={{
+              position: "absolute", inset: 0, transform: "translate(-18px, 18px)",
+              borderRadius: "999px 999px 28px 28px", background: WARM_YELLOW, opacity: 0.55,
+            }} />
+            <img
+              src={`${process.env.PUBLIC_URL || ""}/gary-king.jpg`}
+              alt="Gary King, founder of The Puzzle Project"
+              style={{
+                position: "relative", width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 25%",
+                borderRadius: "999px 999px 28px 28px", display: "block",
+                boxShadow: "0 22px 44px rgba(60,40,20,0.18)",
+              }}
+            />
+            <PuzzlePiece size={isMobile ? 64 : 84} color={COLORS.teal} fillOpacity={1} rotate={14}
+              style={{ position: "absolute", right: -26, bottom: 36 }} />
+            <PuzzlePiece size={isMobile ? 34 : 44} color={COLORS.maroon} fillOpacity={1} rotate={-16}
+              style={{ position: "absolute", left: -34, top: isMobile ? 70 : 96 }} />
+          </div>
         </Reveal>
  
         <Reveal delay={0.1} style={{ textAlign: isMobile ? "center" : "left" }}>

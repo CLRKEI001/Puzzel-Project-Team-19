@@ -16,7 +16,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "../supabaseClient";
 import { mapChildRow, mapPuzzleboxScreeningRow, mapMessageRow } from "../lib/mappers";
-import { uploadAndVerifyConsentForm } from "../lib/consentForms";
+import { uploadAndVerifyConsentForm, requestManualConsentReview, isOverloadNote } from "../lib/consentForms";
 
 import RoleSidebar from "./RoleSidebar";
 import RoleHero from "./RoleHero";
@@ -1474,6 +1474,21 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
     setConsentPromptSaving(false);
   };
 
+  const handleManualReview = async (childId) => {
+    setConsentPromptSaving(true);
+    setConsentPromptError("");
+    try {
+      await requestManualConsentReview({ childId, requestedBy: user?.email });
+      const patch = { consentReviewStatus: "pending" };
+      setStudents((prev) => prev.map((s) => (s.id === childId ? { ...s, ...patch } : s)));
+      setSelectedStudent((prev) => (prev && prev.id === childId ? { ...prev, ...patch } : prev));
+      setConsentPromptResult((r) => (r ? { ...r, sentForReview: true } : r));
+    } catch (err) {
+      setConsentPromptError(err.message);
+    }
+    setConsentPromptSaving(false);
+  };
+
   const closeConsentPrompt = () => {
     setConsentPromptChild(null);
     setConsentPromptFile(null);
@@ -2119,7 +2134,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                       fontSize: 28,
                     }}
                   >
-                    ⏳
+                    
                   </div>
 
                   <div className="empty-state-title">
@@ -2422,7 +2437,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                     className="empty-state-icon"
                     style={{ fontSize: 28 }}
                   >
-                    ⏳
+                    
                   </div>
                   <div className="empty-state-title">
                     Loading screening history...
@@ -3536,6 +3551,25 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
             {/* File input stays available until a verified result comes
                 back — an incomplete form just means "pick a different (or
                 re-signed) file and try again" rather than starting over. */}
+            {consentPromptResult && !consentPromptResult.valid && isOverloadNote(consentPromptResult.notes) && (
+              <div style={{ padding: "12px 14px", borderRadius: 12, marginBottom: 14, background: "var(--orange-lt)", border: "1px solid rgba(242,101,34,0.25)" }}>
+                {consentPromptResult.sentForReview ? (
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--orange)" }}>
+                    ✓ Sent to an admin for manual review. You'll see the result on the student's record.
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 13, color: "var(--ink-mid)", marginBottom: 10 }}>
+                      The automatic check is busy right now (high demand). Your file is saved. You can send it to an admin to check by hand instead.
+                    </div>
+                    <button className="btn btn-sm btn-primary" disabled={consentPromptSaving} onClick={() => handleManualReview(consentPromptChild.id)}>
+                      {consentPromptSaving ? "Sending…" : "Send to admin for manual review"}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+
             {!consentPromptResult?.valid && (
               <input
                 type="file"
@@ -3946,6 +3980,8 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                 >
                   {selectedStudent.consentVerified
                     ? "✓ Verified"
+                    : selectedStudent.consentReviewStatus === "pending"
+                    ? "Awaiting manual review by an admin"
                     : selectedStudent.consentFormUrl
                     ? "✗ Incomplete — " + (selectedStudent.consentVerificationNotes || "some required fields look blank.")
                     : "No consent form uploaded yet"}
@@ -3960,6 +3996,13 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                     View uploaded file
                   </a>
                 )}
+                {!selectedStudent.consentVerified && selectedStudent.consentFormUrl && selectedStudent.consentReviewStatus !== "pending" && isOverloadNote(selectedStudent.consentVerificationNotes) && (
+                  <div style={{ marginTop: 8 }}>
+                    <button className="btn btn-sm btn-primary" disabled={consentPromptSaving} onClick={() => handleManualReview(selectedStudent.id)}>
+                      Send to admin for manual review
+                    </button>
+                  </div>
+                )}
               </div>
 
               <button
@@ -3971,7 +4014,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                   })
                 }
               >
-                📎 {selectedStudent.consentFormUrl ? "Replace form" : "Upload consent form"}
+                {selectedStudent.consentFormUrl ? "Replace form" : "Upload consent form"}
               </button>
             </div>
 
@@ -3992,7 +4035,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                   setConfirmDeleteStudent(selectedStudent)
                 }
               >
-                🗑 {t.deleteChild || "Delete Child Record"}
+                {t.deleteChild || "Delete Child Record"}
               </button>
 
               <div style={{ display: "flex", gap: 10 }}>
@@ -4002,7 +4045,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                     handleScreenChild(selectedStudent)
                   }
                 >
-                  🧩{" "}
+                  {" "}
                   {inProgressChildIds.has(
                     selectedStudent.id
                   )
@@ -4016,7 +4059,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                     openEditStudent(selectedStudent)
                   }
                 >
-                  ✏ {t.editChild || "Edit Child"}
+                  {t.editChild || "Edit Child"}
                 </button>
 
                 <button

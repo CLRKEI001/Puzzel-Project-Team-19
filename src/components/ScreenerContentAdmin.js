@@ -217,7 +217,7 @@ export default function ScreenerContentAdmin() {
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         {sections === null ? (
           <div className="empty-state">
-            <div className="empty-state-icon" style={{ fontSize: 28 }}>⏳</div>
+            <div className="empty-state-icon" style={{ fontSize: 28 }}></div>
             <div className="empty-state-title">Loading sections...</div>
           </div>
         ) : sorted.length === 0 ? (

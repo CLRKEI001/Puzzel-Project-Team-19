@@ -7,7 +7,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import { mapFollowUpRow } from "../lib/mappers";
-import { uploadAndVerifyConsentForm } from "../lib/consentForms";
+import { uploadAndVerifyConsentForm, requestManualConsentReview, isOverloadNote } from "../lib/consentForms";
 
 
 // ============================================================
@@ -2771,6 +2771,31 @@ export default function ChildrenTable({ children, lang }) {
                           ? (selected?.consentVerificationNotes || "The uploaded form is missing required details — a screening can't start until a complete form is on file.")
                           : "Upload the signed consent form below"}
                       </div>
+
+                      {!selected?.consentVerified && selected?.consentReviewStatus === "pending" && (
+                        <div style={{ marginTop: 8, fontSize: 12.5, fontWeight: 700, color: "var(--orange)" }}>
+                          Sent to an admin for manual review.
+                        </div>
+                      )}
+
+                      {!selected?.consentVerified && selected?.consentFormUrl && selected?.consentReviewStatus !== "pending" && isOverloadNote(selected?.consentVerificationNotes) && (
+                        <div style={{ marginTop: 10 }}>
+                          <div style={{ fontSize: 12.5, color: "var(--ink-mid)", marginBottom: 8 }}>
+                            The automatic check is busy right now. Your file is saved. You can send it to an admin to check by hand.
+                          </div>
+                          <button
+                            className="btn btn-sm btn-primary"
+                            onClick={async () => {
+                              try {
+                                await requestManualConsentReview({ childId: selected.id });
+                                setSelected((prev) => prev && ({ ...prev, consentReviewStatus: "pending" }));
+                              } catch (e) { setConsentError(e.message); }
+                            }}
+                          >
+                            Send to admin for manual review
+                          </button>
+                        </div>
+                      )}
 
                       {!selected?.consentVerified && consentMissingFields.length > 0 && (
                         <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 12.5, color: "var(--ink-mid)" }}>

@@ -58,4 +58,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   accessToken: getFirebaseAccessToken,
 });
+
+// Local dev server only: lets you run supabase/database/check_my_access.sql's
+// whoami() check from the browser console. Never included in a production build.
+if (process.env.NODE_ENV === "development") window.supabase = supabase;
 export default supabase;

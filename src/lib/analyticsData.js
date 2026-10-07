@@ -104,7 +104,9 @@ export function buildSessions(childrenById, followUpByChildId, screenings) {
         id: s.id,
         screeningId: s.id,
         childId: s.child_id,
-        childName: s.child_name || child.name,
+        // child_name on a screening is the student number; prefer the
+        // child's name as this viewer is allowed to see it.
+        childName: child.name || s.child_name,
         school: s.school || child.school,
         age: s.child_age ?? child.age,
         language: child.language,
@@ -182,7 +184,9 @@ export function useAnalyticsData() {
 
   const load = useCallback(async () => {
     const [c, s, f] = await Promise.all([
-      supabase.from("children").select("*").order("created_at", { ascending: true }),
+      // children_named adds the real name for psychologists (admins get null
+      // and see the student number) — see supabase/database/01.
+      supabase.from("children_named").select("*").order("created_at", { ascending: true }),
       supabase
         .from("puzzlebox_screenings")
         .select("id, child_id, child_name, school, child_age, teacher_email, teacher_name, status, responses, content_snapshot, raw_score, interpretation_band, review_verdict, review_notes, completed_at, created_at")

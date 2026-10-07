@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   COLORS, FONTS, PUBLIC_FONT_IMPORT, WARM_PAGE_CSS, CREAM, WARM_YELLOW,
-  PuzzlePiece, PuzzlePhoto, SectionHeading, PageHero, Reveal,
+  PuzzlePiece, SectionHeading, PageHero, Reveal,
   Navbar, Footer, CallToAction, useIsMobile,
 } from "./SiteChrome";
 // Portrait from The Puzzle Project brief (March 2026).
@@ -389,61 +389,56 @@ function ImpactSection() {
  
 // ---- Founding story: photo, words and a big quote ------------------------
 function FoundingStory() {
-  const isMobile = useIsMobile(860);
-  return (
-    <section style={{ padding: isMobile ? "70px 22px" : "110px 40px", background: CREAM, overflow: "hidden" }}>
-      <div style={{
-        maxWidth: 1150, margin: "auto", display: "grid",
-        gridTemplateColumns: isMobile ? "1fr" : "0.9fr 1.1fr",
-        gap: isMobile ? 40 : 72, alignItems: "center",
-      }}>
-        <Reveal style={{ display: "flex", justifyContent: "center" }}>
-          <div style={{ position: "relative", width: isMobile ? 240 : 310, height: isMobile ? 300 : 390, margin: isMobile ? "0 0 18px" : "0 0 18px 18px" }}>
-            {/* offset arch behind the photo */}
-            <div aria-hidden="true" style={{
-              position: "absolute", inset: 0, transform: "translate(-18px, 18px)",
-              borderRadius: "999px 999px 28px 28px", background: WARM_YELLOW, opacity: 0.55,
-            }} />
-            <img
-              src={`${process.env.PUBLIC_URL || ""}/gary-king.jpg`}
-              alt="Gary King, founder of The Puzzle Project"
-              style={{
-                position: "relative", width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 25%",
-                borderRadius: "999px 999px 28px 28px", display: "block",
-                boxShadow: "0 22px 44px rgba(60,40,20,0.18)",
-              }}
-            />
-            <PuzzlePiece size={isMobile ? 64 : 84} color={COLORS.teal} fillOpacity={1} rotate={14}
-              style={{ position: "absolute", right: -26, bottom: 36 }} />
-            <PuzzlePiece size={isMobile ? 34 : 44} color={COLORS.maroon} fillOpacity={1} rotate={-16}
-              style={{ position: "absolute", left: -34, top: isMobile ? 70 : 96 }} />
-          </div>
-        </Reveal>
- 
-        <Reveal delay={0.1} style={{ textAlign: isMobile ? "center" : "left" }}>
-          <p style={{ color: COLORS.teal, textTransform: "uppercase", fontWeight: 800, letterSpacing: "0.12em", marginBottom: 14, fontSize: 12 }}>
-            How it began
-          </p>
-          <h2 style={{ fontFamily: FONTS.heading, fontSize: "clamp(28px, 3.4vw, 44px)", color: COLORS.ink, lineHeight: 1.12, marginBottom: 22, fontWeight: 900, letterSpacing: "-0.02em" }}>
-            Founding story
-          </h2>
-          <p style={{ color: COLORS.inkMid, lineHeight: 1.85, marginBottom: 16, fontSize: 16 }}>
-            Gary King founded The Puzzle Project after a 12-piece puzzle sparked an idea during his work as a movie director in the rural Eastern Cape: what if a single puzzle could screen broad areas of a child's development needing support?
-          </p>
-          <p style={{ color: COLORS.inkMid, lineHeight: 1.85, fontSize: 16 }}>
-            And so began a journey with Dr Rivca Marais and Dr Jennifer Jansen to explore what that simple puzzle could become — a play-based screening protocol built around puzzle activities that children engage with naturally. The digital platform was developed to scale this protocol across South Africa.
-          </p>
-        </Reveal>
-      </div>
- 
-      {/* Pull quote, given room of its own */}
-      <Reveal style={{ maxWidth: 820, margin: isMobile ? "56px auto 0" : "84px auto 0", textAlign: "center", position: "relative" }}>
-        <span aria-hidden="true" style={{ fontFamily: FONTS.heading, fontSize: 120, lineHeight: 0.6, color: WARM_YELLOW, display: "block", height: 50 }}>“</span>
-        <p style={{ fontFamily: FONTS.heading, fontSize: "clamp(22px, 2.8vw, 34px)", fontWeight: 800, color: COLORS.ink, lineHeight: 1.3, letterSpacing: "-0.01em", marginBottom: 18 }}>
-          No child should be left behind simply because their school couldn't afford a psychologist.
+  const isMobile = useIsMobile(1000);
+  const hero = `${process.env.PUBLIC_URL || ""}/gary-king-hero.jpg`;
+  const para = { color: "rgba(255,255,255,0.93)", lineHeight: 1.75, fontSize: 15.5 };
+  const copy = (
+    <>
+      <p style={{ textTransform: "uppercase", fontWeight: 800, letterSpacing: "0.12em", marginBottom: 12, fontSize: 12, color: "rgba(255,255,255,0.8)" }}>
+        How it began
+      </p>
+      <h2 style={{ fontFamily: FONTS.heading, fontSize: "clamp(30px, 3.6vw, 48px)", color: "#fff", lineHeight: 1.1, marginBottom: 18, fontWeight: 800, letterSpacing: "-0.02em" }}>
+        Founding story
+      </h2>
+      <p style={{ ...para, marginBottom: 12 }}>
+        Gary King founded The Puzzle Project after a 12-piece puzzle sparked an idea during his work as a movie director in the rural Eastern Cape: what if a single puzzle could screen broad areas of a child's development needing support?
+      </p>
+      <p style={para}>
+        And so began a journey with Dr Rivca Marais and Dr Jennifer Jansen to explore what that simple puzzle could become — a play-based screening protocol built around puzzle activities that children engage with naturally. The digital platform was developed to scale this protocol across South Africa.
+      </p>
+      {/* Pull quote, kept inside the portrait */}
+      <div style={{ marginTop: 26, paddingTop: 22, borderTop: "1px solid rgba(255,255,255,0.28)" }}>
+        <p style={{ fontFamily: FONTS.heading, fontSize: "clamp(18px, 1.9vw, 25px)", fontWeight: 700, color: "#fff", lineHeight: 1.3, letterSpacing: "-0.01em", marginBottom: 10 }}>
+          <span aria-hidden="true" style={{ color: WARM_YELLOW }}>“</span>No child should be left behind simply because their school couldn't afford a psychologist.<span aria-hidden="true" style={{ color: WARM_YELLOW }}>”</span>
         </p>
-        <p style={{ fontSize: 14, color: COLORS.teal, fontWeight: 800 }}>Gary King, Founder</p>
-      </Reveal>
+        <p style={{ fontSize: 13.5, color: WARM_YELLOW, fontWeight: 800 }}>Gary King, Founder</p>
+      </div>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <section style={{ background: "#3d3d3d", color: "#fff" }}>
+        <img src={hero} alt="Gary King, founder of The Puzzle Project"
+          style={{ display: "block", width: "100%", height: "auto" }} />
+        <div style={{ padding: "40px 22px 56px", maxWidth: 640, margin: "0 auto" }}>
+          <Reveal>{copy}</Reveal>
+        </div>
+      </section>
+    );
+  }
+  return (
+    <section style={{ position: "relative", overflow: "hidden", color: "#fff", background: "#3d3d3d", aspectRatio: "1800 / 910", minHeight: 640 }}>
+      {/* the whole portrait, never cropped at the head */}
+      <img src={hero} alt="Gary King, founder of The Puzzle Project"
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "75% top" }} />
+      <div aria-hidden="true" style={{
+        position: "absolute", inset: 0,
+        background: "linear-gradient(90deg, rgba(20,20,20,0.82) 0%, rgba(20,20,20,0.6) 34%, rgba(20,20,20,0) 58%)",
+      }} />
+      <div style={{ position: "relative", height: "100%", maxWidth: 1250, margin: "0 auto", padding: "0 40px", display: "flex", alignItems: "center", boxSizing: "border-box" }}>
+        <Reveal style={{ maxWidth: 520 }}>{copy}</Reveal>
+      </div>
     </section>
   );
 }

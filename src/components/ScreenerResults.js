@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Doodle from "./Doodle";
 import { supabase } from "../supabaseClient";
 import { mapFollowUpRow } from "../lib/mappers";
  
@@ -188,7 +189,7 @@ const [followUpFilter, setFollowUpFilter] = useState("");
         <div className="filter-heading">Student Filters</div>
         <div className="card">
           <div className="empty-state">
-            <div className="empty-state-icon"></div>
+            <div className="empty-state-icon" style={{ display: "flex", justifyContent: "center" }}><Doodle name="clipboard" size={56} /></div>
             <div className="empty-state-title">Loading sessions...</div>
             <div className="empty-state-sub">Setting up database</div>
           </div>
@@ -282,7 +283,7 @@ const [followUpFilter, setFollowUpFilter] = useState("");
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         {filtered.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">🔍</div>
+            <div className="empty-state-icon"><Doodle name="magnifier" size={64} /></div>
             <div className="empty-state-title">{t.noResults}</div>
             <div className="empty-state-sub">{t.noResultsSub}</div>
           </div>
@@ -423,7 +424,7 @@ const fc = followUpColors[followUpKey] || followUpColors.fu1;
               <span style={{ fontWeight: 800, fontSize: 14, color: selected.status === "Developmental Concerns" ? "var(--pink)" : selected.status === "On Track" ? "var(--teal)" : "var(--orange)" }}>
                 {statusLabel(selected.status)}
               </span>
-              <span style={{ fontFamily: "Nunito", fontSize: 28, fontWeight: 900 }}>{selected.score}%</span>
+              <span style={{ fontFamily: "var(--font-heading)", fontSize: 28, fontWeight: 900 }}>{selected.score}%</span>
             </div>
  
             {/* RAW SCORE + REVIEW OUTCOME (real PuzzleBox screening) */}

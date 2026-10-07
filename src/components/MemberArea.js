@@ -72,7 +72,7 @@ const TIER_LABEL = { educator: "Tier 1 · Teachers & Primary Healthcare", psycho
 function Shell({ profile, onBack, backLabel, children }) {
   const isMobile = useIsMobile(640);
   return (
-    <div style={{ minHeight: "100vh", background: COLORS.surface, fontFamily: "'Nunito Sans', sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: COLORS.surface, fontFamily: "var(--font-body)" }}>
       <style>{FONT_IMPORT}</style>
       <header style={{
         background: COLORS.white, borderBottom: `1px solid ${COLORS.border}`,
@@ -115,7 +115,7 @@ function BigButton({ color, title, desc, onClick }) {
       onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 16px 40px rgba(0,0,0,0.10)"; }}
       onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 16px rgba(0,0,0,0.04)"; }}
     >
-      <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 21, fontWeight: 900, color: COLORS.ink, marginBottom: 8 }}>{title}</div>
+      <div style={{ fontFamily: "var(--font-heading)", fontSize: 21, fontWeight: 900, color: COLORS.ink, marginBottom: 8 }}>{title}</div>
       <div style={{ fontSize: 14, color: COLORS.inkMid, lineHeight: 1.65, marginBottom: 14 }}>{desc}</div>
       <span style={{ fontSize: 14, fontWeight: 800, color }}>Open →</span>
     </button>
@@ -129,7 +129,7 @@ function Landing({ profile, onView }) {
       <p style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: COLORS.teal, marginBottom: 12 }}>
         {TIER_LABEL[profile?.role]}
       </p>
-      <h1 style={{ fontFamily: "'Nunito', sans-serif", fontSize: "clamp(28px, 3.6vw, 44px)", fontWeight: 900, color: COLORS.ink, lineHeight: 1.1, letterSpacing: "-0.02em", marginBottom: 12 }}>
+      <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(28px, 3.6vw, 44px)", fontWeight: 900, color: COLORS.ink, lineHeight: 1.1, letterSpacing: "-0.02em", marginBottom: 12 }}>
         Welcome{first ? `, ${first}` : ""}
       </h1>
       <p style={{ fontSize: 16, color: COLORS.inkMid, lineHeight: 1.75, maxWidth: 620, marginBottom: 36 }}>
@@ -203,7 +203,7 @@ function ModuleDetail({ user, mod, modules, onBack, onOpenModule, progressApi })
         <TrainingModuleContent content={content} colorKey={mod.colorKey} />
       ) : (
         <>
-          <h1 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 28, fontWeight: 900, color: COLORS.ink, marginBottom: 10 }}>{mod.title}</h1>
+          <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 28, fontWeight: 900, color: COLORS.ink, marginBottom: 10 }}>{mod.title}</h1>
           {mod.description && <p style={{ fontSize: 14.5, color: COLORS.inkMid, lineHeight: 1.7, marginBottom: 20 }}>{mod.description}</p>}
           <VideoBlock url={mod.videoUrl} color={color} bg={bg} />
           {mod.contentUrl && (
@@ -215,7 +215,7 @@ function ModuleDetail({ user, mod, modules, onBack, onOpenModule, progressApi })
       )}
 
       <div style={{ marginTop: 32, paddingTop: 24, borderTop: `1px solid ${COLORS.border}` }}>
-        <h3 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 17, fontWeight: 800, color: COLORS.ink, marginBottom: 4 }}>Checkpoint</h3>
+        <h3 style={{ fontFamily: "var(--font-heading)", fontSize: 17, fontWeight: 800, color: COLORS.ink, marginBottom: 4 }}>Checkpoint</h3>
         <p style={{ fontSize: 13, color: COLORS.inkMid, marginBottom: 4 }}>Pass this module's quiz (70% or higher) to mark it complete.</p>
         <TrainingModuleQuiz
           moduleId={mod.id}
@@ -330,7 +330,7 @@ function Training({ user, profile, onCertificateStatusChange }) {
   if (state === "locked") {
     return (
       <div style={{ maxWidth: 520 }}>
-        <h1 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 32, fontWeight: 900, color: COLORS.ink, marginBottom: 10 }}>Training</h1>
+        <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 32, fontWeight: 900, color: COLORS.ink, marginBottom: 10 }}>Training</h1>
         <p style={{ fontSize: 15.5, color: COLORS.inkMid, lineHeight: 1.75, marginBottom: 26 }}>
           To open the training, enter the Product number supplied with your Puzzle Box Screener.
         </p>
@@ -370,7 +370,7 @@ function Training({ user, profile, onCertificateStatusChange }) {
   return (
     <>
       <span style={{ display: "inline-block", padding: "4px 14px", borderRadius: 16, background: COLORS.tealLight, color: COLORS.teal, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 14 }}>Training unlocked{audience === "psychologist" ? " · Psychologist track" : ""}</span>
-      <h1 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 32, fontWeight: 900, color: COLORS.ink, marginBottom: 10 }}>Training modules</h1>
+      <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 32, fontWeight: 900, color: COLORS.ink, marginBottom: 10 }}>Training modules</h1>
       <p style={{ fontSize: 15.5, color: COLORS.inkMid, lineHeight: 1.75, maxWidth: 640, marginBottom: 10 }}>
         Complete the modules in order, followed by each module's quiz, to earn your certification.
       </p>
@@ -399,11 +399,11 @@ function Training({ user, profile, onCertificateStatusChange }) {
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                  <div style={{ width: 46, height: 46, borderRadius: 12, background: bg, color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontFamily: "'Nunito', sans-serif", flexShrink: 0 }}>
+                  <div style={{ width: 46, height: 46, borderRadius: 12, background: bg, color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontFamily: "var(--font-heading)", flexShrink: 0 }}>
                     {isDone ? "✓" : number}
                   </div>
                   <div>
-                    <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 15, fontWeight: 800, color: COLORS.ink, lineHeight: 1.3 }}>{mod.title}</div>
+                    <div style={{ fontFamily: "var(--font-heading)", fontSize: 15, fontWeight: 800, color: COLORS.ink, lineHeight: 1.3 }}>{mod.title}</div>
                     <div style={{ fontSize: 12, color: isDone ? COLORS.teal : isPublished ? COLORS.inkMid : COLORS.inkFaint, marginTop: 3, fontWeight: isDone ? 700 : 400 }}>
                       {isDone ? "Completed" : isPublished ? (row?.status === "viewed" ? "In progress" : "Not started") : "Coming soon"}
                     </div>
@@ -488,7 +488,7 @@ export default function MemberArea({ user, profile, view, onView }) {
       )}
       {view === "purchase" && (
         <>
-          <h1 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 32, fontWeight: 900, color: COLORS.ink, marginBottom: 28 }}>Buy The Puzzle Box Screener</h1>
+          <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 32, fontWeight: 900, color: COLORS.ink, marginBottom: 28 }}>Buy The Puzzle Box Screener</h1>
           <PurchaseContent user={user} />
         </>
       )}

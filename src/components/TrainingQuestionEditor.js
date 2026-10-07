@@ -17,6 +17,7 @@
 // RLS, not just by the button being hidden).
 
 import React, { useEffect, useMemo, useState } from "react";
+import Doodle from "./Doodle";
 import { useTrainingQuestionsAdmin } from "../lib/useTrainingQuestionsAdmin";
 
 const LANGUAGE_LABELS = { en: "English", af: "Afrikaans", xh: "isiXhosa" };
@@ -254,14 +255,14 @@ function QuestionForm({ draftRow, onSave, onCancel, saving }) {
 
       {formError && (
         <div style={{ padding: "10px 14px", background: "var(--pink-lt)", color: "var(--pink)", borderRadius: 10, fontSize: 13, fontWeight: 700, marginBottom: 14 }}>
-          ⚠ {formError}
+          <Doodle name="warning" size={16} inline /> {formError}
         </div>
       )}
 
       {/* Paste-in */}
       <div style={{ marginBottom: 14 }}>
         {!showPaste ? (
-          <button className="btn btn-ghost btn-sm" onClick={() => setShowPaste(true)}>📋 Paste in a question</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => setShowPaste(true)}><Doodle name="clipboard" size={16} inline /> Paste in a question</button>
         ) : (
           <div style={{ border: "1.5px dashed var(--border)", borderRadius: 10, padding: 12 }}>
             <label style={labelStyle}>Paste question + options (one per line; mark the correct one with a leading *)</label>

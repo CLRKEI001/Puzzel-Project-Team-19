@@ -6,6 +6,7 @@
 // "Quiz" on a module row. See supabase/migrations/005_training_content.sql.
 
 import React, { useState } from "react";
+import Doodle from "./Doodle";
 import { supabase } from "../supabaseClient";
 import { useTrainingQuestions } from "../lib/useTrainingQuestions";
 
@@ -174,7 +175,7 @@ export default function TrainingQuizEditor({ moduleId }) {
 
       {error && (
         <div style={{ padding: "8px 12px", background: "var(--pink-lt)", color: "var(--pink)", borderRadius: 9, fontSize: 12.5, fontWeight: 700, marginBottom: 12 }}>
-          ⚠ {error}
+          <Doodle name="warning" size={16} inline /> {error}
         </div>
       )}
 
@@ -229,7 +230,7 @@ export default function TrainingQuizEditor({ moduleId }) {
 
             {formError && (
               <div style={{ padding: "10px 14px", background: "var(--pink-lt)", color: "var(--pink)", borderRadius: 10, fontSize: 13, fontWeight: 700, marginBottom: 14 }}>
-                ⚠ {formError}
+                <Doodle name="warning" size={16} inline /> {formError}
               </div>
             )}
 

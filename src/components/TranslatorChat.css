@@ -14,7 +14,7 @@
   border-radius: 999px;
   background: var(--teal);
   color: #fff;
-  font-family: 'Nunito', sans-serif;
+  font-family: var(--font-heading);
   font-weight: 800;
   font-size: 14px;
   cursor: pointer;
@@ -40,7 +40,7 @@
   border-radius: 16px;
   box-shadow: 0 18px 50px rgba(26, 26, 46, 0.25);
   overflow: hidden;
-  font-family: 'Nunito Sans', sans-serif;
+  font-family: var(--font-body);
 }
 
 .tchat-header {
@@ -51,7 +51,7 @@
   background: var(--teal);
   color: #fff;
 }
-.tchat-title { font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 16px; }
+.tchat-title { font-family: var(--font-heading); font-weight: 800; font-size: 16px; }
 .tchat-subtitle { font-size: 12px; opacity: 0.85; }
 .tchat-header-actions { display: flex; gap: 6px; }
 .tchat-icon-btn {

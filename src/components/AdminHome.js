@@ -5,6 +5,7 @@
 // Flags & Alerts has also been removed from this screen.
 
 import React, { useState, useEffect, useMemo } from "react";
+import Doodle from "./Doodle";
 import { supabase } from "../supabaseClient";
 import { mapUserRow, mapChildRow, mapPurchaseRequestRow, mapTrainingCertificateRow } from "../lib/mappers";
 import RoleSidebar from "./RoleSidebar";
@@ -704,7 +705,7 @@ export default function AdminHome({ user, profile }) {
         .invoke("send-push", {
           body: {
             userId: uid,
-            title: "You're approved! 🎉",
+            title: "You're approved!",
             body: "Your PuzzleBox account is ready — you can sign in now.",
           },
         })
@@ -1150,9 +1151,7 @@ export default function AdminHome({ user, profile }) {
                     </div>
                   ) : pendingUsers.length === 0 ? (
                     <div className="rh-empty">
-                      <div className="rh-empty-icon">
-                        
-                      </div>
+                      <div className="rh-empty-icon" style={{ display: "flex", justifyContent: "center" }}><Doodle name="tick" size={56} /></div>
 
                       <div className="rh-empty-title">
                         {t.noPending}
@@ -1309,7 +1308,7 @@ export default function AdminHome({ user, profile }) {
                     }
                   >
                     <div className="th-quicklink-icon">
-                      🛡
+                      <Doodle name="shield" size={24} />
                     </div>
 
                     <div>
@@ -1334,9 +1333,7 @@ export default function AdminHome({ user, profile }) {
                     }
                     style={{ marginBottom: 0 }}
                   >
-                    <div className="th-quicklink-icon">
-                      
-                    </div>
+                    <div className="th-quicklink-icon"><Doodle name="backpack" size={24} /></div>
 
                     <div>
                       <div className="th-quicklink-title">
@@ -1588,11 +1585,11 @@ export default function AdminHome({ user, profile }) {
 
         {activePage === "consent-reviews" && (
           <>
-            {reviewError && <div style={{ color: "var(--pink)", fontSize: 13, marginBottom: 12 }}>⚠ {reviewError}</div>}
+            {reviewError && <div style={{ color: "var(--pink)", fontSize: 13, marginBottom: 12 }}><Doodle name="warning" size={16} inline /> {reviewError}</div>}
             {pendingConsentReviews.length === 0 ? (
               <div className="rh-card">
                 <div className="rh-empty">
-                  <div className="rh-empty-icon">📄</div>
+                  <div className="rh-empty-icon"><Doodle name="document" size={64} /></div>
                   <div className="rh-empty-title">No consent forms waiting</div>
                   <div className="rh-empty-sub">When a teacher sends a form for manual review, it will show up here.</div>
                 </div>
@@ -1658,7 +1655,7 @@ export default function AdminHome({ user, profile }) {
           trainingCertificates.length === 0 ? (
             <div className="rh-card">
               <div className="rh-empty">
-                <div className="rh-empty-icon">🎓</div>
+                <div className="rh-empty-icon"><Doodle name="certificate" size={64} /></div>
                 <div className="rh-empty-title">No certifications yet</div>
                 <div className="rh-empty-sub">Once a trainee passes every published module's quiz, they'll show up here for review.</div>
               </div>
@@ -1712,7 +1709,7 @@ export default function AdminHome({ user, profile }) {
           purchaseRequests.length === 0 ? (
             <div className="rh-card">
               <div className="rh-empty">
-                <div className="rh-empty-icon">📦</div>
+                <div className="rh-empty-icon"><Doodle name="puzzle" size={64} /></div>
                 <div className="rh-empty-title">No purchase requests yet</div>
                 <div className="rh-empty-sub">Requests submitted from the Buy page will show up here.</div>
               </div>

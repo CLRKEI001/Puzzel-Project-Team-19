@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Ico } from "./Doodle";
 import { COLORS } from "./SiteChrome";
 
 // ---------------------------------------------------------------------------
@@ -55,7 +56,7 @@ function TimelineBlock({ block }) {
           <div key={i} style={{ display: "flex", gap: 18 }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
               <div style={{ width: 44, height: 44, borderRadius: "50%", background: COLORS.tealLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
-                {step.icon}
+                <Ico v={step.icon} size={26} />
               </div>
               {i < block.steps.length - 1 && <div style={{ flex: 1, width: 2, background: COLORS.border, minHeight: 28, margin: "4px 0" }} />}
             </div>
@@ -121,7 +122,7 @@ function PhasePipeline({ block }) {
           return (
             <div key={phase.n} style={{ display: "grid", gridTemplateColumns: "140px 1fr 160px", gap: 10, alignItems: "stretch" }}>
               <div style={{ background: color, color: "#fff", borderRadius: 12, padding: "14px 16px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                <div style={{ fontSize: 22, fontWeight: 900, fontFamily: "'Nunito', sans-serif" }}>{phase.icon} {phase.n}</div>
+                <div style={{ fontSize: 22, fontWeight: 900, fontFamily: "'Nunito', sans-serif", display: "flex", alignItems: "center", gap: 10 }}><span style={{ background: "#fff", borderRadius: 10, padding: 4, display: "inline-flex" }}><Ico v={phase.icon} size={24} /></span>{phase.n}</div>
                 <div style={{ fontSize: 12.5, fontWeight: 800, marginTop: 2 }}>{phase.name}</div>
               </div>
               <div style={{ background: bg, borderRadius: 12, padding: "14px 16px", display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>

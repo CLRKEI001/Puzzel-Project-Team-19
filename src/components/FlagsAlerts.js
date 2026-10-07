@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Doodle from "./Doodle";
 import { supabase } from "../supabaseClient";
 
 const T = {
@@ -221,7 +222,7 @@ const [sortOrder, setSortOrder] = useState("highest");
       <div className="page-fade">
         <div className="card">
           <div className="empty-state">
-            <div className="empty-state-icon">✅</div>
+            <div className="empty-state-icon"><Doodle name="tick" size={64} /></div>
             <div className="empty-state-title">{t.noFlags}</div>
             <div className="empty-state-sub">{t.noFlagsSub}</div>
             <button
@@ -320,7 +321,7 @@ const [sortOrder, setSortOrder] = useState("highest");
           <div className="flag-list">
             {filteredChildren.map((child, i) => (
               <div className="flag-item" key={child.id || i}>
-                <div className="flag-icon" style={{ background: "var(--pink-lt)", color: "var(--pink)" }}>⚑</div>
+                <div className="flag-icon" style={{ background: "var(--pink-lt)", color: "var(--pink)" }}><Doodle name="flag" size={18} /></div>
                 <div style={{ flex: 1 }}>
                   <div className="flag-name">{child.name}</div>
                <div className="flag-meta">
@@ -352,7 +353,7 @@ const [sortOrder, setSortOrder] = useState("highest");
                   onClick={() => openMessageModal(child)}
                   style={{ fontSize: 11, whiteSpace: "nowrap", flexShrink: 0 }}
                 >
-                  ✉ Send
+                  <Doodle name="envelope" size={16} inline /> Send
                 </button>
               </div>
             ))}
@@ -415,7 +416,7 @@ const [sortOrder, setSortOrder] = useState("highest");
                 <div style={{ fontWeight: 800, fontSize: 14, color: "var(--pink)" }}>{selectedChild.name}</div>
                 <div style={{ fontSize: 12, color: "var(--ink-mid)" }}>{selectedChild.school} · Score: {selectedChild.total}%</div>
               </div>
-              <span className="pill pill-pink">⚑ {t.requiresFollowUp}</span>
+              <span className="pill pill-pink"><Doodle name="flag" size={16} inline /> {t.requiresFollowUp}</span>
             </div>
 
             {/* DOMAIN SCORES */}
@@ -503,7 +504,7 @@ const [sortOrder, setSortOrder] = useState("highest");
                 onClick={sendMessage}
                 disabled={sending || !teacherEmail || !diagnosis}
               >
-                {sending ? t.sending : `✉ ${t.send}`}
+                {sending ? t.sending : <><Doodle name="envelope" size={16} inline /> {t.send}</>}
               </button>
             </div>
           </div>
@@ -514,13 +515,13 @@ const [sortOrder, setSortOrder] = useState("highest");
       {sentId && (
         <div className="modal-overlay" onClick={() => setSentId(null)}>
           <div className="modal" style={{ maxWidth: 420, textAlign: "center" }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: 52, marginBottom: 16 }}>✅</div>
-            <div style={{ fontFamily: "Nunito", fontSize: 20, fontWeight: 900, color: "var(--ink)", marginBottom: 8 }}>{t.sent}</div>
+            <div style={{ fontSize: 52, marginBottom: 16 }}><Doodle name="tick" size={64} /></div>
+            <div style={{ fontFamily: "var(--font-heading)", fontSize: 20, fontWeight: 900, color: "var(--ink)", marginBottom: 8 }}>{t.sent}</div>
             <div style={{ fontSize: 13, color: "var(--ink-faint)", marginBottom: 24, lineHeight: 1.6 }}>{success}</div>
             <div style={{ padding: "12px 16px", background: "var(--teal-lt)", borderRadius: 12, fontSize: 12, color: "var(--teal)", fontWeight: 600, marginBottom: 20, textAlign: "left" }}>
-              <div>📧 {t.to}: {teacherEmail}</div>
-              <div>👤 {selectedChild?.name}</div>
-              <div>🌐 {T.en[`lang_${msgLang}`]}</div>
+              <div><Doodle name="envelope" size={16} inline /> {t.to}: {teacherEmail}</div>
+              <div><Doodle name="user" size={16} inline /> {selectedChild?.name}</div>
+              <div><Doodle name="globe" size={16} inline /> {T.en[`lang_${msgLang}`]}</div>
             </div>
             <button
               className="btn btn-teal"

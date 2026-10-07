@@ -17,6 +17,7 @@
 //     Supabase-backed one later shouldn't require touching this file).
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import Doodle from "./Doodle";
 import { supabase } from "../supabaseClient";
 import { useScreenerContent, scoreFromAgeTable } from "../lib/useScreenerContent";
 import { mapChildRow } from "../lib/mappers";
@@ -596,7 +597,7 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
           <div className="pbs-question-label">{q.label}</div>
           {q.id !== timerQuestion?.id && r.timeSeconds != null && (
             <span className="pbs-question-time" title="Time recorded from the page timer">
-              ⏱ {formatTimer(r.timeSeconds * 1000)}
+              <Doodle name="stopwatch" size={16} inline /> {formatTimer(r.timeSeconds * 1000)}
             </span>
           )}
           {saveStatusBadgeFor(q.id)}
@@ -842,7 +843,7 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
         {timerQuestion && <div className="pbs-timer-target">for "{timerQuestion.label}"</div>}
         {isPuzzleOverTime && (
           <div className="pbs-timer-target" style={{ color: "var(--pink)", fontWeight: 800 }}>
-            ⚠ Over time (10 min limit)
+            <Doodle name="warning" size={16} inline /> Over time (10 min limit)
           </div>
         )}
         <div className="pbs-timer-controls">
@@ -863,10 +864,10 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
         </div>
         <div className="pbs-topbar-right">
           <span className="pbs-session-timer" title="Total time on this screening, across every section">
-            ⏱ {formatTimer(sessionTimerMs)}
+            <Doodle name="stopwatch" size={16} inline /> {formatTimer(sessionTimerMs)}
           </span>
           <span className={`pbs-save-indicator pbs-save-${saveStatus}`}>
-            {saveStatus === "saving" ? t.saving : saveStatus === "error" ? "⚠" : t.saved}
+            {saveStatus === "saving" ? t.saving : saveStatus === "error" ? <Doodle name="warning" size={16} inline /> : t.saved}
           </span>
           <button className="btn btn-ghost btn-sm" onClick={() => setShowExitConfirm(true)}>{t.exit}</button>
         </div>

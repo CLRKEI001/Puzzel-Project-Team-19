@@ -5,6 +5,7 @@
 // Uses Supabase/Postgres for all database operations.
 
 import React, { useState, useEffect } from "react";
+import Doodle from "./Doodle";
 import { supabase } from "../supabaseClient";
 import { mapFollowUpRow } from "../lib/mappers";
 import { uploadAndVerifyConsentForm, requestManualConsentReview, isOverloadNote } from "../lib/consentForms";
@@ -1307,7 +1308,7 @@ export default function ChildrenTable({ children, lang }) {
           <div className="empty-state">
 
             <div className="empty-state-icon">
-              🔍
+              <Doodle name="magnifier" size={64} />
             </div>
 
             <div className="empty-state-title">
@@ -1540,7 +1541,7 @@ export default function ChildrenTable({ children, lang }) {
                       gap: 5,
                     }}
                   >
-                    ✏ {t.editChild}
+                    <Doodle name="pencil" size={16} inline /> {t.editChild}
                   </button>
 
                 )}
@@ -1597,7 +1598,7 @@ export default function ChildrenTable({ children, lang }) {
                         "var(--teal)",
                     }}
                   >
-                    ✏ {t.editChild}
+                    <Doodle name="pencil" size={16} inline /> {t.editChild}
                   </div>
 
                   <div
@@ -1633,7 +1634,7 @@ export default function ChildrenTable({ children, lang }) {
                       marginBottom: 14,
                     }}
                   >
-                    ⚠{" "}
+                    <Doodle name="warning" size={16} inline />{" "}
                     {t.duplicateEditWarning}
                     <div
                       style={{
@@ -2045,7 +2046,7 @@ export default function ChildrenTable({ children, lang }) {
                       setConsentView(false)
                     }
                   >
-                    📋 {t.childDetail}
+                    <Doodle name="clipboard" size={16} inline /> {t.childDetail}
                   </button>
 
 
@@ -2059,7 +2060,7 @@ export default function ChildrenTable({ children, lang }) {
                       setConsentView(true)
                     }
                   >
-                    📄 {t.consentForm}
+                    <Doodle name="document" size={16} inline /> {t.consentForm}
                   </button>
 
                 </div>
@@ -2237,7 +2238,7 @@ export default function ChildrenTable({ children, lang }) {
                                 handleDeleteFollowUp
                               }
                             >
-                              🗑{" "}
+                              <Doodle name="bin" size={16} inline />{" "}
                               {t.deleteFollowUp}
                             </button>
 
@@ -2332,7 +2333,7 @@ export default function ChildrenTable({ children, lang }) {
 
                             }}
                           >
-                            ✏ Edit Follow-up
+                            <Doodle name="pencil" size={16} inline /> Edit Follow-up
                           </button>
 
                         </div>
@@ -2381,8 +2382,7 @@ export default function ChildrenTable({ children, lang }) {
 
                         <div
                           style={{
-                            fontFamily:
-                              "Nunito",
+                            fontFamily: "var(--font-heading)",
                             fontSize: 14,
                             fontWeight: 800,
                             marginBottom: 14,
@@ -2633,7 +2633,7 @@ export default function ChildrenTable({ children, lang }) {
                           )
                         }
                       >
-                        🗑{" "}
+                        <Doodle name="bin" size={16} inline />{" "}
                         {t.deleteChild}
                       </button>
 
@@ -2754,7 +2754,7 @@ export default function ChildrenTable({ children, lang }) {
                           ? `✓ ${t.consentSigned}`
                           : consentFile
                           ? "✗ Consent Form Incomplete"
-                          : "⚠ No Consent Form Yet"}
+                          : <><Doodle name="warning" size={16} inline /> No Consent Form Yet</>}
                       </div>
 
 
@@ -2813,7 +2813,7 @@ export default function ChildrenTable({ children, lang }) {
                         color: "var(--teal)", marginBottom: 20, textDecoration: "none",
                       }}
                     >
-                      ⬇ Download blank consent form (to print or send to a parent)
+                      <Doodle name="download" size={16} inline /> Download blank consent form (to print or send to a parent)
                     </a>
 
 
@@ -2849,8 +2849,8 @@ export default function ChildrenTable({ children, lang }) {
                             {consentFile.type.includes(
                               "pdf"
                             )
-                              ? "📄"
-                              : "🖼"}
+                              ? <Doodle name="document" size={22} />
+                              : <Doodle name="photo" size={22} />}
                           </span>
 
                           <span
@@ -2928,7 +2928,7 @@ export default function ChildrenTable({ children, lang }) {
                                 "center",
                             }}
                           >
-                            ⬇{" "}
+                            <Doodle name="download" size={16} inline />{" "}
                             {t.downloadConsent}
                           </a>
 
@@ -3054,7 +3054,7 @@ export default function ChildrenTable({ children, lang }) {
 
                           {consentError && (
                             <div style={{ color: "var(--pink)", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>
-                              ⚠ {consentError}
+                              <Doodle name="warning" size={16} inline /> {consentError}
                             </div>
                           )}
 
@@ -3150,7 +3150,7 @@ export default function ChildrenTable({ children, lang }) {
                 }}
               >
                 <div>
-                  ⚠️ {t.missingFieldsWarning}
+                  <Doodle name="warning" size={16} inline /> {t.missingFieldsWarning}
                 </div>
                 <div
                   style={{
@@ -3183,7 +3183,7 @@ export default function ChildrenTable({ children, lang }) {
                   marginBottom: 14,
                 }}
               >
-                ⚠{" "}
+                <Doodle name="warning" size={16} inline />{" "}
                 {t.duplicateWarning} — "
                 {newChild.name}"{" "}
                 {t.duplicateDetail}

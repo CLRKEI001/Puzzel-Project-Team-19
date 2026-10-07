@@ -76,7 +76,7 @@ export default function TrainingModuleQuiz({ moduleId, color, onResult }) {
     const passed = result.percent >= 70;
     return (
       <div style={{ marginTop: 12, padding: "16px 18px", borderRadius: 12, background: passed ? COLORS.tealLight : COLORS.pinkLight }}>
-        <div style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 900, fontSize: 18, color: passed ? COLORS.teal : COLORS.pink, marginBottom: 4 }}>
+        <div style={{ fontFamily: "var(--font-heading)", fontWeight: 900, fontSize: 18, color: passed ? COLORS.teal : COLORS.pink, marginBottom: 4 }}>
           {result.score} / {result.total} ({result.percent}%)
         </div>
         <div style={{ fontSize: 13, color: COLORS.inkMid, marginBottom: 12 }}>

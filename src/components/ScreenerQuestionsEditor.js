@@ -9,6 +9,7 @@
 // screener_score_tables).
 
 import React, { useCallback, useEffect, useState } from "react";
+import Doodle from "./Doodle";
 import { supabase } from "../supabaseClient";
 import ScreenerScoreTableEditor from "./ScreenerScoreTableEditor";
 
@@ -190,7 +191,7 @@ export default function ScreenerQuestionsEditor({ sectionId }) {
 
       {error && (
         <div style={{ padding: "8px 12px", background: "var(--pink-lt)", color: "var(--pink)", borderRadius: 9, fontSize: 12, fontWeight: 700, marginBottom: 10 }}>
-          ⚠ {error}
+          <Doodle name="warning" size={16} inline /> {error}
         </div>
       )}
 
@@ -261,7 +262,7 @@ export default function ScreenerQuestionsEditor({ sectionId }) {
 
             {formError && (
               <div style={{ padding: "10px 14px", background: "var(--pink-lt)", color: "var(--pink)", borderRadius: 10, fontSize: 13, fontWeight: 700, marginBottom: 14 }}>
-                ⚠ {formError}
+                <Doodle name="warning" size={16} inline /> {formError}
               </div>
             )}
 

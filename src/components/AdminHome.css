@@ -39,7 +39,7 @@
   margin-bottom: 10px;
 }
 .ah-hero-title {
-  font-family: "Nunito", sans-serif;
+  font-family: var(--font-heading);
   font-size: 26px;
   font-weight: 900;
   margin-bottom: 6px;
@@ -60,7 +60,7 @@
 }
 .ah-hero-stat { text-align: center; }
 .ah-hero-stat-value {
-  font-family: "Nunito", sans-serif;
+  font-family: var(--font-heading);
   font-size: 26px;
   font-weight: 900;
   line-height: 1;

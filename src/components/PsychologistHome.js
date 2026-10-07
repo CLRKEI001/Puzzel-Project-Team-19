@@ -7,6 +7,7 @@
 // disconnected screens.
  
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import Doodle from "./Doodle";
 import { supabase } from "../supabaseClient";
 import { mapChildRow, mapFollowUpRow, mapMessageRow, mapPuzzleboxScreeningRow } from "../lib/mappers";
 import RoleSidebar from "./RoleSidebar";
@@ -603,12 +604,12 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                   title={t.needsReview}
                   actionLabel={t.viewAll}
                   onAction={() => setActivePage("notifications")}
-                  emptyIcon="📝"
+                  emptyIcon="notes"
                   emptyTitle={t.noNotifications}
                   emptySub={t.noNotificationsSub}
                   onItemClick={(n) => openReview(n)}
                   items={loading ? null : notifications.slice(0, 5).map((n) => ({
-                    icon: "📝", color: n.readAt ? "#8888a8" : "#009B8D",
+                    icon: "notes", color: n.readAt ? "#8888a8" : "#009B8D",
                     title: n.childName, meta: `${n.school || ""} · ${n.teacherName || n.teacherEmail || ""}`.replace(/^ · /, ""),
                     badge: n.readAt ? undefined : "New",
                   }))}
@@ -617,23 +618,23 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                   title={t.upcomingFollowUps}
                   actionLabel={t.viewAll}
                   onAction={() => setActivePage("followups")}
-                  emptyIcon="🗓"
+                  emptyIcon="calendar"
                   emptyTitle={t.noFollowUps}
                   emptySub={t.noFollowUpsSub}
                   onItemClick={(f) => setSelected(f)}
                   items={loading ? null : followUps.slice(0, 5).map((f) => ({
-                    icon: "🗓", color: (followUpColors[f.followUpType] || followUpColors.fu1).color,
+                    icon: "calendar", color: (followUpColors[f.followUpType] || followUpColors.fu1).color,
                     title: f.childName, meta: `${f.school} · ${t.date}: ${f.followUpDate || "—"}`,
                     badge: t[f.followUpType] || f.followUpType,
                   }))}
                 />
                 <TodayList
                   title={t.recentlyFlagged}
-                  emptyIcon="✅"
+                  emptyIcon="tick"
                   emptyTitle={t.noFlagged}
                   emptySub={t.noFlaggedSub}
                   items={flaggedChildren.slice(0, 5).map((c) => ({
-                    icon: "⚑", color: "#E8175D", title: c.name, meta: c.school,
+                    icon: "flag", color: "#E8175D", title: c.name, meta: c.school,
                   }))}
                 />
               </div>
@@ -661,7 +662,7 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                 <div className="rh-card">
                   <div className="rh-card-head"><div className="rh-card-title">{t.quickLinks}</div></div>
                   <button className="th-quicklink" onClick={() => setActivePage("a-overview")}>
-                    <div className="th-quicklink-icon">📊</div>
+                    <div className="th-quicklink-icon"><Doodle name="chart" size={24} /></div>
                     <div>
                       <div className="th-quicklink-title">{t.openDashboard}</div>
                       <div className="th-quicklink-sub">{t.openDashboardSub}</div>
@@ -669,7 +670,7 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                     <div className="th-quicklink-arrow">→</div>
                   </button>
                   <button className="th-quicklink" onClick={() => setActivePage("a-flags")} style={{ marginBottom: 0 }}>
-                    <div className="th-quicklink-icon">✉</div>
+                    <div className="th-quicklink-icon"><Doodle name="envelope" size={24} /></div>
                     <div>
                       <div className="th-quicklink-title">{t.openFlags}</div>
                       <div className="th-quicklink-sub">{t.openFlagsSub}</div>
@@ -691,7 +692,7 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
           <div className="card" style={{ padding: 0, overflow: "hidden" }}>
             {notifications.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-state-icon">📝</div>
+                <div className="empty-state-icon"><Doodle name="notes" size={64} /></div>
                 <div className="empty-state-title">{t.noNotifications}</div>
                 <div className="empty-state-sub">{t.noNotificationsSub}</div>
               </div>
@@ -711,7 +712,7 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                     display: "flex", alignItems: "center", justifyContent: "center",
                     background: n.readAt ? "var(--surface)" : "var(--teal)",
                     color: n.readAt ? "var(--ink-faint)" : "#fff", fontSize: 16,
-                  }}>📝</div>
+                  }}><Doodle name="notes" size={18} /></div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 800, fontSize: 14, color: "var(--ink)" }}>{n.childName}</div>
                     <div style={{ fontSize: 12, color: "var(--ink-faint)" }}>
@@ -754,7 +755,7 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
             <div className="card" style={{ padding: 0, overflow: "hidden" }}>
               {filteredFollowUps.length === 0 ? (
                 <div className="empty-state">
-                  <div className="empty-state-icon">🗓</div>
+                  <div className="empty-state-icon"><Doodle name="calendar" size={64} /></div>
                   <div className="empty-state-title">{t.noFollowUps}</div>
                   <div className="empty-state-sub">{t.noFollowUpsSub}</div>
                 </div>
@@ -856,12 +857,12 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
               </div>
             ) : reviewSaved ? (
               <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
-                <div style={{ fontFamily: "Nunito", fontSize: 19, fontWeight: 900, color: "var(--ink)", marginBottom: 6 }}>{t.reviewSaved}</div>
+                <div style={{ fontSize: 48, marginBottom: 12 }}><Doodle name="tick" size={64} /></div>
+                <div style={{ fontFamily: "var(--font-heading)", fontSize: 19, fontWeight: 900, color: "var(--ink)", marginBottom: 6 }}>{t.reviewSaved}</div>
                 <div style={{ fontSize: 13, color: "var(--ink-faint)", marginBottom: 20 }}>{t.reviewSavedSub}</div>
                 {reviewSaved.sharedWith.length > 0 && (
                   <div style={{ padding: "12px 16px", background: "var(--teal-lt)", borderRadius: 12, fontSize: 12, color: "var(--teal)", fontWeight: 600, marginBottom: 20, textAlign: "left" }}>
-                    {reviewSaved.sharedWith.map((label, i) => <div key={i}>📤 {t.reviewSharedWith}: {label}</div>)}
+                    {reviewSaved.sharedWith.map((label, i) => <div key={i}><Doodle name="envelope" size={16} inline /> {t.reviewSharedWith}: {label}</div>)}
                   </div>
                 )}
                 <button className="btn btn-teal" style={{ width: "100%" }} onClick={closeReview}>{t.done}</button>
@@ -898,7 +899,7 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                         {formatSecs(reviewScreening.puzzleTimeSeconds)}
                         {reviewScreening.puzzleOverTime && (
                           <span style={{ color: "var(--orange)", fontWeight: 700, marginLeft: 6, fontSize: 11.5 }}>
-                            ⚑ {t.overTimeFlag}
+                            <Doodle name="flag" size={16} inline /> {t.overTimeFlag}
                           </span>
                         )}
                       </span>
@@ -992,7 +993,7 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                         color: verdict === "concerns" ? "var(--pink)" : "var(--ink)",
                       }}
                     >
-                      ⚑ {t.verdictConcerns}
+                      <Doodle name="flag" size={16} inline /> {t.verdictConcerns}
                     </button>
                   </div>
                 </div>

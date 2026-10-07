@@ -8,6 +8,7 @@
 // shared read hook the public pages use.
 
 import React, { useState } from "react";
+import Doodle from "./Doodle";
 import { supabase } from "../supabaseClient";
 import { useTrainingModules, COLOR_KEYS } from "../lib/useTrainingModules";
 import TrainingQuestionEditor from "./TrainingQuestionEditor";
@@ -193,19 +194,19 @@ export default function TrainingModulesAdmin() {
 
       {error && (
         <div style={{ padding: "10px 14px", background: "var(--pink-lt)", color: "var(--pink)", borderRadius: 10, fontSize: 13, fontWeight: 700, marginBottom: 14 }}>
-          ⚠ {error}
+          <Doodle name="warning" size={16} inline /> {error}
         </div>
       )}
 
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         {loading ? (
           <div className="empty-state">
-            <div className="empty-state-icon" style={{ fontSize: 28 }}></div>
+            <div className="empty-state-icon" style={{ display: "flex", justifyContent: "center" }}><Doodle name="books" size={56} /></div>
             <div className="empty-state-title">Loading modules...</div>
           </div>
         ) : sorted.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon"></div>
+            <div className="empty-state-icon" style={{ display: "flex", justifyContent: "center" }}><Doodle name="books" size={56} /></div>
             <div className="empty-state-title">No modules yet</div>
             <div className="empty-state-sub">Add the first training module to get started.</div>
           </div>
@@ -335,7 +336,7 @@ export default function TrainingModulesAdmin() {
 
             {formError && (
               <div style={{ padding: "10px 14px", background: "var(--pink-lt)", color: "var(--pink)", borderRadius: 10, fontSize: 13, fontWeight: 700, marginBottom: 14 }}>
-                ⚠ {formError}
+                <Doodle name="warning" size={16} inline /> {formError}
               </div>
             )}
 

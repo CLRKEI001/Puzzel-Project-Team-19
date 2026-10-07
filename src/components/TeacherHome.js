@@ -14,6 +14,7 @@
 //   collection.
 
 import React, { useState, useEffect, useMemo } from "react";
+import Doodle from "./Doodle";
 import { supabase } from "../supabaseClient";
 import { mapChildRow, mapPuzzleboxScreeningRow, mapMessageRow } from "../lib/mappers";
 import { uploadAndVerifyConsentForm, requestManualConsentReview, isOverloadNote } from "../lib/consentForms";
@@ -1728,7 +1729,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                   onAction={() =>
                     setActivePage("students")
                   }
-                  emptyIcon=""
+                  emptyIcon="tick"
                   emptyTitle={t.flagsEmptyTitle}
                   emptySub={t.flagsEmptySub}
                   onItemClick={(f) =>
@@ -1740,7 +1741,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                       : openFlaggedStudents
                           .slice(0, 5)
                           .map((c) => ({
-                            icon: "",
+                            icon: "flag",
                             color: "#E8175D",
                             title: c.name,
                             meta: c.school || t.flagsCardSub,
@@ -1758,7 +1759,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                   onAction={() =>
                     setActivePage("messages")
                   }
-                  emptyIcon=""
+                  emptyIcon="mailbox"
                   emptyTitle={t.noMessages}
                   emptySub={t.noMessagesSub}
                   onItemClick={(m) =>
@@ -1770,7 +1771,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                       : messages
                           .slice(0, 5)
                           .map((m) => ({
-                            icon: "✉",
+                            icon: "envelope",
                             color: "#F26522",
                             title: m.childName,
                             meta: `${
@@ -1807,9 +1808,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                     }
                   >
 
-                    <div className="th-quicklink-icon">
-                      
-                    </div>
+                    <div className="th-quicklink-icon"><Doodle name="puzzle" size={24} /></div>
 
                     <div>
                       <div className="th-quicklink-title">
@@ -1839,9 +1838,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                     }
                   >
 
-                    <div className="th-quicklink-icon">
-                      
-                    </div>
+                    <div className="th-quicklink-icon"><Doodle name="backpack" size={24} /></div>
 
                     <div>
                       <div className="th-quicklink-title">
@@ -1869,9 +1866,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                     }
                   >
 
-                    <div className="th-quicklink-icon">
-                      
-                    </div>
+                    <div className="th-quicklink-icon"><Doodle name="pencil" size={24} /></div>
 
                     <div>
                       <div className="th-quicklink-title">
@@ -1901,9 +1896,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                     }
                   >
 
-                    <div className="th-quicklink-icon">
-                      
-                    </div>
+                    <div className="th-quicklink-icon"><Doodle name="notes" size={24} /></div>
 
                     <div>
                       <div className="th-quicklink-title">
@@ -1937,7 +1930,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                   >
 
                     <div className="th-quicklink-icon">
-                      ✉
+                      <Doodle name="envelope" size={24} />
                     </div>
 
                     <div>
@@ -2164,7 +2157,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                 <div className="empty-state">
 
                   <div className="empty-state-icon">
-                    🧒
+                    <Doodle name="backpack" size={64} />
                   </div>
 
                   <div className="empty-state-title">
@@ -2336,7 +2329,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                                     )
                                   }
                                 >
-                                  {!child.consentVerified && "⚠ "}
+                                  {!child.consentVerified && <Doodle name="warning" size={14} inline />}
                                   {inProgressChildIds.has(
                                     child.id
                                   )
@@ -2458,9 +2451,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
               ) : myStudentSessions.length === 0 ? (
 
                 <div className="empty-state">
-                  <div className="empty-state-icon">
-                    
-                  </div>
+                  <div className="empty-state-icon" style={{ display: "flex", justifyContent: "center" }}><Doodle name="notes" size={64} /></div>
                   <div className="empty-state-title">
                     {t.historyEmptyTitle}
                   </div>
@@ -2710,7 +2701,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                 <div className="empty-state">
 
                   <div className="empty-state-icon">
-                    📭
+                    <Doodle name="mailbox" size={64} />
                   </div>
 
                   <div className="empty-state-title">
@@ -3205,7 +3196,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                   marginBottom: 14,
                 }}
               >
-                ⚠ {addStudentError}
+                <Doodle name="warning" size={16} inline /> {addStudentError}
               </div>
             )}
 
@@ -3226,7 +3217,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                   marginBottom: 14,
                 }}
               >
-                ⚠{" "}
+                <Doodle name="warning" size={16} inline />{" "}
                 {t.duplicateWarning}{" "}
                 — "{newStudent.name}"{" "}
                 {t.duplicateDetail}
@@ -3530,7 +3521,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
               download
               style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: "var(--teal)", marginBottom: 16, textDecoration: "none" }}
             >
-              ⬇ Download a blank consent form to print or send to a parent
+              <Doodle name="download" size={16} inline /> Download a blank consent form to print or send to a parent
             </a>
 
             {consentPromptResult && (
@@ -3591,7 +3582,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
             )}
 
             {consentPromptError && (
-              <div style={{ color: "var(--pink)", fontSize: 12.5, marginBottom: 12 }}>⚠ {consentPromptError}</div>
+              <div style={{ color: "var(--pink)", fontSize: 12.5, marginBottom: 12 }}><Doodle name="warning" size={16} inline /> {consentPromptError}</div>
             )}
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>

@@ -56,11 +56,11 @@ export function starterBlockData(type) {
     case "richText":
       return { type, title: "New section", paragraphs: ["Write the first paragraph here."], note: "" };
     case "timeline":
-      return { type, title: "New timeline", steps: [{ icon: "🔹", title: "Step title", body: "What happens in this step." }] };
+      return { type, title: "New timeline", steps: [{ icon: "puzzle", title: "Step title", body: "What happens in this step." }] };
     case "principleCards":
       return { type, title: "New cards", cards: [{ id: "card-1", title: "Card title", summary: "Short one-line summary.", body: "Fuller detail shown when the card is opened." }] };
     case "phasePipeline":
-      return { type, title: "New pipeline", phases: [{ n: 1, name: "Phase name", icon: "🔹", methods: ["Method one"], outcome: "What this phase produces" }] };
+      return { type, title: "New pipeline", phases: [{ n: 1, name: "Phase name", icon: "puzzle", methods: ["Method one"], outcome: "What this phase produces" }] };
     case "statCallouts":
       return { type, title: "New stats", stats: [{ value: "0", label: "What this number means" }], note: "" };
     case "domainGrid":

@@ -23,7 +23,7 @@ export default function StatRing({ value, max = 10, size = 74, stroke = 8, color
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
           style={{ transition: "stroke-dashoffset 0.6s ease" }}
         />
-        <text x="50%" y="52%" textAnchor="middle" dominantBaseline="middle" fontFamily="Nunito, sans-serif" fontWeight="900" fontSize={size * 0.3} fill="var(--ink, #1a1a2e)">
+        <text x="50%" y="52%" textAnchor="middle" dominantBaseline="middle" fontFamily="var(--font-heading)" fontWeight="900" fontSize={size * 0.3} fill="var(--ink, #1a1a2e)">
           {value}
         </text>
       </svg>

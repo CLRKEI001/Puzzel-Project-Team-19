@@ -450,12 +450,12 @@ function FoundingStory() {
  
 // ---- Team: faces (initials for now), no card borders ---------------------
 const TEAM = [
-  { initials: "GK", name: "Gary King", role: "Founder & project sponsor", color: COLORS.teal, bg: COLORS.tealLight, image: "/gary-king.jpg", imageAlt: "Gary King", imageFit: "cover", imagePosition: "center" },
-  { initials: "RM", name: "Dr Rivca Marais", role: "Lead psychologist & clinical advisor", color: COLORS.pink, bg: COLORS.pinkLight, image: "/rivca.jpeg", imageAlt: "Rivca Marais", imageFit: "cover", imagePosition: "center 20%" },
-  { initials: "JJ", name: "Dr Jennifer Jansen", role: "Research & development", color: COLORS.purple, bg: COLORS.purpleLight, image: "/jenny.jpeg", imageAlt: "Jennifer Jansen", imageFit: "cover", imagePosition: "center 30%" },
-  { initials: "SF", name: "Ms Satara Ferreira", role: "Education", color: COLORS.maroon, bg: COLORS.maroonLight, image: "/satara.jpeg", imageAlt: "Satara Ferreira", imageFit: "cover", imagePosition: "center 20%" },
-  { initials: "T19", name: "UCT INF3003W Team 19", role: "Platform design & development", color: COLORS.teal, bg: COLORS.tealLight, image: "/uct-seal.jpg", imageAlt: "University of Cape Town seal", imageFit: "contain", imagePosition: "center" },
-  { initials: "UCT", name: "UCT INF3011F Team 11 and Team 18", role: "Academic supervisors & advisors", color: COLORS.purple, bg: COLORS.purpleLight, image: "/uct-seal.jpg", imageAlt: "University of Cape Town seal", imageFit: "contain", imagePosition: "center" },
+  { initials: "GK", name: "Gary King",  color: COLORS.teal, bg: COLORS.tealLight, image: "/gary-king.jpg", imageAlt: "Gary King", imageFit: "cover", imagePosition: "center" },
+  { initials: "RM", name: "Dr Rivca Marais",  color: COLORS.pink, bg: COLORS.pinkLight, image: "/rivca.jpeg", imageAlt: "Rivca Marais", imageFit: "cover", imagePosition: "center 20%" },
+  { initials: "JJ", name: "Dr Jennifer Jansen",  color: COLORS.purple, bg: COLORS.purpleLight, image: "/jenny.jpeg", imageAlt: "Jennifer Jansen", imageFit: "cover", imagePosition: "center 30%" },
+  { initials: "SF", name: "Ms Satara Ferreira",  color: COLORS.maroon, bg: COLORS.maroonLight, image: "/satara.jpeg", imageAlt: "Satara Ferreira", imageFit: "cover", imagePosition: "center 20%" },
+  { initials: "T19", name: "UCT INF3003W Team 19", color: COLORS.teal, bg: COLORS.tealLight, image: "/uct-seal.jpg", imageAlt: "University of Cape Town seal", imageFit: "contain", imagePosition: "center" },
+  { initials: "UCT", name: "UCT INF3011F Team 11 and Team 18",  color: COLORS.purple, bg: COLORS.purpleLight, image: "/uct-seal.jpg", imageAlt: "University of Cape Town seal", imageFit: "contain", imagePosition: "center" },
 ];
  
 function TeamSection() {

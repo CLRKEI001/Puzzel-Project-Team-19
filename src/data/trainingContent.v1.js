@@ -308,10 +308,10 @@ export const TRAINING_MODULES_CONTENT = {
         type: "phasePipeline",
         title: "How The PuzzleBox was developed — four phases",
         phases: [
-          { n: 1, name: "Conceptualisation", icon: "💡", methods: ["Literature review", "Consultations", "Theoretical framework", "Domain & item mapping"], outcome: "Concept & blueprint defined" },
-          { n: 2, name: "Design & Development", icon: "⚙️", methods: ["Item development", "Translation & adaptation", "Expert review", "Prototyping"], outcome: "Pilot-ready tool" },
-          { n: 3, name: "Piloting", icon: "👥", methods: ["196 children (65 + 60 + 71)", "Item analysis & EFA", "Refine tool", "3 rounds of piloting", "Item selection"], outcome: "Final item set selected" },
-          { n: 4, name: "Standardisation", icon: "📈", methods: ["327 children", "Psychometric analysis", "Reliability & validity testing", "Cut points", "Final review"], outcome: "Standardised tool" },
+          { n: 1, name: "Conceptualisation", icon: "", methods: ["Literature review", "Consultations", "Theoretical framework", "Domain & item mapping"], outcome: "Concept & blueprint defined" },
+          { n: 2, name: "Design & Development", icon: "", methods: ["Item development", "Translation & adaptation", "Expert review", "Prototyping"], outcome: "Pilot-ready tool" },
+          { n: 3, name: "Piloting", icon: "", methods: ["196 children (65 + 60 + 71)", "Item analysis & EFA", "Refine tool", "3 rounds of piloting", "Item selection"], outcome: "Final item set selected" },
+          { n: 4, name: "Standardisation", icon: "", methods: ["327 children", "Psychometric analysis", "Reliability & validity testing", "Cut points", "Final review"], outcome: "Standardised tool" },
         ],
       },
       {

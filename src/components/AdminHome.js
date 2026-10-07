@@ -1335,7 +1335,7 @@ export default function AdminHome({ user, profile }) {
                     style={{ marginBottom: 0 }}
                   >
                     <div className="th-quicklink-icon">
-                      👧
+                      
                     </div>
 
                     <div>

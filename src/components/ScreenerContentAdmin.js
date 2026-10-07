@@ -222,7 +222,7 @@ export default function ScreenerContentAdmin() {
           </div>
         ) : sorted.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">🧩</div>
+            <div className="empty-state-icon"></div>
             <div className="empty-state-title">No sections yet</div>
             <div className="empty-state-sub">Add the first section of the screener to get started.</div>
           </div>

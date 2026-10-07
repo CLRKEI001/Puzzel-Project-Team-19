@@ -1740,7 +1740,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                       : openFlaggedStudents
                           .slice(0, 5)
                           .map((c) => ({
-                            icon: "🚩",
+                            icon: "",
                             color: "#E8175D",
                             title: c.name,
                             meta: c.school || t.flagsCardSub,
@@ -1808,7 +1808,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                   >
 
                     <div className="th-quicklink-icon">
-                      🧩
+                      
                     </div>
 
                     <div>
@@ -1840,7 +1840,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                   >
 
                     <div className="th-quicklink-icon">
-                      👥
+                      
                     </div>
 
                     <div>
@@ -1870,7 +1870,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                   >
 
                     <div className="th-quicklink-icon">
-                      ➕
+                      
                     </div>
 
                     <div>
@@ -1902,7 +1902,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                   >
 
                     <div className="th-quicklink-icon">
-                      🕘
+                      
                     </div>
 
                     <div>
@@ -2459,7 +2459,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
 
                 <div className="empty-state">
                   <div className="empty-state-icon">
-                    🧩
+                    
                   </div>
                   <div className="empty-state-title">
                     {t.historyEmptyTitle}

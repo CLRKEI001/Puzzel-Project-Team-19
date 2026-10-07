@@ -205,7 +205,7 @@ export default function TrainingModulesAdmin() {
           </div>
         ) : sorted.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">🧩</div>
+            <div className="empty-state-icon"></div>
             <div className="empty-state-title">No modules yet</div>
             <div className="empty-state-sub">Add the first training module to get started.</div>
           </div>

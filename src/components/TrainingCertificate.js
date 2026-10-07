@@ -18,7 +18,7 @@ export default function TrainingCertificate({ name, tierLabel, issuedAt }) {
         border: `2px solid ${COLORS.teal}`, position: "relative", overflow: "hidden",
       }}
     >
-      <div style={{ fontSize: 40, marginBottom: 6 }}>🏆</div>
+      <div style={{ fontSize: 40, marginBottom: 6 }}></div>
       <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: COLORS.teal, marginBottom: 10 }}>
         Certificate of Completion
       </div>

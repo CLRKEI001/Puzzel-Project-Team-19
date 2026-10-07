@@ -807,7 +807,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
 
   const [lang, setLang] = useState("en");
 
-  const [messages, setMessages] = useState([]);
+  const [rawMessages, setMessages] = useState([]);
   const [loadingMessages, setLoadingMessages] = useState(true);
 
   const [students, setStudents] = useState([]);
@@ -844,7 +844,23 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
 
   // This teacher's own PuzzleBox screening sessions (in_progress /
   // awaiting_review / reviewed), for the Screening History tab.
-  const [sessions, setSessions] = useState([]);
+  const [rawSessions, setSessions] = useState([]);
+
+  // Messages and screenings store the child's student number in child_name
+  // (real names are kept private). This teacher may see their own
+  // children's real names, so swap them back in for display.
+  const realNameById = useMemo(
+    () => new Map(students.map((s) => [s.id, s.name])),
+    [students]
+  );
+  const messages = useMemo(
+    () => rawMessages.map((m) => ({ ...m, childName: realNameById.get(m.childId) || m.childName })),
+    [rawMessages, realNameById]
+  );
+  const sessions = useMemo(
+    () => rawSessions.map((x) => ({ ...x, childName: realNameById.get(x.childId) || x.childName })),
+    [rawSessions, realNameById]
+  );
   const [loadingSessions, setLoadingSessions] = useState(true);
 
   // The session (if any) whose psychologist feedback is open in the
@@ -957,8 +973,10 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
     const loadStudents = async () => {
       setLoadingStudents(true);
 
+      // children_named = children + the real name, which only this
+      // teacher can read (admins/psychologists see student numbers).
       const { data, error } = await supabase
-        .from("children")
+        .from("children_named")
         .select("*")
         .order("created_at", {
           ascending: false,
@@ -1128,22 +1146,15 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
 
 
   // ============================================================
-  // MY CLASS — scope the shared `children` table down to this
-  // teacher's own students. Prefer the real `teacher_email` column
-  // (migration 009, stamped on every new child going forward). Older
-  // rows created before that column existed have it as NULL, so for
-  // those specifically we still fall back to the old examiner-name
-  // match rather than losing them from every teacher's class.
+  // MY CLASS — this teacher's own students (teacher_uid). The database
+  // only returns a teacher's own children anyway (supabase/database/04);
+  // filtering here as well keeps the screen correct on its own.
   // ============================================================
 
-  const myStudents = useMemo(() => {
-    const mine = displayName.trim().toLowerCase();
-    return students.filter((s) =>
-      s.teacherEmail
-        ? s.teacherEmail === user?.email
-        : (s.examiner || "").trim().toLowerCase() === mine
-    );
-  }, [students, displayName, user?.email]);
+  const myStudents = useMemo(
+    () => students.filter((s) => s.teacherUid === user?.uid),
+    [students, user?.uid]
+  );
 
   // Flags raised on this teacher's own children — flagged and not
   // yet resolved, same definition FlagsAlerts/AdminHome use elsewhere.
@@ -1353,9 +1364,9 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
         data: existing,
         error: checkError,
       } = await supabase
-        .from("children")
+        .from("children_named")
         .select("id")
-        .eq("name", newStudent.name);
+        .ilike("real_name", newStudent.name.trim());
 
       if (checkError) {
         console.error(

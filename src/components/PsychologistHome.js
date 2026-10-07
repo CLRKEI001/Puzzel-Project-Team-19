@@ -6,7 +6,7 @@
 // everything stays linked together rather than living on separate
 // disconnected screens.
  
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "../supabaseClient";
 import { mapChildRow, mapFollowUpRow, mapMessageRow, mapPuzzleboxScreeningRow } from "../lib/mappers";
 import RoleSidebar from "./RoleSidebar";
@@ -218,14 +218,14 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
   const [activePage, setActivePage] = useState("home");
   const [lang, setLang] = useState("en");
   const [children, setChildren] = useState([]);
-  const [followUps, setFollowUps] = useState([]);
+  const [rawFollowUps, setFollowUps] = useState([]);
   const [messageCount, setMessageCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
 
   // ── Screening review notifications ──────────────────────────────
-  const [notifications, setNotifications] = useState([]);
+  const [rawNotifications, setNotifications] = useState([]);
   const [reviewing, setReviewing] = useState(null); // the notification (message row) open in the review modal
   const [reviewScreening, setReviewScreening] = useState(null); // the full puzzlebox_screenings row for it
   const [loadingReview, setLoadingReview] = useState(false);
@@ -248,7 +248,8 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
     let isMounted = true;
 
     const loadChildren = async () => {
-      const { data, error } = await supabase.from("children").select("*");
+      // children_named = children + the real name (psychologists may see it).
+      const { data, error } = await supabase.from("children_named").select("*");
       if (error) { console.error("Error loading children:", error); return; }
       if (isMounted) {
         setChildren(data.map(mapChildRow));
@@ -311,6 +312,17 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
     };
   }, []);
   const displayName = profile?.name || user?.email?.split("@")[0] || "Psychologist";
+
+  // Follow-ups, messages and screenings store the child's student number in
+  // child_name (admins only ever see numbers). Psychologists may see names,
+  // so swap the real name back in for display.
+  const childById = useMemo(() => new Map(children.map((c) => [c.id, c])), [children]);
+  const withRealName = useCallback(
+    (row) => (row && childById.get(row.childId) ? { ...row, childName: childById.get(row.childId).name } : row),
+    [childById]
+  );
+  const followUps = useMemo(() => rawFollowUps.map(withRealName), [rawFollowUps, withRealName]);
+  const notifications = useMemo(() => rawNotifications.map(withRealName), [rawNotifications, withRealName]);
  
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -346,7 +358,7 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
     if (notification.screeningId) {
       const { data, error } = await supabase.from("puzzlebox_screenings").select("*").eq("id", notification.screeningId).single();
       if (!error && data) {
-        const mapped = mapPuzzleboxScreeningRow(data);
+        const mapped = withRealName(mapPuzzleboxScreeningRow(data));
         setReviewScreening(mapped);
         if (mapped.reviewVerdict) setVerdict(mapped.reviewVerdict);
         if (mapped.reviewNotes) setReviewNotes(mapped.reviewNotes);
@@ -447,7 +459,8 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
 
       const verdictLabel = verdict === "fine" ? t.verdictFine : t.verdictConcerns;
       const body =
-        `${reviewScreening.childName}'s PuzzleBox screening has been reviewed. Outcome: ${verdictLabel}.` +
+        // Student number, not the name: admins can read every message.
+        `The PuzzleBox screening for ${childById.get(reviewScreening.childId)?.studentNumber || "this child"} has been reviewed. Outcome: ${verdictLabel}.` +
         (reviewNotes ? ` ${reviewNotes}` : "");
 
       // The teacher who submitted this screening always gets a message

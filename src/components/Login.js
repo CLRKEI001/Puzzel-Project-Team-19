@@ -148,13 +148,13 @@ export default function Login({ onVerified, onBack, tier = null, initialMode = "
       // A lightweight duplicate check before creating the Firebase account —
       // makes it harder to flood the admin's Pending Approvals list with
       // near-identical fake accounts under the same staff/teacher number.
-      const { data: existing, error: dupError } = await supabase
-        .from("users")
-        .select("id")
-        .eq("staff_number", reg.staffNumber.trim())
-        .maybeSingle();
+      // A new visitor can't read the users table, so ask the database a
+      // yes/no question instead (supabase/database/01: staff_number_taken).
+      const { data: taken, error: dupError } = await supabase.rpc("staff_number_taken", {
+        p_staff_number: reg.staffNumber.trim(),
+      });
       if (dupError) throw dupError;
-      if (existing) {
+      if (taken) {
         setError("That staff / teacher number is already registered. Try signing in, or contact your administrator.");
         setLoading(false);
         return;

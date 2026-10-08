@@ -19,6 +19,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "../supabaseClient";
 import { useScreenerContent, scoreFromAgeTable } from "../lib/useScreenerContent";
+import { saveDraft, getDraft, deleteDraft, saveOfflineSession } from "../offline/offlineVault";
 import { SinglePuzzlePiece } from "./puzzlePiece";
 import "./PuzzleBoxScreener.css";
 
@@ -74,23 +75,34 @@ const T = {
     submitted: "Screening Submitted",
     submittedSub: "has been saved to",
     submittedBackHome: "Back to My Home",
+    submittedOffline: "is saved on this device. It will upload and go to the psychologist for review automatically the next time you're online.",
     recordTime: "Record Time",
     min: "min", sec: "sec",
     computedScore: "Score",
     exit: "Exit",
     exitConfirm: "Leave the screening? Your progress has already been saved and you can resume later.",
+    exitConfirmOffline: "Leave the screening? Your progress is saved on this device and you can resume later, even without signal.",
     notAgeSupported: "This screener's age-based scoring covers 5 and 6 year olds — a raw time/count is still recorded for this child, but no 0–2 score can be derived automatically.",
     checklistCount: "checked",
   },
 };
 
+// Collects every change made within `delay` ms and saves them together.
+// (It used to keep only the last call, so e.g. the puzzle timer's save
+// cancelled the answer saves made in the same moment.)
 function useDebouncedSave(fn, delay = 700) {
   const timer = useRef(null);
+  const pending = useRef({});
   const savedFn = useRef(fn);
   savedFn.current = fn;
-  return useCallback((...args) => {
+  return useCallback((patch) => {
+    pending.current = { ...pending.current, ...patch };
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => savedFn.current(...args), delay);
+    timer.current = setTimeout(() => {
+      const merged = pending.current;
+      pending.current = {};
+      savedFn.current(merged);
+    }, delay);
   }, [delay]);
 }
 
@@ -131,13 +143,20 @@ function formatTimer(ms) {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-export default function PuzzleBoxScreener({ user, profile, onExit, initialChild }) {
+// `offline` = { screener, licence } from OfflineScreenerShell. When set, the
+// screener works entirely from the device: children and content come from the
+// encrypted offline package, progress autosaves to the device, and the
+// finished screening is queued to upload (with the psychologist's
+// notification) the next time there's signal. Everything else — questions,
+// scoring, timer, layout — is identical to online.
+export default function PuzzleBoxScreener({ user, profile, onExit, initialChild, offline }) {
   const t = T.en;
+  const isOffline = !!offline;
   // Content — sections, questions, scoring tables — is admin-managed via
   // Admin → Screener Content (see supabase/migrations/007_screener_content.sql).
   // Falls back to the original hardcoded content if Supabase can't be
   // reached, so a screening in progress never breaks because of that.
-  const { content, interpretationBands, loading: contentLoading } = useScreenerContent();
+  const { content, interpretationBands, loading: contentLoading } = useScreenerContent(offline?.screener);
 
   // When a caller (e.g. the "Screen" button on a specific child's row)
   // hands us a child up front, skip straight past the search/select step.
@@ -168,8 +187,13 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
   const [timerMs, setTimerMs] = useState(0);
   const timerIntervalRef = useRef(null);
 
-  const teacherEmail = user?.email || "";
-  const teacherName = profile?.name || user?.email?.split("@")[0] || "Educator";
+  const offlineTeacher = offline?.screener?.teacher;
+  const teacherEmail = offlineTeacher?.email || user?.email || "";
+  const teacherName = offlineTeacher?.name || profile?.name || user?.email?.split("@")[0] || "Educator";
+
+  // Offline: always the latest in-progress draft, so autosaves never write
+  // an older copy over a newer one.
+  const draftRef = useRef(null);
 
   // content is null while still loading from Supabase (see
   // useScreenerContent above) — sections/currentSection fall back to
@@ -187,6 +211,18 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
   useEffect(() => {
     if (view !== "select") return;
     let active = true;
+    if (isOffline) {
+      // This educator's consent-verified children, from the offline package
+      const q = search.trim().toLowerCase();
+      const all = offline.screener.children || [];
+      const matches = q
+        ? all.filter((c) =>
+            [c.name, c.full_name, c.school, c.student_number].some((v) => (v || "").toLowerCase().includes(q)))
+        : all;
+      setChildren(matches.slice(0, 50));
+      setLoadingChildren(false);
+      return () => { active = false; };
+    }
     setLoadingChildren(true);
     const run = async () => {
       // Scoped to this teacher's own children — same rule TeacherHome's
@@ -224,6 +260,11 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
   useEffect(() => {
     if (!initialChild) return;
     let active = true;
+    if (isOffline) {
+      getDraft(initialChild.id).then((d) => { if (active) setExistingSession(d); });
+      setPriorScreenings([]);
+      return () => { active = false; };
+    }
     (async () => {
       const { data } = await supabase
         .from("puzzlebox_screenings")
@@ -253,6 +294,14 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
   const selectChild = async (child) => {
     setSelectedChild(child);
     setError("");
+    if (isOffline) {
+      // Past screenings live in Supabase, so offline only a half-done one
+      // on this device can be shown.
+      setExistingSession(await getDraft(child.id));
+      setPriorScreenings([]);
+      setView("confirm");
+      return;
+    }
     const { data } = await supabase
       .from("puzzlebox_screenings")
       .select("*")
@@ -277,9 +326,41 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
   const beginScreening = async (resume) => {
     setError("");
     if (resume && existingSession) {
+      draftRef.current = existingSession;
       setSession(existingSession);
       setResponses(existingSession.responses || {});
       setObservations(existingSession.observations || "");
+      setView("form");
+      return;
+    }
+
+    if (isOffline) {
+      // Same fields the online insert below sets, kept on the device
+      const draft = {
+        id: crypto.randomUUID(),
+        child_id: selectedChild.id,
+        child_name: selectedChild.name,
+        school: selectedChild.school,
+        child_age: selectedChild.age,
+        teacher_email: teacherEmail,
+        teacher_name: teacherName,
+        content_version: content?.version || "1.0",
+        status: "in_progress",
+        responses: {},
+        observations: "",
+        started_at: new Date().toISOString(),
+      };
+      try {
+        await saveDraft(draft);
+      } catch (e) {
+        setError("Could not start the screening on this device: " + e.message);
+        return;
+      }
+      draftRef.current = draft;
+      setSession(draft);
+      setResponses({});
+      setObservations("");
+      setSectionIndex(0);
       setView("form");
       return;
     }
@@ -315,12 +396,22 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
   const persist = useCallback(async (patch) => {
     if (!session?.id) return;
     setSaveStatus("saving");
+    if (isOffline) {
+      draftRef.current = { ...draftRef.current, ...patch };
+      try {
+        await saveDraft(draftRef.current);
+        setSaveStatus("saved");
+      } catch {
+        setSaveStatus("error");
+      }
+      return;
+    }
     const { error: saveErr } = await supabase
       .from("puzzlebox_screenings")
       .update(patch)
       .eq("id", session.id);
     setSaveStatus(saveErr ? "error" : "saved");
-  }, [session?.id]);
+  }, [session?.id, isOffline]);
 
   const debouncedPersist = useDebouncedSave(persist, 700);
 
@@ -450,6 +541,44 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
   const doSubmit = async () => {
     const rawScore = computeRawScore(content, responses);
     const band = computeBand(interpretationBands, selectedChild?.age, rawScore);
+
+    if (isOffline) {
+      // Exactly what the online submit writes, plus the message it sends,
+      // stored encrypted until there's signal (see offlineVault.syncOfflineSessions)
+      const record = {
+        ...draftRef.current,
+        responses,
+        observations,
+        status: "awaiting_review",
+        completed_at: new Date().toISOString(),
+        raw_score: rawScore,
+        interpretation_band: band?.band || null,
+        content_snapshot: content,
+        _notify: {
+          child_id: selectedChild.id,
+          child_name: selectedChild.name,
+          child_score: rawScore,
+          school: selectedChild.school,
+          teacher_email: teacherEmail,
+          teacher_name: teacherName,
+          diagnosis:
+            `${teacherName} finished a PuzzleBox screening for ${selectedChild.name} at ${selectedChild.school || "their school"}.` +
+            (band ? ` Result: ${band.label}.` : "") +
+            " Open it to review and share the outcome.",
+        },
+      };
+      try {
+        await saveOfflineSession(record);
+        await deleteDraft(selectedChild.id);
+      } catch (e) {
+        setError("Could not save the screening on this device: " + e.message);
+        return;
+      }
+      setShowSubmitConfirm(false);
+      setView("submitted");
+      return;
+    }
+
     const { error: submitErr } = await supabase
       .from("puzzlebox_screenings")
       .update({
@@ -702,7 +831,11 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
         <div className="pbs-body pbs-body-narrow pbs-submitted">
           <div className="pbs-submitted-icon">✓</div>
           <h2 className="pbs-h2">{t.submitted}</h2>
-          <p className="pbs-sub">{selectedChild?.name} {t.submittedSub} {selectedChild?.school || "the child's record"}.</p>
+          <p className="pbs-sub">
+            {isOffline
+              ? `${selectedChild?.name}'s screening ${t.submittedOffline}`
+              : `${selectedChild?.name} ${t.submittedSub} ${selectedChild?.school || "the child's record"}.`}
+          </p>
           <button className="btn btn-teal" onClick={onExit}>{t.submittedBackHome}</button>
         </div>
       </div>
@@ -835,7 +968,7 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild 
       {showExitConfirm && (
         <div className="modal-overlay" onClick={() => setShowExitConfirm(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <p>{t.exitConfirm}</p>
+            <p>{isOffline ? t.exitConfirmOffline : t.exitConfirm}</p>
             <div className="pbs-confirm-actions">
               <button className="btn btn-ghost" onClick={() => setShowExitConfirm(false)}>{t.cancel}</button>
               <button className="btn btn-teal" onClick={onExit}>{t.exit}</button>

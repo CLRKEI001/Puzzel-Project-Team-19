@@ -42,12 +42,105 @@ function rangeRowsToTestRows(rows) {
     }));
 }
 
-export function useScreenerContent() {
+// Turns the raw screener_* table rows into the shape PuzzleBoxScreener.js
+// expects. Shared by the online hook below and by offline mode, which gets
+// the same rows inside the encrypted offline package — so scoring is
+// identical whether a screening is done online or offline.
+// Returns null when there are no sections (caller falls back to v1 content).
+export function buildScreenerContent({ meta, sections, questions, scoreTables, bandRows }) {
+  if (!sections || sections.length === 0) return null;
+
+  const tablesByQuestion = {};
+  for (const row of scoreTables || []) {
+    tablesByQuestion[row.question_id] = tablesByQuestion[row.question_id] || {};
+    tablesByQuestion[row.question_id][row.age] = tablesByQuestion[row.question_id][row.age] || [];
+    tablesByQuestion[row.question_id][row.age].push(row);
+  }
+
+  const questionsBySection = {};
+  for (const q of questions || []) {
+    questionsBySection[q.section_id] = questionsBySection[q.section_id] || [];
+    const ageRows = tablesByQuestion[q.id];
+    let ageTable = null;
+    if (ageRows) {
+      ageTable = {};
+      for (const [age, rows] of Object.entries(ageRows)) {
+        ageTable[age] = rangeRowsToTestRows(rows);
+      }
+    }
+    questionsBySection[q.section_id].push({
+      id: q.id,
+      label: q.label,
+      instruction: q.instruction || undefined,
+      toPass: q.to_pass || undefined,
+      domain: q.domain_override || undefined,
+      scoringType: q.scoring_type,
+      needsConfirmation: !!q.needs_confirmation,
+      checklistOptions: q.checklist_options && q.checklist_options.length ? q.checklist_options : undefined,
+      ageTable,
+    });
+  }
+
+  const builtSections = sections.map((s) => ({
+    id: s.id,
+    domain: s.domain,
+    title: s.title,
+    description: s.description || undefined,
+    isPuzzleTimerSection: !!s.is_puzzle_timer_section,
+    questions: questionsBySection[s.id] || [],
+  }));
+
+  const bandsByAge = {};
+  for (const row of bandRows || []) {
+    bandsByAge[row.age] = bandsByAge[row.age] || [];
+    bandsByAge[row.age].push({
+      band: row.band_key,
+      label: row.label,
+      min: row.min_score ?? undefined,
+      max: row.max_score ?? undefined,
+    });
+  }
+
+  return {
+    content: {
+      version: meta?.version || "1.0",
+      status: "published",
+      instructions: meta?.instructions || "",
+      scoringLegend: meta?.scoring_legend || [],
+      sections: builtSections,
+    },
+    bands: Object.keys(bandsByAge).length > 0 ? bandsByAge : fallbackBands,
+  };
+}
+
+// Offline package (from the issue-offline-package edge function) → the same
+// row shapes buildScreenerContent reads.
+function buildFromOfflinePackage(pkg) {
+  return buildScreenerContent({
+    meta: { version: pkg.version, instructions: pkg.instructions, scoring_legend: pkg.scoringLegend },
+    sections: pkg.sections,
+    questions: pkg.questions,
+    scoreTables: pkg.scoreTables,
+    bandRows: pkg.interpretationBands,
+  });
+}
+
+// Pass `offlinePackage` (the decrypted offline screener) to build the content
+// from the device instead of fetching it from Supabase.
+export function useScreenerContent(offlinePackage) {
   const [content, setContent] = useState(null); // null = still loading
   const [bands, setBands] = useState(null);
   const [error, setError] = useState("");
 
   const refresh = useCallback(async () => {
+    if (offlinePackage) {
+      const built = buildFromOfflinePackage(offlinePackage);
+      setError("");
+      setContent(built ? built.content : puzzleBoxContentV1);
+      setBands(built ? built.bands : fallbackBands);
+      return;
+    }
+
     const [
       { data: meta, error: metaErr },
       { data: sections, error: secErr },
@@ -71,75 +164,17 @@ export function useScreenerContent() {
       return;
     }
 
-    if (!sections || sections.length === 0) {
+    const built = buildScreenerContent({ meta, sections, questions, scoreTables, bandRows });
+    setError("");
+    if (!built) {
       // Migrations 007/008 not run yet, or content table cleared.
-      setError("");
       setContent(puzzleBoxContentV1);
       setBands(fallbackBands);
       return;
     }
-
-    const tablesByQuestion = {};
-    for (const row of scoreTables || []) {
-      tablesByQuestion[row.question_id] = tablesByQuestion[row.question_id] || {};
-      tablesByQuestion[row.question_id][row.age] = tablesByQuestion[row.question_id][row.age] || [];
-      tablesByQuestion[row.question_id][row.age].push(row);
-    }
-
-    const questionsBySection = {};
-    for (const q of questions || []) {
-      questionsBySection[q.section_id] = questionsBySection[q.section_id] || [];
-      const ageRows = tablesByQuestion[q.id];
-      let ageTable = null;
-      if (ageRows) {
-        ageTable = {};
-        for (const [age, rows] of Object.entries(ageRows)) {
-          ageTable[age] = rangeRowsToTestRows(rows);
-        }
-      }
-      questionsBySection[q.section_id].push({
-        id: q.id,
-        label: q.label,
-        instruction: q.instruction || undefined,
-        toPass: q.to_pass || undefined,
-        domain: q.domain_override || undefined,
-        scoringType: q.scoring_type,
-        needsConfirmation: !!q.needs_confirmation,
-        checklistOptions: q.checklist_options && q.checklist_options.length ? q.checklist_options : undefined,
-        ageTable,
-      });
-    }
-
-    const builtSections = sections.map((s) => ({
-      id: s.id,
-      domain: s.domain,
-      title: s.title,
-      description: s.description || undefined,
-      isPuzzleTimerSection: !!s.is_puzzle_timer_section,
-      questions: questionsBySection[s.id] || [],
-    }));
-
-    const bandsByAge = {};
-    for (const row of bandRows || []) {
-      bandsByAge[row.age] = bandsByAge[row.age] || [];
-      bandsByAge[row.age].push({
-        band: row.band_key,
-        label: row.label,
-        min: row.min_score ?? undefined,
-        max: row.max_score ?? undefined,
-      });
-    }
-
-    setError("");
-    setContent({
-      version: meta?.version || "1.0",
-      status: "published",
-      instructions: meta?.instructions || "",
-      scoringLegend: meta?.scoring_legend || [],
-      sections: builtSections,
-    });
-    setBands(Object.keys(bandsByAge).length > 0 ? bandsByAge : fallbackBands);
-  }, []);
+    setContent(built.content);
+    setBands(built.bands);
+  }, [offlinePackage]);
 
   useEffect(() => { refresh(); }, [refresh]);
 

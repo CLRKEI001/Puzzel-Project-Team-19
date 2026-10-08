@@ -718,7 +718,7 @@ export function Footer({ site = "tpp", onNavigate, onLoginClick }) {
           ))}
         </div>
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 24, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.22)" }}>© 2026 {brand.key === "tpp" ? "The Puzzle Project" : `${brand.name} · The Puzzle Project`}. All rights reserved.</p>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.22)" }}>©️ 2026 {brand.key === "tpp" ? "The Puzzle Project" : `${brand.name} · The Puzzle Project`}. All rights reserved.</p>
           <p style={{ fontSize: 12, color: "rgba(255,255,255,0.22)" }}>Intellectual property of Dr R. Marais &amp; Dr J. Jansen (2025)</p>
         </div>
       </div>

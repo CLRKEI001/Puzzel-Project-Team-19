@@ -200,6 +200,7 @@
   position: sticky; bottom: 0;
 }
 
+
 .pbs-submitted { text-align: center; padding-top: 60px; }
 .pbs-submitted-icon {
   width: 56px; height: 56px; border-radius: 50%; background: var(--teal-lt); color: var(--teal);

@@ -74,9 +74,13 @@ export const FONTS = {
 
 const activeTheme = FONT_THEMES[ACTIVE_FONT_THEME] || FONT_THEMES.friendly;
 
+// --cream is the "alternate section" background used across the public pages
+// (the name is historical). Sponsor wants brand colours only, so instead of a
+// beige it's a very pale wash of maroon, the Puzzle Project wordmark colour.
+// Keep it around 4–6%: maroon is dark, so more turns it pinkish-grey.
 export const PUBLIC_FONT_IMPORT = `
   @import url('${activeTheme.url}');
-  :root { --font-heading: ${activeTheme.heading}; --font-body: ${activeTheme.body}; --cream: #FFFFFF; }
+  :root { --font-heading: ${activeTheme.heading}; --font-body: ${activeTheme.body}; --cream: color-mix(in srgb, var(--maroon) 5%, #ffffff); }
   [data-theme="dark"] { --cream: #17172A; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: var(--font-body); }
@@ -334,8 +338,10 @@ export function SectionHeading({ eyebrow, title, lead, align = "left", maxWidth 
 // wireframes). `logoSrc` is the path to a logo image in /public — while it is
 // null a colourful typographic wordmark is drawn instead, so dropping in the
 // real Puzzle Box / Puzzle Play artwork later is a one-line change here.
+// `logoSrcOnDark` is an optional light version used when the logo sits on
+// something dark (the homepage video). logo1.png is the one the footer uses.
 export const BRANDS = {
-  tpp: { key: "tpp", name: "The Puzzle Project", home: "home", logoSrc: "/logo-puzzleproject.png", wide: true, logoH: 92 },
+  tpp: { key: "tpp", name: "The Puzzle Project", home: "home", logoSrc: "/logo-puzzleproject.png", logoSrcOnDark: "/logo1.png", wide: true, logoH: 92 },
   pb:  { key: "pb",  name: "The Puzzle Box",      home: "pb-home", logoSrc: "/logo-puzzlebox.png", wide: true, logoH: 72,
          wordmark: { small: "the", big: "PUZZLE", tail: "BOX" } },
   pp:  { key: "pp",  name: "Puzzle Play",         home: "pp-home", logoSrc: "/logo-puzzleplay.png", wide: true,
@@ -344,20 +350,30 @@ export const BRANDS = {
 
 const WORDMARK_COLORS = [COLORS.teal, COLORS.pink, COLORS.orange, COLORS.purple, COLORS.teal, COLORS.pink];
 
+// Soft light halo so a dark logo still reads on dark footage, for brands
+// that don't have a light logo file yet.
+const ON_DARK_LOGO_FILTER = "drop-shadow(0 0 1.5px rgba(255,255,255,0.9)) drop-shadow(0 0 6px rgba(255,255,255,0.5))";
+
 /**
  * Logo for whichever site the visitor is on. The Puzzle Project uses its
  * image; The Puzzle Box and Puzzle Play fall back to a wordmark until their
  * own logo files exist (see BRANDS above).
+ * `onDark`: the logo is sitting on something dark — use the light logo file
+ * if the brand has one, otherwise add a light halo.
  */
 export function BrandLogo({ site = "tpp", height = 115, width = 125, onDark = false, style = {} }) {
   const brand = BRANDS[site] || BRANDS.tpp;
 
   if (brand.logoSrc) {
+    const src = onDark && brand.logoSrcOnDark ? brand.logoSrcOnDark : brand.logoSrc;
+    const darkFilter = onDark && !brand.logoSrcOnDark ? { filter: ON_DARK_LOGO_FILTER } : {};
     return (
       <img
-        src={`${process.env.PUBLIC_URL || ""}${brand.logoSrc}`}
+        src={`${process.env.PUBLIC_URL || ""}${src}`}
         alt={brand.name}
-        style={brand.wide ? { height: brand.logoH || Math.round(height * 0.52), width: "auto", display: "block", ...style } : { height, width, objectFit: "contain", display: "block", ...style }}
+        style={brand.wide
+          ? { height: brand.logoH || Math.round(height * 0.52), width: "auto", display: "block", transition: "filter 0.3s ease", ...darkFilter, ...style }
+          : { height, width, objectFit: "contain", display: "block", ...darkFilter, ...style }}
       />
     );
   }
@@ -378,7 +394,7 @@ export function BrandLogo({ site = "tpp", height = 115, width = 125, onDark = fa
         {big.split("").map((ch, i) => (
           <span key={i} style={{ color: WORDMARK_COLORS[i % WORDMARK_COLORS.length] }}>{ch}</span>
         ))}
-        <span style={{ color: onDark ? COLORS.white : COLORS.maroon }}>{tail}</span>
+        <span style={{ color: onDark ? ON_DARK : COLORS.maroon }}>{tail}</span>
       </span>
     </div>
   );
@@ -490,10 +506,11 @@ export function Navbar({ site = "tpp", current, onNavigate, onLoginClick, overla
         padding: isMobile ? "0 20px" : "0 40px",
         gap: 24,
       }}>
-        {/* Logo always returns to this site's home page */}
+        {/* Logo always returns to this site's home page. While the nav is
+            transparent over the video it switches to the light logo. */}
         <div onClick={() => handleClick(brand.home)}
           style={{ cursor: "pointer", display: "flex", alignItems: "center", flexShrink: 0 }}>
-          <BrandLogo site={site} height={isMobile ? 125 : 115} width={125} />
+          <BrandLogo site={site} height={isMobile ? 125 : 115} width={125} onDark={!solid} />
         </div>
 
         {!isMobile && (
@@ -598,7 +615,7 @@ export function Navbar({ site = "tpp", current, onNavigate, onLoginClick, overla
             })}
             <div style={{ height: 1, background: COLORS.border, margin: "10px 0" }} />
             <button onClick={handleLoginClick} style={{
-              background: COLORS.teal, color: COLORS.white, border: "none",
+              background: COLORS.teal, color: ON_DARK, border: "none",
               padding: "14px", borderRadius: 10, width: "100%",
               cursor: "pointer", fontWeight: 700, fontSize: 15, fontFamily: "inherit",
             }}>
@@ -691,7 +708,7 @@ export function Footer({ site = "tpp", onNavigate, onLoginClick }) {
               {col.links.map(l => (
                 <div key={l.label} onClick={l.action}
                   style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", marginBottom: 10, cursor: "pointer", transition: "color 0.15s" }}
-                  onMouseEnter={e => e.currentTarget.style.color = COLORS.white}
+                  onMouseEnter={e => e.currentTarget.style.color = ON_DARK}
                   onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.45)"}
                 >
                   {l.label}
@@ -731,7 +748,7 @@ export function CallToAction() {
         </p>
         <div style={{ display: "flex", justifyContent: "center", gap: 14, flexWrap: "wrap" }}>
           <button onClick={() => { window.location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Enquiry — The Puzzle Project")}`; }} style={{
-            padding: "14px 32px", background: COLORS.teal, color: COLORS.white,
+            padding: "14px 32px", background: COLORS.teal, color: ON_DARK,
             border: "none", borderRadius: 12, cursor: "pointer",
             fontWeight: 800, fontSize: 15, fontFamily: "inherit", transition: "all 0.2s",
           }}

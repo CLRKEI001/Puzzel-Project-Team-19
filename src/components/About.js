@@ -11,11 +11,15 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, BarChart, Bar, Legend,
 } from "recharts";
- 
+
 // About page, reworked to match the warmer home page: cream backgrounds,
 // centred header, softer cards and sections that fade in on scroll.
 // All copy is unchanged from the previous version except the page title.
- 
+
+// Soft orange wash for a section background. Mixed toward COLORS.white (not
+// literal white) so it stays a muted tone in dark mode, same as the home page.
+const ORANGE_LIGHT = `color-mix(in srgb, ${COLORS.orange} 10%, ${COLORS.white})`;
+
 // ---- Where it starts: the portrait from the project brief -----------------
 function WhereItStarts() {
   const isMobile = useIsMobile(860);
@@ -44,7 +48,7 @@ function WhereItStarts() {
             </figcaption>
           </figure>
         </Reveal>
- 
+
         <Reveal delay={0.12} style={{ textAlign: isMobile ? "center" : "left" }}>
           <p style={{ color: COLORS.teal, textTransform: "uppercase", fontWeight: 800, letterSpacing: "0.12em", marginBottom: 14, fontSize: 12 }}>
             Where it starts
@@ -74,14 +78,14 @@ function WhereItStarts() {
     </section>
   );
 }
- 
+
 // ---- The challenge: big numbers, no boxes --------------------------------
 const PROBLEM_STATS = [
   { value: "1 : 12 000", label: "Psychologist-to-child ratio in rural South Africa", color: COLORS.teal },
   { value: "70%", label: "Of children never receive a formal developmental screen", color: COLORS.pink },
   { value: "Age 5–6", label: "Critical window for early intervention", color: COLORS.purple },
 ];
- 
+
 function ProblemSection() {
   const isMobile = useIsMobile(760);
   return (
@@ -116,13 +120,13 @@ function ProblemSection() {
     </section>
   );
 }
- 
+
 // ---- Our impact: four public charts (PLACEHOLDER DATA) --------------------
 // All numbers below are illustrative. Replace them with verified programme
 // figures before going live (ask Gary which numbers he is happy to publish).
 const SHOW_PLACEHOLDER_NOTE = true;
 const ORANGE = "#F26522";
- 
+
 const IMPACT_TREND = [
   { month: "Jan", children: 120 }, { month: "Feb", children: 260 },
   { month: "Mar", children: 430 }, { month: "Apr", children: 640 },
@@ -130,13 +134,13 @@ const IMPACT_TREND = [
   { month: "Jul", children: 1480 }, { month: "Aug", children: 1830 },
   { month: "Sep", children: 2240 },
 ];
- 
+
 const IMPACT_OUTCOMES = [
   { name: "Back on track", value: 58, color: COLORS.teal },
   { name: "Improving with support", value: 29, color: ORANGE },
   { name: "Ongoing support", value: 13, color: COLORS.pink },
 ];
- 
+
 // lon / lat are approximate region centres, used to place pins on the map.
 const IMPACT_REGIONS = [
   { name: "Amathole", value: 640, color: COLORS.teal, lon: 27.4, lat: -32.5, label: "below" },
@@ -146,7 +150,7 @@ const IMPACT_REGIONS = [
   { name: "Joe Gqabi", value: 210, color: COLORS.teal, lon: 27.6, lat: -30.95, label: "above" },
   { name: "Sarah Baartman", value: 170, color: COLORS.purple, lon: 25.4, lat: -33.1, label: "below" },
 ];
- 
+
 const IMPACT_GROWTH = [
   { domain: "Cognitive", first: 43, after: 68 },
   { domain: "Fine motor", first: 45, after: 71 },
@@ -155,7 +159,7 @@ const IMPACT_GROWTH = [
   { domain: "Emotion", first: 44, after: 72 },
   { domain: "Moral", first: 39, after: 64 },
 ];
- 
+
 function ImpactTooltip({ active, payload, label, unit = "" }) {
   if (!active || !payload || !payload.length) return null;
   return (
@@ -173,7 +177,7 @@ function ImpactTooltip({ active, payload, label, unit = "" }) {
     </div>
   );
 }
- 
+
 function ImpactCard({ eyebrow, stat, statLabel, color, children, delay = 0 }) {
   const isMobile = useIsMobile(760);
   return (
@@ -203,7 +207,7 @@ function ImpactCard({ eyebrow, stat, statLabel, color, children, delay = 0 }) {
     </Reveal>
   );
 }
- 
+
 // ---- Eastern Cape map ------------------------------------------------------
 // Simplified outline of the Eastern Cape (lon, lat), drawn for display only.
 const EC_OUTLINE = [
@@ -223,11 +227,11 @@ const project = ([lon, lat]) => [
 ];
 const EC_PATH =
   EC_OUTLINE.map((pt, i) => `${i ? "L" : "M"}${project(pt).map((n) => n.toFixed(1)).join(" ")}`).join(" ") + " Z";
- 
+
 function EasternCapeMap({ isMobile }) {
   const [active, setActive] = useState(null);
   const max = Math.max(...IMPACT_REGIONS.map((r) => r.value));
- 
+
   return (
     <div>
       <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} style={{ width: "100%", height: "auto", display: "block" }}
@@ -241,7 +245,7 @@ function EasternCapeMap({ isMobile }) {
         <rect x="0" y="0" width={MAP_W} height={MAP_H} rx="22" fill="#EAF6F8" />
         <text x={MAP_W - 30} y={MAP_H - 24} textAnchor="end" fontSize="15" fontStyle="italic" fill="#8DB9C2">Indian Ocean</text>
         <path d={EC_PATH} fill="url(#ecLand)" stroke={COLORS.pink} strokeWidth="3" strokeLinejoin="round" />
- 
+
         {IMPACT_REGIONS.map((r, i) => {
           const [x, y] = project([r.lon, r.lat]);
           const radius = (isMobile ? 13 : 16) + (r.value / max) * (isMobile ? 9 : 12);
@@ -266,7 +270,7 @@ function EasternCapeMap({ isMobile }) {
           );
         })}
       </svg>
- 
+
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 14, paddingBottom: 6 }}>
         {IMPACT_REGIONS.map((r) => (
           <button key={r.name} type="button"
@@ -284,12 +288,12 @@ function EasternCapeMap({ isMobile }) {
     </div>
   );
 }
- 
+
 function ImpactSection() {
   const isMobile = useIsMobile(860);
   const chartH = isMobile ? 260 : 320;
   const axis = { fontSize: 12, fill: COLORS.inkMid };
- 
+
   return (
     <section style={{
       padding: isMobile ? "72px 18px 80px" : "110px 40px 120px",
@@ -308,9 +312,9 @@ function ImpactSection() {
             See how The Puzzle Project is reaching communities across the Eastern Cape and helping learners grow.
           </p>
         </Reveal>
- 
+
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 22 : 30 }}>
- 
+
           {/* 1. Reach over time */}
           <ImpactCard eyebrow="Our reach" stat="2,240+" statLabel="children screened this year" color={COLORS.teal}>
             <ResponsiveContainer width="100%" height={chartH}>
@@ -331,7 +335,7 @@ function ImpactSection() {
               </AreaChart>
             </ResponsiveContainer>
           </ImpactCard>
- 
+
           {/* 2. Outcomes donut */}
           <ImpactCard eyebrow="Learner outcomes" stat="87%" statLabel="of supported learners are showing progress" color={COLORS.purple} delay={0.1}>
             <div style={{ position: "relative" }}>
@@ -355,12 +359,12 @@ function ImpactSection() {
               </div>
             </div>
           </ImpactCard>
- 
+
           {/* 3. Regions map */}
           <ImpactCard eyebrow="Communities reached" stat="6" statLabel="Eastern Cape regions and growing" color={COLORS.pink} delay={0.05}>
             <EasternCapeMap isMobile={isMobile} />
           </ImpactCard>
- 
+
           {/* 4. Growth after support */}
           <ImpactCard eyebrow="Growth after support" stat="+25 pts" statLabel="average gain from first screening to follow-up" color={ORANGE} delay={0.15}>
             <ResponsiveContainer width="100%" height={chartH}>
@@ -376,7 +380,7 @@ function ImpactSection() {
             </ResponsiveContainer>
           </ImpactCard>
         </div>
- 
+
         {SHOW_PLACEHOLDER_NOTE && (
           <p style={{ textAlign: "center", marginTop: 28, fontSize: 12.5, color: COLORS.inkMid, opacity: 0.8 }}>
             Illustrative figures shown while programme data is being verified.
@@ -386,7 +390,7 @@ function ImpactSection() {
     </section>
   );
 }
- 
+
 // ---- Founding story: photo, words and a big quote ------------------------
 function FoundingStory() {
   const isMobile = useIsMobile(1000);
@@ -442,8 +446,8 @@ function FoundingStory() {
     </section>
   );
 }
- 
-// ---- Team: faces (initials for now), no card borders ---------------------
+
+// ---- Team: faces with names only (no role descriptions, per Gary) --------
 const TEAM = [
   { initials: "GK", name: "Gary King",  color: COLORS.teal, bg: COLORS.tealLight, image: "/gary-king.jpg", imageAlt: "Gary King", imageFit: "cover", imagePosition: "center" },
   { initials: "RM", name: "Dr Rivca Marais",  color: COLORS.pink, bg: COLORS.pinkLight, image: "/rivca.jpeg", imageAlt: "Rivca Marais", imageFit: "cover", imagePosition: "center 20%" },
@@ -452,11 +456,11 @@ const TEAM = [
   { initials: "T19", name: "UCT INF3003W Team 19", color: COLORS.teal, bg: COLORS.tealLight, image: "/uct-seal.jpg", imageAlt: "University of Cape Town seal", imageFit: "contain", imagePosition: "center" },
   { initials: "UCT", name: "UCT INF3011F Team 11 and Team 18",  color: COLORS.purple, bg: COLORS.purpleLight, image: "/uct-seal.jpg", imageAlt: "University of Cape Town seal", imageFit: "contain", imagePosition: "center" },
 ];
- 
+
 function TeamSection() {
   const isMobile = useIsMobile(640);
   return (
-    <section style={{ padding: isMobile ? "64px 22px" : "100px 40px", background: COLORS.white }}>
+    <section style={{ padding: isMobile ? "64px 22px" : "100px 40px", background: ORANGE_LIGHT }}>
       <div style={{ maxWidth: 1100, margin: "auto" }}>
         <Reveal>
           <SectionHeading align="center" eyebrow="Our team" title="Built and maintained by a multidisciplinary team" maxWidth={640} />
@@ -477,11 +481,10 @@ function TeamSection() {
                   src={member.image}
                   alt={member.imageAlt}
                   onError={(event) => { event.currentTarget.style.display = "none"; }}
-                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: member.imageFit, background: COLORS.white }}
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: member.imageFit, objectPosition: member.imagePosition, background: COLORS.white }}
                 />}
               </div>
-              <h3 style={{ fontFamily: FONTS.heading, fontSize: 17, fontWeight: 800, color: COLORS.ink, marginBottom: 4 }}>{member.name}</h3>
-              <p style={{ fontSize: 14, color: COLORS.inkMid, lineHeight: 1.5 }}>{member.role}</p>
+              <h3 style={{ fontFamily: FONTS.heading, fontSize: 17, fontWeight: 800, color: COLORS.ink }}>{member.name}</h3>
             </Reveal>
           ))}
         </div>
@@ -489,7 +492,7 @@ function TeamSection() {
     </section>
   );
 }
- 
+
 // ---- Research background: two side-by-side notes ------------------------
 const RESEARCH = [
   {
@@ -503,7 +506,7 @@ const RESEARCH = [
     desc: "The system enforces a minimum 2-month interval between comparative screenings, aligned with research showing meaningful developmental change occurs over this period in early childhood.",
   },
 ];
- 
+
 function ResearchSection() {
   const isMobile = useIsMobile(760);
   return (
@@ -533,14 +536,14 @@ function ResearchSection() {
     </section>
   );
 }
- 
+
 // ---- Partners: a simple row, logos drop into the circles -----------------
 const PARTNERS = [
   { name: "SACE", role: "Credentialing authority for educators" },
   { name: "HPCSA", role: "Professional body for psychologists" },
   { name: "UCT", role: "Academic development partner" },
 ];
- 
+
 function PartnersSection() {
   const isMobile = useIsMobile(640);
   return (
@@ -570,10 +573,10 @@ function PartnersSection() {
     </section>
   );
 }
- 
+
 export default function About({ onNavigateToLogin, onNavigate }) {
   const go = onNavigate || (() => console.warn("No onNavigate handler passed to About"));
- 
+
   return (
     <div style={{ fontFamily: FONTS.body }}>
       <style>{`${PUBLIC_FONT_IMPORT}${WARM_PAGE_CSS}`}</style>

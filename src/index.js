@@ -7,6 +7,9 @@ import App from './App';   // This imports your main App component from App.js.
 import { ThemeProvider } from './theme/ThemeContext'; // site-wide light/dark theme
 // index.js only needs to know about App, and App handles everything else.
 import reportWebVitals from './reportWebVitals';  // This is a built-in performance measurement tool that came with create-react-app.
+import * as serviceWorkerRegistration from "./serviceWorkerRegistration";  // for the offline capabilities
+   import { startAutoSync } from "./offline/offlineVault";
+   startAutoSync();
 // It can track things like how fast your page loads. 
 
 // index.js is the very first file that runs when someone opens your website.
@@ -45,5 +48,22 @@ root.render(
 // to log results (for example: reportWebVitals(console.log))
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 reportWebVitals();
+
+serviceWorkerRegistration.register({
+  onSuccess: () => {
+    console.log("PuzzleBox is ready to work offline.");
+  },
+  onUpdate: (registration) => {
+    const ok = window.confirm("A new version of PuzzleBox is available. Reload now?");
+    if (!ok || !registration.waiting) return;
+
+    navigator.serviceWorker.addEventListener(
+      "controllerchange",
+      () => window.location.reload(),
+      { once: true }
+    );
+    registration.waiting.postMessage({ type: "SKIP_WAITING" });
+  },
+});
 
 // reportWebVitals() activates the performance tracking tool imported above.

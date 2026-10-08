@@ -23,7 +23,11 @@ import RoleSidebar from "./RoleSidebar";
 import RoleHero from "./RoleHero";
 import StatRing from "./StatRing";
 import TodayList from "./TodayList";
-import PuzzleBoxScreener from "./PuzzleBoxScreener";
+// ScreenerWithOffline renders the normal PuzzleBoxScreener when online, and
+// the offline screener (downloaded, encrypted copy) when there's no signal or
+// the teacher chooses "Screen offline" on the home page card.
+import ScreenerWithOffline from "../offline/ScreenerWithOffline";
+import OfflineReadyCard from "../offline/OfflineReadyCard";
 
 import "./TeacherHome.css";
 import "./RoleHomeKit.css";
@@ -843,6 +847,12 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
   // search step and goes right to confirm/resume for that child.
   const [screenerChild, setScreenerChild] = useState(null);
 
+  // True when the teacher opened the screener with "Screen offline" (home
+  // page card). Without it the screener still switches to offline by itself
+  // when the device has no signal; this covers weak or captive school wifi
+  // that reports "connected" but can't actually reach the server.
+  const [screenerOffline, setScreenerOffline] = useState(false);
+
   // This teacher's own PuzzleBox screening sessions (in_progress /
   // awaiting_review / reviewed), for the Screening History tab.
   const [rawSessions, setSessions] = useState([]);
@@ -1549,12 +1559,14 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
 
   if (activePage === "screener") {
     return (
-      <PuzzleBoxScreener
+      <ScreenerWithOffline
         user={user}
         profile={profile}
         initialChild={screenerChild}
+        preferOffline={screenerOffline}
         onExit={() => {
           setScreenerChild(null);
+          setScreenerOffline(false);
           setActivePage("home");
         }}
       />
@@ -1949,6 +1961,20 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
 
                   </button>
 
+                </div>
+
+
+                {/* OFFLINE SCREENING — download before visiting a school
+                    without signal, then screen and upload later */}
+
+                <div style={{ marginTop: 16 }}>
+                  <OfflineReadyCard
+                    onScreenOffline={() => {
+                      setScreenerChild(null);
+                      setScreenerOffline(true);
+                      setActivePage("screener");
+                    }}
+                  />
                 </div>
 
               </div>

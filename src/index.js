@@ -8,7 +8,8 @@ import { ThemeProvider } from './theme/ThemeContext'; // site-wide light/dark th
 // index.js only needs to know about App, and App handles everything else.
 import reportWebVitals from './reportWebVitals';  // This is a built-in performance measurement tool that came with create-react-app.
 import * as serviceWorkerRegistration from "./serviceWorkerRegistration";  // for the offline capabilities
-
+   import { startAutoSync } from "./offline/offlineVault";
+   startAutoSync();
 // It can track things like how fast your page loads. 
 
 // index.js is the very first file that runs when someone opens your website.

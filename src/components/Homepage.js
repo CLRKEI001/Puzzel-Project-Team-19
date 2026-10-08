@@ -10,6 +10,8 @@ import heroVideoMobile from "../hero-puzzle-mobile.mp4";
 import heroPoster from "../hero-poster.jpg";
 // Stills taken from the session footage, used as photos down the page
 import momentClassroom from "../moment-classroom.jpg";
+// Session photo: child building the puzzle in The Puzzle Box frame
+import puzzleBoxSession from "../puzzlepicture_angled.png";
 
 // NOTE — site structure (sponsor feedback, Aug 2026)
 // This file is now the home page of THE PUZZLE PROJECT (the organisation).
@@ -22,7 +24,8 @@ import momentClassroom from "../moment-classroom.jpg";
 // The four developmental domains the screener measures, rendered as a real
 // 2x2 jigsaw: each piece's tabs slot into the neighbouring piece's sockets.
 // Pieces slide in from four directions on load, then float gently.
-// Hovering a piece lifts it out of the puzzle and reveals its description.
+// Hovering, tapping or tabbing to a piece lifts it out of the puzzle and
+// reveals its description (tap/keyboard support so it works on phones too).
 //
 // row/col place the piece in the grid; `edges` describe its four sides, where
 // 1 = tab (knob), -1 = blank (socket), 0 = flat outer border. Tabs and blanks
@@ -58,10 +61,15 @@ const DOMAINS = [
   },
 ];
 
+// True on devices without a real hover (phones, tablets)
+const noHover = () =>
+  typeof window !== "undefined" && window.matchMedia?.("(hover: none)").matches;
+
 function DomainPuzzle() {
   const [hovered, setHovered] = useState(null);
   const active = DOMAINS.find(d => d.key === hovered);
   const isMobile = useIsMobile(480);
+  const touch = noHover();
 
   // Rendered size of one piece body — shrinks on narrow phones so the
   // 2x2 grid (BODY_PX * 2 wide) never forces horizontal scroll.
@@ -92,15 +100,22 @@ function DomainPuzzle() {
           return (
             <div key={d.key}
               className="domain-piece"
-              onMouseEnter={() => setHovered(d.key)}
-              onMouseLeave={() => setHovered(null)}
+              role="button"
+              tabIndex={0}
+              aria-pressed={isHovered}
+              aria-label={`${d.label}: ${d.desc}`}
+              onMouseEnter={() => !touch && setHovered(d.key)}
+              onMouseLeave={() => !touch && setHovered(null)}
+              onFocus={() => setHovered(d.key)}
+              onBlur={() => setHovered(null)}
+              onClick={() => setHovered(h => (h === d.key ? null : d.key))}
               style={{
                 "--from": d.from,
                 animationDelay: `${0.25 + i * 0.18}s, ${1.6 + i * 0.6}s`,
                 position: "absolute",
                 left: d.col * BODY_PX, top: d.row * BODY_PX,
                 width: BODY_PX, height: BODY_PX,
-                cursor: "pointer",
+                cursor: "pointer", outlineOffset: 4,
                 zIndex: isHovered ? 5 : 1,
               }}
             >
@@ -138,8 +153,8 @@ function DomainPuzzle() {
         })}
       </div>
 
-      {/* Description panel — swaps as you hover each piece */}
-      <div style={{
+      {/* Description panel — swaps as you hover/tap each piece */}
+      <div aria-live="polite" style={{
         marginTop: 20, minHeight: 78, padding: "16px 20px",
         borderRadius: 14, background: COLORS.white,
         border: `1px solid ${active ? active.color + "55" : COLORS.border}`,
@@ -200,9 +215,10 @@ const TPP_HERO = {
 };
 
 // Light hero — soft background, brand colours, split layout.
-// `badge` / `lead` / `actions` let The Puzzle Box home page reuse it with its own copy.
+// `badge` / `lead` / `actions` / `stats` let The Puzzle Box home page reuse it with its own copy.
 // actions: [{ label, onClick, primary? }]
-export function Hero({ badge = TPP_HERO.badge, lead = TPP_HERO.lead, actions = [] }) {
+// stats:   [{ value, label }] — the strip below the hero only renders when this has items
+export function Hero({ badge = TPP_HERO.badge, lead = TPP_HERO.lead, actions = [], stats = [] }) {
   const [visible, setVisible] = useState(false);
   const isMobile = useIsMobile(860);
   useEffect(() => { const t = setTimeout(() => setVisible(true), 120); return () => clearTimeout(t); }, []);
@@ -216,6 +232,7 @@ export function Hero({ badge = TPP_HERO.badge, lead = TPP_HERO.lead, actions = [
   return (
     <section style={{
       paddingTop: 84,
+      paddingBottom: stats.length ? 0 : (isMobile ? 48 : 72),
       background: `linear-gradient(180deg, ${COLORS.white} 0%, ${COLORS.surface} 100%)`,
       position: "relative", overflow: "hidden",
     }}>
@@ -304,7 +321,9 @@ export function Hero({ badge = TPP_HERO.badge, lead = TPP_HERO.lead, actions = [
         </div>
       </div>
 
-      {/* Impact counter strip — 4-across on desktop, 2x2 grid on mobile */}
+      {/* Impact counter strip — only when there are stats to show.
+          4-across on desktop, 2x2 grid on mobile */}
+      {stats.length > 0 && (
       <div style={{
         maxWidth: 1300, margin: isMobile ? "36px auto 0" : "56px auto 0",
         padding: isMobile ? "0 20px" : "0 40px",
@@ -315,9 +334,7 @@ export function Hero({ badge = TPP_HERO.badge, lead = TPP_HERO.lead, actions = [
           gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(auto-fit, minmax(160px, 1fr))",
           borderTop: `1px solid ${COLORS.border}`, borderBottom: `1px solid ${COLORS.border}`,
         }}>
-          {[
-            
-          ].map((s, i) => {
+          {stats.map((s, i) => {
             const cols = isMobile ? 2 : 4;
             const isFirstInRow = i % cols === 0;
             const isSecondRowOrLater = isMobile && i >= cols;
@@ -334,6 +351,7 @@ export function Hero({ badge = TPP_HERO.badge, lead = TPP_HERO.lead, actions = [
           })}
         </div>
       </div>
+      )}
     </section>
   );
 }
@@ -347,16 +365,31 @@ export function Hero({ badge = TPP_HERO.badge, lead = TPP_HERO.lead, actions = [
 // ===========================================================================
 
 // ---- 1. Hero: full-bleed footage, centred message ------------------------
+
+// The footage file is stored upside down, so it's turned the right way up
+// here. The poster belongs to the <video>, so it gets turned too — keep
+// hero-poster.jpg saved the same way round as the footage.
+const HERO_MEDIA_STYLE = {
+  position: "absolute", inset: 0, width: "100%", height: "100%",
+  objectFit: "cover", transform: "scale(1.04) rotate(180deg)",
+};
+
+// Skip the video (show the still instead) for visitors on data saver or who
+// have asked for less motion — many of our users are on limited mobile data.
+function shouldPlayHeroVideo() {
+  if (typeof window === "undefined") return false;
+  const saveData = navigator.connection?.saveData;
+  const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  return !saveData && !reduceMotion;
+}
+
 export function VideoHero({ actions = [] }) {
   const [visible, setVisible] = useState(false);
+  const [playVideo] = useState(shouldPlayHeroVideo);
   const isMobile = useIsMobile(860);
-  const videoRef = React.useRef(null);
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 150);
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-      videoRef.current?.pause();
-    }
     return () => clearTimeout(t);
   }, []);
 
@@ -372,16 +405,19 @@ export function VideoHero({ actions = [] }) {
       display: "flex", alignItems: "center", justifyContent: "center",
       overflow: "hidden", background: "#1d1a17",
     }}>
-      <video
-        ref={videoRef}
-        key={isMobile ? "mobile" : "desktop"}
-        src={isMobile ? heroVideoMobile : heroVideo}
-        poster={heroPoster}
-        preload="auto"
-        autoPlay muted loop playsInline
-        aria-hidden="true"
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", transform: "scale(1.04) rotate(180deg)" }}
-      />
+      {playVideo ? (
+        <video
+          key={isMobile ? "mobile" : "desktop"}
+          src={isMobile ? heroVideoMobile : heroVideo}
+          poster={heroPoster}
+          preload="metadata"
+          autoPlay muted loop playsInline
+          aria-hidden="true"
+          style={HERO_MEDIA_STYLE}
+        />
+      ) : (
+        <img src={heroPoster} alt="" aria-hidden="true" style={HERO_MEDIA_STYLE} />
+      )}
 
       {/* Even shade across the frame so centred text reads anywhere */}
       <div style={{
@@ -507,22 +543,41 @@ const PILLARS = [
   { n: "03", title: "Protect with ethics", color: COLORS.purple, desc: "All child data is anonymised, POPIA-compliant and governed by strict ethical standards aligned with HPCSA guidelines." },
 ];
 
+// Deep teal band — the page's main colour break between the cream sections.
+// Fixed dark background, so text uses ON_DARK rather than theme-aware ink,
+// and the numbers use the pale brand tints so they read on teal.
+const PILLAR_NUM_COLORS = [COLORS.tealLight, COLORS.pinkLight, COLORS.purpleLight];
+
 function Pillars() {
   const isMobile = useIsMobile(760);
   return (
-    <section style={{ background: COLORS.white, padding: isMobile ? "64px 22px" : "100px 40px" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <Reveal>
-          <SectionHeading align="center" eyebrow="What guides us" title="Three things we won't compromise on" />
+    <section style={{
+      background: COLORS.tealDark, padding: isMobile ? "68px 22px" : "104px 40px",
+      position: "relative", overflow: "hidden",
+    }}>
+      {/* Faint oversized pieces for texture */}
+      <PuzzlePiece size={isMobile ? 160 : 260} color={ON_DARK} fillOpacity={0.06} rotate={-16}
+        style={{ position: "absolute", top: isMobile ? -50 : -80, left: isMobile ? -60 : -70, pointerEvents: "none" }} />
+      <PuzzlePiece size={isMobile ? 130 : 210} color={ON_DARK} fillOpacity={0.06} rotate={22}
+        style={{ position: "absolute", bottom: isMobile ? -50 : -70, right: isMobile ? -40 : -50, pointerEvents: "none" }} />
+
+      <div style={{ maxWidth: 1100, margin: "0 auto", position: "relative" }}>
+        <Reveal style={{ textAlign: "center", marginBottom: isMobile ? 40 : 60 }}>
+          <p style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: COLORS.pinkLight, marginBottom: 14 }}>
+            What guides us
+          </p>
+          <h2 style={{ fontFamily: FONTS.heading, fontSize: "clamp(26px, 3.2vw, 40px)", fontWeight: 900, color: ON_DARK, lineHeight: 1.15, letterSpacing: "-0.02em" }}>
+            Three things we won't compromise on
+          </h2>
         </Reveal>
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: isMobile ? 36 : 48 }}>
           {PILLARS.map((p, i) => (
             <Reveal key={p.title} delay={i * 0.12} style={{ textAlign: isMobile ? "center" : "left" }}>
-              <span style={{ fontFamily: FONTS.heading, fontWeight: 900, fontSize: 44, color: p.color, lineHeight: 1, display: "block", marginBottom: 12 }}>
+              <span style={{ fontFamily: FONTS.heading, fontWeight: 900, fontSize: 44, color: PILLAR_NUM_COLORS[i], lineHeight: 1, display: "block", marginBottom: 12 }}>
                 {p.n}
               </span>
-              <h3 style={{ fontFamily: FONTS.heading, fontSize: 20, fontWeight: 800, color: COLORS.ink, marginBottom: 10 }}>{p.title}</h3>
-              <p style={{ fontSize: 15, color: COLORS.inkMid, lineHeight: 1.75 }}>{p.desc}</p>
+              <h3 style={{ fontFamily: FONTS.heading, fontSize: 20, fontWeight: 800, color: ON_DARK, marginBottom: 10 }}>{p.title}</h3>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.82)", lineHeight: 1.75 }}>{p.desc}</p>
             </Reveal>
           ))}
         </div>
@@ -557,7 +612,6 @@ function OurStory({ onNavigate }) {
             color={COLORS.purple}
             edges={{ top: -1, right: 0, bottom: 0, left: -1 }}
             style={{ position: "absolute", right: isMobile ? 0 : 10, bottom: isMobile ? -10 : 0, filter: "drop-shadow(0 10px 26px rgba(60,40,20,0.16))" }}
-            /* src="/images/gary-king.jpg" once the founder photo is ready */
           />
         </Reveal>
 
@@ -597,8 +651,9 @@ const cardTint = (color) => `color-mix(in srgb, ${color} 10%, ${COLORS.white})`;
 
 const WHAT_WE_DO = [
   { title: "Puzzle Play", desc: "Lesson plans, multilingual videos and training quizzes so educators can run puzzle-based activities in class.", color: COLORS.pink, bg: cardTint(COLORS.pink), page: "pp-home", cta: "Explore Puzzle Play" },
-  { title: "The Puzzle Box", desc: "Our screener: structured assessments with timers, observation notes and results across four developmental domains.", color: COLORS.teal, bg: cardTint(COLORS.teal), page: "pb-home", cta: "Explore The Puzzle Box" },
-  { title: "Research and insight", desc: "Anonymised dashboards and exports for researchers, policy makers and project sponsors.", color: COLORS.purple, bg: cardTint(COLORS.purple) },
+  { title: "The Puzzle Box", desc: "Our screener: structured assessments with timers, observation notes and results across four developmental domains.", color: COLORS.teal, bg: cardTint(COLORS.teal), page: "pb-home", cta: "Explore The Puzzle Box",
+    img: puzzleBoxSession, imgAlt: "A child fitting pieces into The Puzzle Box frame while a timer runs on a phone beside it" },
+  { title: "Research and insight", desc: "Anonymised dashboards and exports for researchers, policy makers and project sponsors.", color: COLORS.purple, bg: cardTint(COLORS.purple), note: "Coming soon" },
 ];
 
 function WhatWeDo({ onNavigate }) {
@@ -614,9 +669,18 @@ function WhatWeDo({ onNavigate }) {
             <Reveal key={item.title} delay={i * 0.12}>
               <div className="soft-card" style={{
                 height: "100%", padding: isMobile ? "30px 26px" : "38px 32px", borderRadius: 28,
-                background: item.bg, display: "flex", flexDirection: "column",
+                background: item.bg, display: "flex", flexDirection: "column", overflow: "hidden",
               }}>
-                <PuzzlePiece size={68} color={item.color} fillOpacity={1} rotate={-8} style={{ marginBottom: 6, marginLeft: -6 }} />
+                {item.img ? (
+                  // Photo bleeds to the card edges (negative margins cancel the padding)
+                  <img src={item.img} alt={item.imgAlt} loading="lazy" style={{
+                    display: "block", objectFit: "cover", objectPosition: "center 60%",
+                    width: `calc(100% + ${isMobile ? 52 : 64}px)`, height: isMobile ? 190 : 170,
+                    margin: isMobile ? "-30px -26px 22px" : "-38px -32px 22px",
+                  }} />
+                ) : (
+                  <PuzzlePiece size={68} color={item.color} fillOpacity={1} rotate={-8} style={{ marginBottom: 6, marginLeft: -6 }} />
+                )}
                 <h3 style={{ fontFamily: FONTS.heading, fontSize: 22, fontWeight: 800, color: COLORS.ink, marginBottom: 10 }}>{item.title}</h3>
                 <p style={{ fontSize: 15, color: COLORS.inkMid, lineHeight: 1.7, flex: 1 }}>{item.desc}</p>
                 {item.page && (
@@ -626,6 +690,14 @@ function WhatWeDo({ onNavigate }) {
                   }}>
                     {item.cta} →
                   </button>
+                )}
+                {item.note && (
+                  <span style={{
+                    marginTop: 22, alignSelf: "flex-start", fontSize: 12, fontWeight: 800,
+                    letterSpacing: "0.08em", textTransform: "uppercase", color: item.color,
+                  }}>
+                    {item.note}
+                  </span>
                 )}
               </div>
             </Reveal>
@@ -679,7 +751,11 @@ function VisionSection({ onNavigate }) {
   const rows = isMobile ? 3 : VISION_ROWS;
 
   return (
-    <section style={{ padding: isMobile ? "56px 20px 60px" : "90px 40px 100px", background: COLORS.white, overflow: "hidden" }}>
+    <section style={{
+      padding: isMobile ? "56px 20px 60px" : "90px 40px 100px",
+      background: CREAM,
+      overflow: "hidden",
+    }}>
       <div style={{ maxWidth: 1300, margin: "auto" }}>
         <SectionHeading
           align="center"
@@ -794,15 +870,17 @@ function VisionSection({ onNavigate }) {
             );
           })}
         </div>
+
       </div>
     </section>
   );
 }
+
 // ---- 7. Support: warm, personal ask --------------------------------------
 function SupportBand({ onNavigate }) {
   const isMobile = useIsMobile(760);
   return (
-    <section style={{ background: CREAM, padding: isMobile ? "64px 22px" : "100px 40px" }}>
+    <section style={{ background: cardTint(COLORS.pink), padding: isMobile ? "64px 22px" : "100px 40px" }}>
       <Reveal>
         <div style={{
           maxWidth: 820, margin: "0 auto", borderRadius: 32, background: COLORS.white,
@@ -830,6 +908,9 @@ function SupportBand({ onNavigate }) {
   );
 }
 
+// Section backgrounds:
+// hero → Why (cream) → Pillars (deep teal) → Story (cream) → What we do (white,
+// tinted cards) → Vision (cream) → Support (soft pink) → CTA
 export default function Homepage({ onNavigateToLogin, onNavigate }) {
   const go = onNavigate || (() => console.warn("No onNavigate handler passed to Homepage"));
 
@@ -848,8 +929,8 @@ export default function Homepage({ onNavigateToLogin, onNavigate }) {
       <WhyWeExist />
       <Pillars />
       <OurStory onNavigate={go} />
-      <VisionSection onNavigate={go} />
       <WhatWeDo onNavigate={go} />
+      <VisionSection onNavigate={go} />
       <SupportBand onNavigate={go} />
       <CallToAction />
       <Footer site="tpp" onNavigate={go} onLoginClick={onNavigateToLogin} />

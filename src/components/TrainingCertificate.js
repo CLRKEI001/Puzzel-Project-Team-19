@@ -1,4 +1,5 @@
 import React from "react";
+import Doodle from "./Doodle";
 import { COLORS } from "./SiteChrome";
 
 // A simple on-screen certificate shown once a trainee has viewed every
@@ -18,11 +19,11 @@ export default function TrainingCertificate({ name, tierLabel, issuedAt }) {
         border: `2px solid ${COLORS.teal}`, position: "relative", overflow: "hidden",
       }}
     >
-      <div style={{ fontSize: 40, marginBottom: 6 }}>🏆</div>
+      <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}><Doodle name="trophy" size={72} /></div>
       <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: COLORS.teal, marginBottom: 10 }}>
         Certificate of Completion
       </div>
-      <h2 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 26, fontWeight: 900, color: COLORS.ink, margin: "0 0 6px" }}>
+      <h2 style={{ fontFamily: "var(--font-heading)", fontSize: 26, fontWeight: 900, color: COLORS.ink, margin: "0 0 6px" }}>
         {name || "Trainee"}
       </h2>
       <p style={{ fontSize: 14, color: COLORS.inkMid, margin: "0 0 18px" }}>

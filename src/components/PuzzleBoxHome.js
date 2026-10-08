@@ -130,7 +130,7 @@ export default function PuzzleBoxHome({ onNavigate, onNavigateToLogin, onAccess 
       `}</style>
       <Navbar site="pb" current="pb-home" onNavigate={go} onLoginClick={() => onNavigateToLogin()} />
       <Hero
-        badge="The Puzzle Box Screener"
+        badge=""
         lead="A structured, play-based developmental screener for children aged 5 to 6 years — administered by trained teachers, primary healthcare practitioners and psychologists, regardless of location or connectivity."
         actions={[
           { label: "See how it works", primary: true, onClick: () => go("pb-how") },

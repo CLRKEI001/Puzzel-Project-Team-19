@@ -68,15 +68,14 @@ export const ACTIVE_FONT_THEME = "friendly";
 
 // Use these in inline styles on public pages instead of hard-coding a font name
 export const FONTS = {
-  heading: "var(--font-heading, 'Nunito', sans-serif)",
-  body: "var(--font-body, 'Nunito Sans', sans-serif)",
+  heading: "var(--font-heading, 'Poppins', sans-serif)",
+  body: "var(--font-body, 'DM Sans', sans-serif)",
 };
 
 const activeTheme = FONT_THEMES[ACTIVE_FONT_THEME] || FONT_THEMES.friendly;
 
 export const PUBLIC_FONT_IMPORT = `
   @import url('${activeTheme.url}');
-  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&display=swap');
   :root { --font-heading: ${activeTheme.heading}; --font-body: ${activeTheme.body}; --cream: #FFFFFF; }
   [data-theme="dark"] { --cream: #17172A; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -84,11 +83,12 @@ export const PUBLIC_FONT_IMPORT = `
   button, input, select, textarea { font-family: inherit; }
 `;
 
-// Logged-in area keeps Nunito; don't use this on public pages.
+// Logged-in area uses the same fonts as the public site.
 export const FONT_IMPORT = `
-  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+  :root { --font-heading: 'Poppins', sans-serif; --font-body: 'DM Sans', sans-serif; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Nunito Sans', sans-serif; }
+  body { font-family: var(--font-body); }
 `;
 
 // ---- Jigsaw piece geometry ----------------------------------------------
@@ -97,11 +97,11 @@ export const FONT_IMPORT = `
 // with bezier curves: a narrow neck that undercuts, then a wide round bulb.
 //
 // Each edge is described as  1 = tab, -1 = blank, 0 = flat (a straight border).
-// The body of the piece occupies 0..100; tabs extend 22 units beyond that, so
-// the viewBox is padded by 28 on every side.
+// The body of the piece occupies 0..100; tabs extend 30 units beyond that, so
+// the viewBox is padded by 34 on every side.
 
 export const PIECE_BODY = 100;   // size of the square body
-export const PIECE_PAD = 28;     // room for tabs on each side
+export const PIECE_PAD = 34;     // room for tabs on each side
 export const PIECE_VIEWBOX = `${-PIECE_PAD} ${-PIECE_PAD} ${PIECE_BODY + PIECE_PAD * 2} ${PIECE_BODY + PIECE_PAD * 2}`;
 
 // Maps a point on a local edge (running left→right, tab bulging towards -y)
@@ -113,17 +113,23 @@ const EDGE_MAPS = {
   left: (x, y) => [y, PIECE_BODY - x],
 };
 
+// Soft jigsaw geometry: every corner is rounded (CORNER) and the tabs have a
+// narrow neck opening into a big, round, slightly asymmetric-looking head,
+// so pieces read as friendly and chunky rather than sharp and technical.
+const CORNER = 10;
+
 function edgeSegment(type, map) {
   const p = (x, y) => { const [gx, gy] = map(x, y); return `${gx.toFixed(1)},${gy.toFixed(1)}`; };
-  if (!type) return `L ${p(PIECE_BODY, 0)}`;
+  const end = `L ${p(PIECE_BODY - CORNER, 0)}`;
+  if (!type) return end;
   const o = (v) => -type * v; // tab pushes outwards, blank pulls inwards
   return [
-    `L ${p(42, 0)}`,                                    // run up to the neck
-    `C ${p(42, o(4))} ${p(34, o(6))} ${p(34, o(13))}`,   // undercut out to the left
-    `C ${p(34, o(20))} ${p(42, o(22))} ${p(50, o(22))}`, // round over the top
-    `C ${p(58, o(22))} ${p(66, o(20))} ${p(66, o(13))}`,
-    `C ${p(66, o(6))} ${p(58, o(4))} ${p(58, 0)}`,       // back down the neck
-    `L ${p(PIECE_BODY, 0)}`,
+    `L ${p(34, 0)}`,
+    `C ${p(42, 0)} ${p(44, o(6))} ${p(40, o(12))}`,        // ease into the neck
+    `C ${p(34, o(20))} ${p(36, o(30))} ${p(50, o(30))}`,   // round head, left half
+    `C ${p(64, o(30))} ${p(66, o(20))} ${p(60, o(12))}`,   // round head, right half
+    `C ${p(56, o(6))} ${p(58, 0)} ${p(66, 0)}`,            // ease back out of the neck
+    end,
   ].join(" ");
 }
 
@@ -132,19 +138,23 @@ function edgeSegment(type, map) {
  * edges: { top, right, bottom, left } each 1 (tab), -1 (blank) or 0 (flat).
  */
 export function piecePath({ top = 0, right = 0, bottom = 0, left = 0 } = {}) {
-  return [
-    "M 0,0",
-    edgeSegment(top, EDGE_MAPS.top),
-    edgeSegment(right, EDGE_MAPS.right),
-    edgeSegment(bottom, EDGE_MAPS.bottom),
-    edgeSegment(left, EDGE_MAPS.left),
-    "Z",
-  ].join(" ");
+  const order = [["top", top], ["right", right], ["bottom", bottom], ["left", left]];
+  const pt = (map, x, y) => { const [gx, gy] = map(x, y); return `${gx.toFixed(1)},${gy.toFixed(1)}`; };
+  const parts = [`M ${pt(EDGE_MAPS.top, CORNER, 0)}`];
+  order.forEach(([name, type], i) => {
+    const map = EDGE_MAPS[name];
+    const nextMap = EDGE_MAPS[order[(i + 1) % 4][0]];
+    parts.push(edgeSegment(type, map));
+    // rounded corner into the start of the next edge
+    parts.push(`Q ${pt(map, PIECE_BODY, 0)} ${pt(nextMap, CORNER, 0)}`);
+  });
+  parts.push("Z");
+  return parts.join(" ");
 }
 
 // A classic standalone piece: sockets on the top and left, knobs on the
 // right and bottom — the shape people picture when they think "puzzle piece".
-const CLASSIC_PIECE = piecePath({ top: -1, right: 1, bottom: 1, left: -1 });
+const CLASSIC_PIECE = piecePath({ top: -1, right: 1, bottom: 1, left: 1 });
 
 /**
  * Works out the edges for a piece sitting at (row, col) inside a rows x cols
@@ -325,10 +335,10 @@ export function SectionHeading({ eyebrow, title, lead, align = "left", maxWidth 
 // null a colourful typographic wordmark is drawn instead, so dropping in the
 // real Puzzle Box / Puzzle Play artwork later is a one-line change here.
 export const BRANDS = {
-  tpp: { key: "tpp", name: "The Puzzle Project", home: "home", logoSrc: "/logo1.png" },
-  pb:  { key: "pb",  name: "The Puzzle Box",      home: "pb-home", logoSrc: null, // e.g. "/logo-puzzlebox.png"
+  tpp: { key: "tpp", name: "The Puzzle Project", home: "home", logoSrc: "/logo-puzzleproject.png", wide: true, logoH: 92 },
+  pb:  { key: "pb",  name: "The Puzzle Box",      home: "pb-home", logoSrc: "/logo-puzzlebox.png", wide: true, logoH: 72,
          wordmark: { small: "the", big: "PUZZLE", tail: "BOX" } },
-  pp:  { key: "pp",  name: "Puzzle Play",         home: "pp-home", logoSrc: null, // e.g. "/logo-puzzleplay.png"
+  pp:  { key: "pp",  name: "Puzzle Play",         home: "pp-home", logoSrc: "/logo-puzzleplay.png", wide: true,
          wordmark: { small: "", big: "PUZZLE", tail: "PLAY" } },
 };
 
@@ -347,7 +357,7 @@ export function BrandLogo({ site = "tpp", height = 115, width = 125, onDark = fa
       <img
         src={`${process.env.PUBLIC_URL || ""}${brand.logoSrc}`}
         alt={brand.name}
-        style={{ height, width, objectFit: "contain", display: "block", ...style }}
+        style={brand.wide ? { height: brand.logoH || Math.round(height * 0.52), width: "auto", display: "block", ...style } : { height, width, objectFit: "contain", display: "block", ...style }}
       />
     );
   }
@@ -660,7 +670,9 @@ export function Footer({ site = "tpp", onNavigate, onLoginClick }) {
         }}>
           <div>
             <div style={{ marginBottom: 16 }}>
-              <BrandLogo site={site} height={94} width={130} onDark />
+              {/* The footer is always The Puzzle Project's logo1.png, whichever site you're on */}
+              <img src={`${process.env.PUBLIC_URL || ""}/logo1.png`} alt="The Puzzle Project"
+                style={{ height: 150, width: "auto", display: "block", marginLeft: -12 }} />
             </div>
             <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", lineHeight: 1.75, maxWidth: 320 }}>
               Supporting early childhood development across South Africa through accessible, culturally relevant, play-based screening tools.

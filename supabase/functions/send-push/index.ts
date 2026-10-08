@@ -1,93 +1,151 @@
-/*// supabase/functions/send-push/index.ts
+// supabase/functions/validate-consent-form/index.ts
 //
-// Sends a real Web Push notification (VAPID-signed, per RFC 8291/8292) to
-// every subscription a user has saved in push_subscriptions. Called by the
-// client — e.g. AdminHome.js after approving someone — as:
+// Reads an uploaded consent form (photo, scan, or PDF — printed OR
+// handwritten) and checks whether every required field looks filled in,
+// using Google's Gemini API (free tier available).
 //
-//   supabase.functions.invoke("send-push", {
-//     body: { userId, title, body, url },
-//   });
+// Called from ChildrenTable.js and TeacherHome.js via:
+//   supabase.functions.invoke("validate-consent-form", { body: { fileUrl, fileType } });
 //
-// Deploy: supabase functions deploy send-push
-// Secrets (set once, never shipped to the browser):
-//   supabase secrets set VAPID_PUBLIC_KEY=...  VAPID_PRIVATE_KEY=...  VAPID_SUBJECT=mailto:you@example.org
-// Generate a key pair with: npx web-push generate-vapid-keys
+// Returns { valid: boolean, missingFields: string[], notes: string }.
+// Does NOT write to the database — the caller saves the result.
 //
-// Uses the `web-push` npm package via Deno's npm: specifier so the VAPID
-// JWT signing and aes128gcm payload encryption follow the standard,
-// well-tested implementation rather than hand-rolled crypto.
+// Deploy with JWT verification OFF (this app signs in with Firebase, which
+// Supabase's gateway can't verify):
+//   supabase functions deploy validate-consent-form --no-verify-jwt
+// Secrets:
+//   supabase secrets set GEMINI_API_KEY=...        (from aistudio.google.com)
+//   optional: GEMINI_MODEL (defaults to gemini-3.8-flash)
 
-// @ts-ignore -- Deno remote/npm imports aren't resolved by a local TS toolchain
+// @ts-ignore -- Deno remote import isn't resolved by a local TS toolchain
 import { serve } from "https://deno.land/std@0.203.0/http/server.ts";
-// @ts-ignore
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-// @ts-ignore
-import webpush from "npm:web-push@3.6.7";
 
-const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY") ?? "";
-const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY") ?? "";
-const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:admin@example.org";
+// @ts-ignore -- Deno global
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
+// @ts-ignore -- Deno global
+const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") ?? "gemini-3.8-flash";
+// @ts-ignore -- Deno global
+const FALLBACK_MODEL = Deno.env.get("GEMINI_FALLBACK_MODEL") ?? "gemini-flash-latest";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const REQUIRED_FIELDS = [
+  "child's full name",
+  "child's date of birth or age",
+  "school name",
+  "parent or guardian's full name",
+  "parent or guardian's signature",
+  "date signed",
+  "the consent statement itself ticked, circled, initialled, or otherwise marked as agreed to",
+];
 
-if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+function mediaTypeFor(fileType: string | undefined, fileUrl: string): string {
+  const t = (fileType || "").toLowerCase();
+  if (t.includes("pdf") || fileUrl.toLowerCase().endsWith(".pdf")) return "application/pdf";
+  if (t.includes("png")) return "image/png";
+  if (t.includes("webp")) return "image/webp";
+  if (t.includes("gif")) return "image/gif";
+  return "image/jpeg";
 }
 
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+// Upstream failures come back as a normal 200 result (valid:false + the real
+// reason in notes) so the app can show WHY, instead of a generic "non-2xx".
+const fail = (msg: string) => {
+  console.error(msg);
+  return json({ valid: false, missingFields: [], notes: "Verification failed: " + msg });
+};
+
 serve(async (req: Request) => {
-  if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  if (!GEMINI_API_KEY) return fail("GEMINI_API_KEY secret is not set on this Edge Function");
+
+  let fileUrl: string, fileType: string | undefined;
+  try {
+    ({ fileUrl, fileType } = await req.json());
+  } catch {
+    return json({ error: "Invalid JSON body" }, 400);
   }
-  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
-    return new Response(JSON.stringify({ error: "VAPID keys not configured" }), { status: 500 });
+  if (!fileUrl) return json({ error: "fileUrl is required" }, 400);
+
+  let base64: string;
+  try {
+    const fileResp = await fetch(fileUrl);
+    if (!fileResp.ok) throw new Error(`fetch failed: ${fileResp.status}`);
+    const bytes = new Uint8Array(await fileResp.arrayBuffer());
+    let binary = "";
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+    }
+    base64 = btoa(binary);
+  } catch (err) {
+    return fail("Could not fetch the uploaded file: " + (err as Error).message);
   }
 
-  const { userId, title, body, url } = await req.json();
-  if (!userId || !title) {
-    return new Response(JSON.stringify({ error: "userId and title are required" }), { status: 400 });
-  }
+  const mediaType = mediaTypeFor(fileType, fileUrl);
 
-  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-  const { data: subs, error } = await supabase
-    .from("push_subscriptions")
-    .select("*")
-    .eq("user_id", userId);
+  const prompt =
+    `This is a scanned or photographed child-development-screening consent form — it may be a printed form, or entirely handwritten. ` +
+    `Check whether EACH of the following required fields is actually filled in (handwriting counts, so does a tick/circle/initial for the consent statement — it does not need to be typed). ` +
+    `A blank template with empty fields is NOT filled in.\n` +
+    REQUIRED_FIELDS.map((f, i) => `${i + 1}. ${f}`).join("\n") +
+    `\n\nRespond with ONLY a JSON object in exactly this shape:\n` +
+    `{"valid": boolean, "missingFields": string[], "notes": string}\n` +
+    `"valid" is true only if every field above is filled in. "missingFields" lists (in plain language, not the numbers) exactly which fields are blank, illegible, or missing — empty array if none. "notes" is one short sentence explaining the result.`;
 
-  if (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
-  }
-  if (!subs || subs.length === 0) {
-    return new Response(JSON.stringify({ sent: 0, reason: "no-subscriptions" }), { status: 200 });
-  }
+  try {
+    const body = JSON.stringify({
+      contents: [
+        { parts: [{ inline_data: { mime_type: mediaType, data: base64 } }, { text: prompt }] },
+      ],
+      generationConfig: { responseMimeType: "application/json", temperature: 0 },
+    });
 
-  const payload = JSON.stringify({ title, body: body ?? "", url: url ?? "/" });
-  let sent = 0;
-  const staleEndpoints: string[] = [];
-
-  await Promise.all(
-    subs.map(async (sub: { endpoint: string; p256dh: string; auth: string }) => {
-      try {
-        await webpush.sendNotification(
-          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-          payload
+    // Gemini sometimes answers 429/503 ("high demand"). Retry a few times with
+    // a short backoff, then fall back to a second model before giving up.
+    const models = [GEMINI_MODEL, FALLBACK_MODEL].filter((m, i, a) => m && a.indexOf(m) === i);
+    let resp: Response | undefined;
+    let data: any;
+    outer: for (const model of models) {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        resp = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          { method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": GEMINI_API_KEY }, body }
         );
-        sent++;
-      } catch (err) {
-        // 404/410 means the browser unsubscribed or the subscription expired
-        // — safe to drop it so the next attempt doesn't keep retrying it.
-        const status = err?.statusCode;
-        if (status === 404 || status === 410) staleEndpoints.push(sub.endpoint);
+        data = await resp.json();
+        if (resp.ok) break outer;
+        if (resp.status !== 429 && resp.status !== 503) break; // not transient: try next model
+        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
       }
-    })
-  );
+    }
+    if (!resp || !resp.ok) {
+      return fail("Gemini API error: " + (data?.error?.message || resp?.statusText));
+    }
 
-  if (staleEndpoints.length > 0) {
-    await supabase.from("push_subscriptions").delete().in("endpoint", staleEndpoints);
+    const text = (data?.candidates?.[0]?.content?.parts || [])
+      .map((p: { text?: string }) => p.text || "")
+      .join("");
+    let parsed: { valid: boolean; missingFields: string[]; notes: string };
+    try {
+      const match = text.match(/\{[\s\S]*\}/);
+      parsed = JSON.parse(match ? match[0] : text);
+    } catch {
+      return fail("Could not parse the verification result: " + text.slice(0, 200));
+    }
+
+    return json({
+      valid: Boolean(parsed.valid),
+      missingFields: Array.isArray(parsed.missingFields) ? parsed.missingFields : [],
+      notes: typeof parsed.notes === "string" ? parsed.notes : "",
+    });
+  } catch (err) {
+    return fail("Verification request failed: " + (err as Error).message);
   }
-
-  return new Response(JSON.stringify({ sent, removed: staleEndpoints.length }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
-});*/
+});

@@ -4,7 +4,7 @@ import { signOut } from "firebase/auth";
 import { supabase } from "../supabaseClient";
 import { COLORS, FONT_IMPORT, BrandLogo, useIsMobile } from "./SiteChrome";
 import { PurchaseContent } from "./PuzzleBoxPurchase";
-import { useTrainingModules } from "../lib/useTrainingModules";
+import { useTrainingModules, audienceForRole } from "../lib/useTrainingModules";
 import { useTrainingProgress } from "../lib/useTrainingProgress";
 import { useTrainingContentBlocks } from "../lib/useTrainingContentBlocks.js";
 import TrainingModuleQuiz from "./TrainingModuleQuiz";
@@ -72,7 +72,7 @@ const TIER_LABEL = { educator: "Tier 1 · Teachers & Primary Healthcare", psycho
 function Shell({ profile, onBack, backLabel, children }) {
   const isMobile = useIsMobile(640);
   return (
-    <div style={{ minHeight: "100vh", background: COLORS.surface, fontFamily: "'Nunito Sans', sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: COLORS.surface, fontFamily: "var(--font-body)" }}>
       <style>{FONT_IMPORT}</style>
       <header style={{
         background: COLORS.white, borderBottom: `1px solid ${COLORS.border}`,
@@ -115,7 +115,7 @@ function BigButton({ color, title, desc, onClick }) {
       onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 16px 40px rgba(0,0,0,0.10)"; }}
       onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 16px rgba(0,0,0,0.04)"; }}
     >
-      <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 21, fontWeight: 900, color: COLORS.ink, marginBottom: 8 }}>{title}</div>
+      <div style={{ fontFamily: "var(--font-heading)", fontSize: 21, fontWeight: 900, color: COLORS.ink, marginBottom: 8 }}>{title}</div>
       <div style={{ fontSize: 14, color: COLORS.inkMid, lineHeight: 1.65, marginBottom: 14 }}>{desc}</div>
       <span style={{ fontSize: 14, fontWeight: 800, color }}>Open →</span>
     </button>
@@ -129,7 +129,7 @@ function Landing({ profile, onView }) {
       <p style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: COLORS.teal, marginBottom: 12 }}>
         {TIER_LABEL[profile?.role]}
       </p>
-      <h1 style={{ fontFamily: "'Nunito', sans-serif", fontSize: "clamp(28px, 3.6vw, 44px)", fontWeight: 900, color: COLORS.ink, lineHeight: 1.1, letterSpacing: "-0.02em", marginBottom: 12 }}>
+      <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(28px, 3.6vw, 44px)", fontWeight: 900, color: COLORS.ink, lineHeight: 1.1, letterSpacing: "-0.02em", marginBottom: 12 }}>
         Welcome{first ? `, ${first}` : ""}
       </h1>
       <p style={{ fontSize: 16, color: COLORS.inkMid, lineHeight: 1.75, maxWidth: 620, marginBottom: 36 }}>
@@ -140,7 +140,7 @@ function Landing({ profile, onView }) {
           desc="See what's included and request a screener."
           onClick={() => onView("purchase")} />
         <BigButton color={COLORS.teal} title="Training"
-          desc="Unlock the certification modules with your Product number."
+          desc={profile?.role === "psychologist" ? "Work through the Tier 2 psychologist modules and earn your certification." : "Unlock the certification modules with your Product number."}
           onClick={() => onView("training")} />
       </div>
       <button onClick={() => onView(null)} style={{
@@ -165,7 +165,8 @@ function ModuleDetail({ user, mod, modules, onBack, onOpenModule, progressApi })
   // module the seed migration (021_seed_training_content_blocks.sql)
   // hasn't been run for yet, so nothing breaks in between.
   const dbContent = useTrainingContentBlocks(mod.id);
-  const staticContent = getModuleContent(mod.sortOrder);
+  // The code-file fallback only describes the educator course
+  const staticContent = mod.audience === "psychologist" ? null : getModuleContent(mod.sortOrder);
   const content = !dbContent.loading && dbContent.blocks.length > 0
     ? { blocks: dbContent.blocks.map((b) => b.data) }
     : staticContent;
@@ -202,7 +203,7 @@ function ModuleDetail({ user, mod, modules, onBack, onOpenModule, progressApi })
         <TrainingModuleContent content={content} colorKey={mod.colorKey} />
       ) : (
         <>
-          <h1 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 28, fontWeight: 900, color: COLORS.ink, marginBottom: 10 }}>{mod.title}</h1>
+          <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 28, fontWeight: 900, color: COLORS.ink, marginBottom: 10 }}>{mod.title}</h1>
           {mod.description && <p style={{ fontSize: 14.5, color: COLORS.inkMid, lineHeight: 1.7, marginBottom: 20 }}>{mod.description}</p>}
           <VideoBlock url={mod.videoUrl} color={color} bg={bg} />
           {mod.contentUrl && (
@@ -214,7 +215,7 @@ function ModuleDetail({ user, mod, modules, onBack, onOpenModule, progressApi })
       )}
 
       <div style={{ marginTop: 32, paddingTop: 24, borderTop: `1px solid ${COLORS.border}` }}>
-        <h3 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 17, fontWeight: 800, color: COLORS.ink, marginBottom: 4 }}>Checkpoint</h3>
+        <h3 style={{ fontFamily: "var(--font-heading)", fontSize: 17, fontWeight: 800, color: COLORS.ink, marginBottom: 4 }}>Checkpoint</h3>
         <p style={{ fontSize: 13, color: COLORS.inkMid, marginBottom: 4 }}>Pass this module's quiz (70% or higher) to mark it complete.</p>
         <TrainingModuleQuiz
           moduleId={mod.id}
@@ -266,7 +267,12 @@ function Training({ user, profile, onCertificateStatusChange }) {
   const [error, setError] = useState("");
   const [openModuleId, setOpenModuleId] = useState(null);
 
+  // Psychologists (Tier 2) don't need a Product number — it only unlocks
+  // training for educators, who are supplied one with their screener.
+  const needsProductNumber = profile?.role !== "psychologist";
+
   useEffect(() => {
+    if (!needsProductNumber) { setState("unlocked"); return undefined; }
     let cancelled = false;
     (async () => {
       try {
@@ -281,7 +287,7 @@ function Training({ user, profile, onCertificateStatusChange }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [user.uid]);
+  }, [user.uid, needsProductNumber]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -301,7 +307,9 @@ function Training({ user, profile, onCertificateStatusChange }) {
     setBusy(false);
   };
 
-  const { modules, loading: modulesLoading } = useTrainingModules();
+  // Educators and psychologists each get their own track of modules
+  const audience = audienceForRole(profile?.role);
+  const { modules, loading: modulesLoading } = useTrainingModules(audience);
   const progressApi = useTrainingProgress(user.uid);
   const publishedModules = modules.filter((m) => m.status === "published");
 
@@ -322,7 +330,7 @@ function Training({ user, profile, onCertificateStatusChange }) {
   if (state === "locked") {
     return (
       <div style={{ maxWidth: 520 }}>
-        <h1 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 32, fontWeight: 900, color: COLORS.ink, marginBottom: 10 }}>Training</h1>
+        <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 32, fontWeight: 900, color: COLORS.ink, marginBottom: 10 }}>Training</h1>
         <p style={{ fontSize: 15.5, color: COLORS.inkMid, lineHeight: 1.75, marginBottom: 26 }}>
           To open the training, enter the Product number supplied with your Puzzle Box Screener.
         </p>
@@ -361,8 +369,8 @@ function Training({ user, profile, onCertificateStatusChange }) {
 
   return (
     <>
-      <span style={{ display: "inline-block", padding: "4px 14px", borderRadius: 16, background: COLORS.tealLight, color: COLORS.teal, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 14 }}>Training unlocked</span>
-      <h1 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 32, fontWeight: 900, color: COLORS.ink, marginBottom: 10 }}>Training modules</h1>
+      <span style={{ display: "inline-block", padding: "4px 14px", borderRadius: 16, background: COLORS.tealLight, color: COLORS.teal, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 14 }}>Training unlocked{audience === "psychologist" ? " · Psychologist track" : ""}</span>
+      <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 32, fontWeight: 900, color: COLORS.ink, marginBottom: 10 }}>Training modules</h1>
       <p style={{ fontSize: 15.5, color: COLORS.inkMid, lineHeight: 1.75, maxWidth: 640, marginBottom: 10 }}>
         Complete the modules in order, followed by each module's quiz, to earn your certification.
       </p>
@@ -381,7 +389,7 @@ function Training({ user, profile, onCertificateStatusChange }) {
             const isPublished = mod.status === "published";
             const row = progressApi.progress.get(mod.id);
             const isDone = row?.status === "quiz_passed";
-            const hasRichContent = !!getModuleContent(mod.sortOrder);
+            const hasRichContent = mod.audience === "psychologist" ? true : !!getModuleContent(mod.sortOrder);
             return (
               <div
                 key={mod.id}
@@ -391,11 +399,11 @@ function Training({ user, profile, onCertificateStatusChange }) {
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                  <div style={{ width: 46, height: 46, borderRadius: 12, background: bg, color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontFamily: "'Nunito', sans-serif", flexShrink: 0 }}>
+                  <div style={{ width: 46, height: 46, borderRadius: 12, background: bg, color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontFamily: "var(--font-heading)", flexShrink: 0 }}>
                     {isDone ? "✓" : number}
                   </div>
                   <div>
-                    <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 15, fontWeight: 800, color: COLORS.ink, lineHeight: 1.3 }}>{mod.title}</div>
+                    <div style={{ fontFamily: "var(--font-heading)", fontSize: 15, fontWeight: 800, color: COLORS.ink, lineHeight: 1.3 }}>{mod.title}</div>
                     <div style={{ fontSize: 12, color: isDone ? COLORS.teal : isPublished ? COLORS.inkMid : COLORS.inkFaint, marginTop: 3, fontWeight: isDone ? 700 : 400 }}>
                       {isDone ? "Completed" : isPublished ? (row?.status === "viewed" ? "In progress" : "Not started") : "Coming soon"}
                     </div>
@@ -480,7 +488,7 @@ export default function MemberArea({ user, profile, view, onView }) {
       )}
       {view === "purchase" && (
         <>
-          <h1 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 32, fontWeight: 900, color: COLORS.ink, marginBottom: 28 }}>Buy The Puzzle Box Screener</h1>
+          <h1 style={{ fontFamily: "var(--font-heading)", fontSize: 32, fontWeight: 900, color: COLORS.ink, marginBottom: 28 }}>Buy The Puzzle Box Screener</h1>
           <PurchaseContent user={user} />
         </>
       )}

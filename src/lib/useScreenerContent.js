@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { puzzleBoxContentV1, interpretationBands as fallbackBands } from "../data/puzzleBoxContent.v1";
+import { applyShowcaseMode } from "./showcaseMode";
 
 // Loads the screener's content — sections, questions, scoring rules,
 // interpretation bands — from the tables created by
@@ -132,12 +133,19 @@ export function useScreenerContent(offlinePackage) {
   const [bands, setBands] = useState(null);
   const [error, setError] = useState("");
 
+  // Single exit point so showcase mode (src/lib/showcaseMode.js) applies to
+  // every source of content, including the built-in fallback.
+  const publish = useCallback((c, b) => {
+    const shown = applyShowcaseMode(c, b);
+    setContent(shown.content);
+    setBands(shown.bands);
+  }, []);
+
   const refresh = useCallback(async () => {
     if (offlinePackage) {
       const built = buildFromOfflinePackage(offlinePackage);
       setError("");
-      setContent(built ? built.content : puzzleBoxContentV1);
-      setBands(built ? built.bands : fallbackBands);
+      publish(built ? built.content : puzzleBoxContentV1, built ? built.bands : fallbackBands);
       return;
     }
 
@@ -159,8 +167,7 @@ export function useScreenerContent(offlinePackage) {
     if (firstError) {
       console.error("Error loading screener content:", firstError);
       setError("Could not load screener content — using the built-in default.");
-      setContent(puzzleBoxContentV1);
-      setBands(fallbackBands);
+      publish(puzzleBoxContentV1, fallbackBands);
       return;
     }
 
@@ -168,13 +175,11 @@ export function useScreenerContent(offlinePackage) {
     setError("");
     if (!built) {
       // Migrations 007/008 not run yet, or content table cleared.
-      setContent(puzzleBoxContentV1);
-      setBands(fallbackBands);
+      publish(puzzleBoxContentV1, fallbackBands);
       return;
     }
-    setContent(built.content);
-    setBands(built.bands);
-  }, [offlinePackage]);
+    publish(built.content, built.bands);
+  }, [offlinePackage, publish]);
 
   useEffect(() => { refresh(); }, [refresh]);
 

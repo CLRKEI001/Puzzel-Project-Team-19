@@ -99,7 +99,7 @@ export default function PendingApproval({ user, profile, onApproved }) {
               </>
             ) : (
               <>
-                <h2>⏳ Awaiting approval</h2>
+                <h2>Awaiting approval</h2>
                 <p>
                   Thanks for signing up, {profile.name || user.email}. An administrator needs to approve
                   your account before you can sign in — you'll be brought straight through the moment

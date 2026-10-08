@@ -2,15 +2,17 @@
 // verified login. Allows administrators to approve pending accounts,
 // manage users, and view a system-wide overview.
 // I have removed the "full analytics for now" section, since we don't have any analytics yet. This will be added back in later.
+// Flags & Alerts has also been removed from this screen.
 
 import React, { useState, useEffect, useMemo } from "react";
+import Doodle from "./Doodle";
 import { supabase } from "../supabaseClient";
 import { mapUserRow, mapChildRow, mapPurchaseRequestRow, mapTrainingCertificateRow } from "../lib/mappers";
 import RoleSidebar from "./RoleSidebar";
 import RoleHero from "./RoleHero";
 import StatRing from "./StatRing";
 import ChildrenTable from "./ChildrenTable";
-import FlagsAlerts from "./FlagsAlerts";
+import { resolveManualConsentReview } from "../lib/consentForms";
 import SummaryReport from "./SummaryReport";
 import TrainingModulesAdmin from "./TrainingModulesAdmin";
 import ScreenerContentAdmin from "./ScreenerContentAdmin";
@@ -30,7 +32,6 @@ const T = {
     navHome: "My Home",
     navUsers: "User Management",
     navChildren: "All Children",
-    navFlags: "Flags & Alerts",
     navReports: "Reports",
     navProfile: "My Profile",
 
@@ -45,7 +46,6 @@ const T = {
     heroSub: "System-wide overview for the PuzzleBox pilot.",
     usersSub: "Approve new accounts and manage roles across the platform.",
     childrenSub: "Every child registered across every teacher and school, not just one class.",
-    flagsSub: "Flags and open follow-ups across the whole program.",
     reportsSub: "Export summary reports across the whole program.",
     profileSub: "Your account details and verification status.",
 
@@ -53,13 +53,11 @@ const T = {
     statPending: "Pending Approval",
     statChildren: "Children Registered",
     statScreened: "Screened This Period",
-    statFlagged: "Open Flags",
 
     total: "total",
     needsAction: "needs action",
     allTime: "all time",
     thisMonth: "this month",
-    unresolved: "unresolved",
 
     pendingApprovals: "Pending Approvals",
     noPending: "All caught up",
@@ -93,8 +91,6 @@ const T = {
     manageUsersSub: "Approve staff, assign roles, review access.",
     viewChildren: "View All Children",
     viewChildrenSub: "Search and filter every registered child.",
-    viewFlags: "View Flags & Alerts",
-    viewFlagsSub: "See who needs a follow-up right now.",
 
     role_educator: "Educator",
     role_psychologist: "Psychologist",
@@ -125,7 +121,6 @@ const T = {
     navHome: "My Tuisblad",
     navUsers: "Gebruikerbestuur",
     navChildren: "Alle Kinders",
-    navFlags: "Vlae & Waarskuwings",
     navReports: "Verslae",
     navProfile: "My Profiel",
 
@@ -141,7 +136,6 @@ const T = {
     usersSub:
       "Keur nuwe rekeninge goed en bestuur rolle regoor die platform.",
     childrenSub: "Elke kind wat geregistreer is, regoor alle onderwysers en skole.",
-    flagsSub: "Vlae en oop opvolgings regoor die hele program.",
     reportsSub: "Voer opsommingsverslae regoor die hele program uit.",
     profileSub: "Jou rekeningbesonderhede en verifikasiestatus.",
 
@@ -149,13 +143,11 @@ const T = {
     statPending: "Wag op Goedkeuring",
     statChildren: "Kinders Geregistreer",
     statScreened: "Gesif Vanjaar Maand",
-    statFlagged: "Oop Vlae",
 
     total: "totaal",
     needsAction: "aksie nodig",
     allTime: "nog altyd",
     thisMonth: "hierdie maand",
-    unresolved: "onopgelos",
 
     pendingApprovals: "Hangende Goedkeurings",
     noPending: "Alles op datum",
@@ -189,8 +181,6 @@ const T = {
     manageUsersSub: "Keur personeel goed, wys rolle toe.",
     viewChildren: "Bekyk Alle Kinders",
     viewChildrenSub: "Soek en filtreer elke geregistreerde kind.",
-    viewFlags: "Bekyk Vlae & Waarskuwings",
-    viewFlagsSub: "Sien wie nou opvolging benodig.",
 
     role_educator: "Opvoeder",
     role_psychologist: "Sielkundige",
@@ -221,7 +211,6 @@ const T = {
     navHome: "Ikhaya Lam",
     navUsers: "Ulawulo Lwabasebenzisi",
     navChildren: "Bonke Abantwana",
-    navFlags: "Izikhombisi",
     navReports: "Iingxelo",
     navProfile: "Iprofayile Yam",
 
@@ -237,7 +226,6 @@ const T = {
     usersSub:
       "Vumela iiakhawunti ezintsha kwaye ulawule iindima kwiplatform.",
     childrenSub: "Wonke umntwana obhalisiweyo kubo bonke ootitshala nezikolo.",
-    flagsSub: "Izikhombisi nokulandelwa okuvulekileyo kwinkqubo iphela.",
     reportsSub: "Khuphela iingxelo ezishwankathelweyo kwinkqubo iphela.",
     profileSub:
       "Iinkcukacha zeakhawunti yakho nemeko yokuqinisekiswa.",
@@ -246,13 +234,11 @@ const T = {
     statPending: "Kulindele Ukuvunywa",
     statChildren: "Abantwana Ababhalisiweyo",
     statScreened: "Abahloliweyo Kule Nyanga",
-    statFlagged: "Izikhombisi Ezivulekileyo",
 
     total: "iyonke",
     needsAction: "kufuna isenzo",
     allTime: "sonke isihlandlo",
     thisMonth: "le nyanga",
-    unresolved: "engasombululwanga",
 
     pendingApprovals: "Ezilindele Ukuvunywa",
     noPending: "Konke kulungile",
@@ -288,8 +274,6 @@ const T = {
       "Vumela abasebenzi, wabele iindima.",
     viewChildren: "Jonga Bonke Abantwana",
     viewChildrenSub: "Khangela kwaye uhlungе wonke umntwana obhalisiweyo.",
-    viewFlags: "Jonga Izikhombisi",
-    viewFlagsSub: "Bona ukuba ngubani ofuna ukulandelwa ngoku.",
 
     role_educator: "Umfundisi",
     role_psychologist: "Isazi Sengqondo",
@@ -363,13 +347,6 @@ const NAV_ICONS = {
       <rect x="1.5" y="3" width="13" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
       <path d="M1.5 6h13" stroke="currentColor" strokeWidth="1.5" />
       <path d="M4 9.5h4M4 11.5h2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  ),
-
-  flags: (
-    <svg viewBox="0 0 16 16" fill="none">
-      <path d="M3 1.5v13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M3 2.5h8.5l-2 2.75 2 2.75H3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
     </svg>
   ),
 
@@ -623,6 +600,37 @@ export default function AdminHome({ user, profile }) {
     [users]
   );
 
+  const [reviewNotes, setReviewNotes] = useState({});
+  const [reviewBusy, setReviewBusy] = useState("");
+  const [reviewError, setReviewError] = useState("");
+
+  const pendingConsentReviews = useMemo(
+    () => children.filter((c) => c.consentReviewStatus === "pending"),
+    [children]
+  );
+
+  const handleConsentReview = async (child, approve) => {
+    setReviewBusy(child.id);
+    setReviewError("");
+    try {
+      const patch = await resolveManualConsentReview({
+        childId: child.id,
+        approve,
+        reviewer: user?.email,
+        note: (reviewNotes[child.id] || "").trim(),
+      });
+      setChildren((prev) => prev.map((c) => c.id === child.id ? {
+        ...c,
+        consentVerified: patch.consent_verified,
+        consentReviewStatus: patch.consent_review_status,
+        consentVerificationNotes: patch.consent_verification_notes,
+      } : c));
+    } catch (e) {
+      setReviewError("Couldn't save the decision — " + e.message);
+    }
+    setReviewBusy("");
+  };
+
   const pendingPurchaseRequests = useMemo(
     () => purchaseRequests.filter((r) => r.status === "pending" || !r.status),
     [purchaseRequests]
@@ -631,14 +639,6 @@ export default function AdminHome({ user, profile }) {
   const pendingTrainingCertificates = useMemo(
     () => trainingCertificates.filter((c) => c.status === "pending" || !c.status),
     [trainingCertificates]
-  );
-
-  // "Open" mirrors the definition FlagsAlerts already uses: flagged and
-  // not yet resolved. This is what the sidebar badge and the overview
-  // stat ring both count.
-  const openFlaggedChildren = useMemo(
-    () => children.filter((c) => c.flagged && !c.resolved),
-    [children]
   );
 
   // Screenings completed this period = assessment date falls within the
@@ -705,7 +705,7 @@ export default function AdminHome({ user, profile }) {
         .invoke("send-push", {
           body: {
             userId: uid,
-            title: "You're approved! 🎉",
+            title: "You're approved!",
             body: "Your PuzzleBox account is ready — you can sign in now.",
           },
         })
@@ -947,16 +947,28 @@ export default function AdminHome({ user, profile }) {
       icon: NAV_ICONS.children,
     },
     {
-      id: "flags",
-      label: t.navFlags,
-      section: t.section2,
-      icon: NAV_ICONS.flags,
-    },
-    {
       id: "reports",
       label: t.navReports,
       section: t.section2,
       icon: NAV_ICONS.reports,
+    },
+    {
+      id: "consent-reviews",
+      label: (
+        <span style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+          Consent Reviews
+          {pendingConsentReviews.length > 0 && (
+            <span style={{
+              marginLeft: "auto", background: "#F2652233", color: "#F26522",
+              borderRadius: 20, fontSize: 10.5, fontWeight: 800, padding: "1px 7px",
+            }}>
+              {pendingConsentReviews.length}
+            </span>
+          )}
+        </span>
+      ),
+      section: t.section2,
+      icon: NAV_ICONS.children,
     },
     {
       id: "training-modules",
@@ -1036,23 +1048,23 @@ export default function AdminHome({ user, profile }) {
             <div className="page-title">
               {activePage === "users" && t.navUsers}
               {activePage === "children" && t.navChildren}
-              {activePage === "flags" && t.navFlags}
               {activePage === "reports" && t.navReports}
-              {activePage === "training-modules" && "Training Modules"}
+               {activePage === "training-modules" && "Training Modules"} 
               {activePage === "training-certifications" && "Training Certifications"}
+              {activePage === "consent-reviews" && "Consent Reviews"}
               {activePage === "screener-content" && "Screener Content"}
               {activePage === "purchase-requests" && "Purchase Requests"}
               {activePage === "profile" && t.navProfile}
             </div>
 
             <div className="page-sub">
-              {activePage === "training-modules" && "Add, reorder, publish and edit the modules shown on the Training page — no code or database changes needed."}
+              {activePage === "consent-reviews" && "Consent forms the automatic check couldn't verify because the service was busy. Open the file, then accept or reject it."}
+              {activePage === "training-modules" && "Add, reorder, publish and edit the modules shown on the Training page."} 
               {activePage === "training-certifications" && "Trainees who've passed every module's quiz land here. Review their results and approve to release their certificate."}
-              {activePage === "screener-content" && "Manage the PuzzleBox Screener's sections, questions and scoring rules — no code or database changes needed."}
+              {activePage === "screener-content" && "Manage the PuzzleBox Screener's sections, questions and scoring rules."}
               {activePage === "purchase-requests" && "Requests submitted from the \"Buy The Puzzle Box Screener\" page. Fulfil a request to issue its Product number."}
               {activePage === "users" && t.usersSub}
               {activePage === "children" && t.childrenSub}
-              {activePage === "flags" && t.flagsSub}
               {activePage === "reports" && t.reportsSub}
               {activePage === "profile" && t.profileSub}
             </div>
@@ -1110,13 +1122,6 @@ export default function AdminHome({ user, profile }) {
                 color="#fff"
                 label={t.statScreened}
               />
-
-              <StatRing
-                value={openFlaggedChildren.length}
-                max={10}
-                color="#fff"
-                label={t.statFlagged}
-              />
             </RoleHero>
 
             <div className="rh-home-grid">
@@ -1146,9 +1151,7 @@ export default function AdminHome({ user, profile }) {
                     </div>
                   ) : pendingUsers.length === 0 ? (
                     <div className="rh-empty">
-                      <div className="rh-empty-icon">
-                        ✅
-                      </div>
+                      <div className="rh-empty-icon" style={{ display: "flex", justifyContent: "center" }}><Doodle name="tick" size={56} /></div>
 
                       <div className="rh-empty-title">
                         {t.noPending}
@@ -1305,7 +1308,7 @@ export default function AdminHome({ user, profile }) {
                     }
                   >
                     <div className="th-quicklink-icon">
-                      🛡
+                      <Doodle name="shield" size={24} />
                     </div>
 
                     <div>
@@ -1328,10 +1331,9 @@ export default function AdminHome({ user, profile }) {
                     onClick={() =>
                       setActivePage("children")
                     }
+                    style={{ marginBottom: 0 }}
                   >
-                    <div className="th-quicklink-icon">
-                      👧
-                    </div>
+                    <div className="th-quicklink-icon"><Doodle name="backpack" size={24} /></div>
 
                     <div>
                       <div className="th-quicklink-title">
@@ -1340,32 +1342,6 @@ export default function AdminHome({ user, profile }) {
 
                       <div className="th-quicklink-sub">
                         {t.viewChildrenSub}
-                      </div>
-                    </div>
-
-                    <div className="th-quicklink-arrow">
-                      →
-                    </div>
-                  </button>
-
-                  <button
-                    className="th-quicklink"
-                    onClick={() =>
-                      setActivePage("flags")
-                    }
-                    style={{ marginBottom: 0 }}
-                  >
-                    <div className="th-quicklink-icon">
-                      🚩
-                    </div>
-
-                    <div>
-                      <div className="th-quicklink-title">
-                        {t.viewFlags}
-                      </div>
-
-                      <div className="th-quicklink-sub">
-                        {t.viewFlagsSub}
                       </div>
                     </div>
 
@@ -1607,6 +1583,70 @@ export default function AdminHome({ user, profile }) {
           <ChildrenTable children={children} lang={lang} />
         )}
 
+        {activePage === "consent-reviews" && (
+          <>
+            {reviewError && <div style={{ color: "var(--pink)", fontSize: 13, marginBottom: 12 }}><Doodle name="warning" size={16} inline /> {reviewError}</div>}
+            {pendingConsentReviews.length === 0 ? (
+              <div className="rh-card">
+                <div className="rh-empty">
+                  <div className="rh-empty-icon"><Doodle name="document" size={64} /></div>
+                  <div className="rh-empty-title">No consent forms waiting</div>
+                  <div className="rh-empty-sub">When a teacher sends a form for manual review, it will show up here.</div>
+                </div>
+              </div>
+            ) : (
+              <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+                <div style={{ overflowX: "auto" }}>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Child</th>
+                        <th>Requested</th>
+                        <th>Form</th>
+                        <th>Note (optional)</th>
+                        <th>Decision</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingConsentReviews.map((c) => (
+                        <tr key={c.id}>
+                          <td>
+                            <div style={{ fontWeight: 700, fontSize: 13 }}>{c.name}</div>
+                            <div style={{ fontSize: 11, color: "var(--ink-faint)" }}>{c.teacherEmail || c.school || ""}</div>
+                          </td>
+                          <td style={{ fontSize: 12, color: "var(--ink-faint)" }}>
+                            {c.consentReviewRequestedAt ? new Date(c.consentReviewRequestedAt).toLocaleString() : "—"}
+                          </td>
+                          <td>
+                            {c.consentFormUrl ? (
+                              <a href={c.consentFormUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, fontWeight: 700, color: "var(--teal)" }}>
+                                Open {c.consentFileName || "file"}
+                              </a>
+                            ) : "—"}
+                          </td>
+                          <td>
+                            <input
+                              className="search-input"
+                              style={{ minWidth: 200 }}
+                              placeholder="e.g. signature present"
+                              value={reviewNotes[c.id] || ""}
+                              onChange={(e) => setReviewNotes((n) => ({ ...n, [c.id]: e.target.value }))}
+                            />
+                          </td>
+                          <td style={{ whiteSpace: "nowrap" }}>
+                            <button className="btn btn-sm btn-primary" disabled={reviewBusy === c.id} onClick={() => handleConsentReview(c, true)}>Accept</button>{" "}
+                            <button className="btn btn-sm btn-ghost" disabled={reviewBusy === c.id} onClick={() => handleConsentReview(c, false)}>Reject</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
         {activePage === "training-modules" && (
           <TrainingModulesAdmin />
         )}
@@ -1615,7 +1655,7 @@ export default function AdminHome({ user, profile }) {
           trainingCertificates.length === 0 ? (
             <div className="rh-card">
               <div className="rh-empty">
-                <div className="rh-empty-icon">🎓</div>
+                <div className="rh-empty-icon"><Doodle name="certificate" size={64} /></div>
                 <div className="rh-empty-title">No certifications yet</div>
                 <div className="rh-empty-sub">Once a trainee passes every published module's quiz, they'll show up here for review.</div>
               </div>
@@ -1669,7 +1709,7 @@ export default function AdminHome({ user, profile }) {
           purchaseRequests.length === 0 ? (
             <div className="rh-card">
               <div className="rh-empty">
-                <div className="rh-empty-icon">📦</div>
+                <div className="rh-empty-icon"><Doodle name="puzzle" size={64} /></div>
                 <div className="rh-empty-title">No purchase requests yet</div>
                 <div className="rh-empty-sub">Requests submitted from the Buy page will show up here.</div>
               </div>
@@ -1717,10 +1757,6 @@ export default function AdminHome({ user, profile }) {
               </div>
             </div>
           )
-        )}
-
-        {activePage === "flags" && (
-          <FlagsAlerts children={children} lang={lang} />
         )}
 
         {activePage === "reports" && (

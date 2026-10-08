@@ -12,6 +12,7 @@
 // (PuzzleBoxScreener.js) reads content from.
 
 import React, { useEffect, useState } from "react";
+import Doodle from "./Doodle";
 import { supabase } from "../supabaseClient";
 import { useScreenerContent } from "../lib/useScreenerContent";
 import ScreenerQuestionsEditor from "./ScreenerQuestionsEditor";
@@ -86,7 +87,7 @@ function MetaEditor() {
       <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 10 }}>General instructions</div>
       {error && (
         <div style={{ padding: "8px 12px", background: "var(--pink-lt)", color: "var(--pink)", borderRadius: 9, fontSize: 12.5, fontWeight: 700, marginBottom: 10 }}>
-          ⚠ {error}
+          <Doodle name="warning" size={16} inline /> {error}
         </div>
       )}
       <textarea style={{ ...inputStyle, minHeight: 60, resize: "vertical", marginBottom: 10 }}
@@ -210,19 +211,19 @@ export default function ScreenerContentAdmin() {
 
       {error && (
         <div style={{ padding: "10px 14px", background: "var(--pink-lt)", color: "var(--pink)", borderRadius: 10, fontSize: 13, fontWeight: 700, marginBottom: 14 }}>
-          ⚠ {error}
+          <Doodle name="warning" size={16} inline /> {error}
         </div>
       )}
 
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         {sections === null ? (
           <div className="empty-state">
-            <div className="empty-state-icon" style={{ fontSize: 28 }}>⏳</div>
+            <div className="empty-state-icon" style={{ display: "flex", justifyContent: "center" }}><Doodle name="puzzle" size={56} /></div>
             <div className="empty-state-title">Loading sections...</div>
           </div>
         ) : sorted.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">🧩</div>
+            <div className="empty-state-icon" style={{ display: "flex", justifyContent: "center" }}><Doodle name="puzzle" size={56} /></div>
             <div className="empty-state-title">No sections yet</div>
             <div className="empty-state-sub">Add the first section of the screener to get started.</div>
           </div>
@@ -245,7 +246,7 @@ export default function ScreenerContentAdmin() {
                         </span>
                         {s.is_puzzle_timer_section && (
                           <span style={{ fontSize: 10.5, padding: "2px 8px", borderRadius: 10, background: "var(--orange-lt, #FEF0E7)", color: "var(--orange, #F26522)", fontWeight: 700 }}>
-                            ⏱ puzzle timer section
+                            <Doodle name="stopwatch" size={16} inline /> puzzle timer section
                           </span>
                         )}
                       </div>
@@ -278,7 +279,7 @@ export default function ScreenerContentAdmin() {
 
             {formError && (
               <div style={{ padding: "10px 14px", background: "var(--pink-lt)", color: "var(--pink)", borderRadius: 10, fontSize: 13, fontWeight: 700, marginBottom: 14 }}>
-                ⚠ {formError}
+                <Doodle name="warning" size={16} inline /> {formError}
               </div>
             )}
 

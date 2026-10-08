@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import Doodle from "./Doodle";
 
 const ALL_CHILDREN = [
   { id:"PB-001", name:"Child PB-001", school:"Adelaide Primary",    district:"Komani District",        age:6, gender:"F", language:"isiXhosa",  cognitive:72, motor:68, language_score:65, social:70, emotion:74, moral:69, total:70, status:"On Track",               flagged:false, date:"2026-02-05", examiner:"Dr. Moyo" },
@@ -52,7 +53,7 @@ function StatusPill({ status }) {
 }
 
 function ScoreBar({ value }) {
-  const color = value >= 75 ? "#0E7A6E" : value >= 50 ? "#F26522" : "#E8175D";
+  const color = value >= 50 ? "#0E7A6E" : value >= 35 ? "#F26522" : "#E8175D";
   return (
     <div style={{ display:"flex", alignItems:"center", gap:10 }}>
       <div style={{ flex:1, height:4, background:"#EBEBEB", borderRadius:99, overflow:"hidden" }}>
@@ -105,10 +106,10 @@ function printReport(htmlContent) {
     <html>
       <head>
         <title>PuzzleBox Screener Report</title>
-        <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
         <style>
           * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { font-family: 'Nunito', sans-serif; color: #111; background: #fff; padding: 40px; }
+          body { font-family: 'Poppins', sans-serif; color: #111; background: #fff; padding: 40px; }
           @page { size: A4; margin: 14mm; }
           @media print { body { padding: 0; } }
         </style>
@@ -176,9 +177,9 @@ export default function SummaryReport({ children: propChildren, lang: initialLan
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&family=DM+Sans:wght@400;500;700&display=swap');
         *, *::before, *::after { box-sizing: border-box; }
-        body { margin: 0; background: #F2F1EE; font-family: 'Nunito', sans-serif; color: #111; }
+        body { margin: 0; background: #F2F1EE; font-family: 'Poppins', sans-serif; color: #111; }
       `}</style>
 
       <div style={{ minHeight:"100vh", background:"#F2F1EE" }}>
@@ -302,7 +303,7 @@ export default function SummaryReport({ children: propChildren, lang: initialLan
                       <p style={{ margin:"0 0 10px", fontSize:9, fontWeight:800,
                         letterSpacing:"0.1em", textTransform:"uppercase", color:"#AAA" }}>Total Score</p>
                       <div style={{ fontSize:64, fontWeight:900, lineHeight:1,
-                        color: child.total>=75?"#0E7A6E":child.total>=50?"#F26522":"#E8175D",
+                        color: child.total>=50?"#0E7A6E":child.total>=35?"#F26522":"#E8175D",
                       }}>{child.total}%</div>
                       <div style={{ marginTop:14 }}><StatusPill status={child.status} /></div>
                       {child.flagged && (
@@ -379,7 +380,7 @@ export default function SummaryReport({ children: propChildren, lang: initialLan
                             <td style={{ padding:"10px 12px", color:"#555" }}>{c.language}</td>
                             <td style={{ padding:"10px 12px" }}>
                               <span style={{ fontWeight:800,
-                                color:c.total>=75?"#0E7A6E":c.total>=50?"#F26522":"#E8175D" }}>
+                                color:c.total>=50?"#0E7A6E":c.total>=35?"#F26522":"#E8175D" }}>
                                 {c.total}%
                               </span>
                             </td>
@@ -437,7 +438,7 @@ export default function SummaryReport({ children: propChildren, lang: initialLan
               <div style={{ height:1, background:"#EBEBEB", margin:"40px 0 28px" }} />
               <div style={{ display:"flex", gap:14, padding:"16px 20px",
                 background:"#FEF5F8", borderRadius:10, border:"1px solid #F0C0D0", marginBottom:16 }}>
-                <span style={{ fontSize:16, flexShrink:0, lineHeight:1.4 }}>⚠</span>
+                <span style={{ fontSize:16, flexShrink:0, lineHeight:1.4 }}><Doodle name="warning" size={18} /></span>
                 <p style={{ margin:0, fontSize:11, color:"#880030", lineHeight:1.8 }}>
                   <strong>Disclaimer:</strong> This report contains simplified percentile summaries only.
                   Results must not be interpreted as clinical diagnoses. Detailed domain scores are

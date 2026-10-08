@@ -71,11 +71,13 @@ async function buildScreener(uid: string, teacher: { email: string; name: string
     admin.from("screener_interpretation_bands").select("id, age, sort_order, band_key, label, min_score, max_score").order("sort_order"),
     // Only this educator's children whose consent form has been verified,
     // the same rule the online screener applies before a screening can start.
-    admin.from("children")
-      .select("id, name, student_number, school, school_id, age, age_months, gender, language, child_identities(full_name)")
+    // Same view the online screener reads (children + real_name), so the app
+    // can shape offline children with the same mapChildRow as online.
+    admin.from("children_named")
+      .select("*")
       .eq("teacher_uid", uid)
       .eq("consent_verified", true)
-      .order("name"),
+      .order("real_name"),
   ]);
 
   for (const r of [meta, sections, questions, scoreTables, bands, children]) {
@@ -90,10 +92,7 @@ async function buildScreener(uid: string, teacher: { email: string; name: string
     questions: questions.data,
     scoreTables: scoreTables.data,
     interpretationBands: bands.data,
-    children: (children.data ?? []).map(({ child_identities, ...c }: any) => ({
-      ...c,
-      full_name: Array.isArray(child_identities) ? child_identities[0]?.full_name ?? null : child_identities?.full_name ?? null,
-    })),
+    children: children.data ?? [],
     // The registered email is what the database checks uploads against
     // (teacher_email must match users.email), so offline screenings use it.
     teacher,

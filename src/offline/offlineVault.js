@@ -272,8 +272,9 @@ async function doSync() {
     for (const k of await sessionKeys()) {
       try {
         const item = await get(k);
-        // _notify carries the psychologist message; it isn't a table column
-        const { _notify, ...record } = await decrypt(key, item);
+        // _notify (psychologist message) and _childStage aren't table columns;
+        // they're applied after the screening itself is saved
+        const { _notify, _childStage, ...record } = await decrypt(key, item);
         const { error } = await supabase.from(SESSIONS_TABLE).insert(record);
         // An earlier upload got through but the reply was lost: it's already
         // saved, so treat it as done rather than retrying forever.
@@ -282,6 +283,14 @@ async function doSync() {
         // Same "ready for review" message the online submit sends. Only on a
         // first successful upload, so a retry doesn't notify twice. If it
         // fails the screening is still saved, as online.
+        // Same as the online submit: move the child's Stage badge to "Processing".
+        // Non-fatal, as online.
+        if (!error && _childStage?.id) {
+          const { error: stageErr } = await supabase
+            .from("children").update({ stage: _childStage.stage }).eq("id", _childStage.id);
+          if (stageErr) console.error("Could not update the child's stage:", stageErr.message);
+        }
+
         if (!error && _notify) {
           const { error: notifyErr } = await supabase.from("messages").insert({
             ..._notify,

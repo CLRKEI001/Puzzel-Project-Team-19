@@ -4,8 +4,9 @@
 // follow-ups, pending approvals).
  
 import React from "react";
+import { Ico } from "./Doodle";
  
-export default function TodayList({ title, actionLabel, onAction, items, emptyIcon = "✨", emptyTitle, emptySub, onItemClick }) {
+export default function TodayList({ title, actionLabel, onAction, items, emptyIcon = "puzzle", emptyTitle, emptySub, onItemClick }) {
   return (
     <div className="rh-card">
       <div className="rh-card-head">
@@ -16,7 +17,7 @@ export default function TodayList({ title, actionLabel, onAction, items, emptyIc
       </div>
       {!items || items.length === 0 ? (
         <div className="rh-empty">
-          <div className="rh-empty-icon">{emptyIcon}</div>
+          <div className="rh-empty-icon" style={{ display: "flex", justifyContent: "center" }}><Ico v={emptyIcon} size={56} /></div>
           <div className="rh-empty-title">{emptyTitle}</div>
           <div className="rh-empty-sub">{emptySub}</div>
         </div>
@@ -24,7 +25,7 @@ export default function TodayList({ title, actionLabel, onAction, items, emptyIc
         <div className="rh-list">
           {items.map((it, i) => (
             <div className={`rh-list-row ${onItemClick ? "clickable" : ""}`} key={i} onClick={() => onItemClick?.(it)}>
-              <div className="rh-list-icon" style={{ background: `${it.color}1f`, color: it.color }}>{it.icon}</div>
+              <div className="rh-list-icon" style={{ background: `${it.color}1f`, color: it.color }}><Ico v={it.icon} size={22} /></div>
               <div className="rh-list-text">
                 <div className="rh-list-title">{it.title}</div>
                 <div className="rh-list-meta">{it.meta}</div>
@@ -40,4 +41,3 @@ export default function TodayList({ title, actionLabel, onAction, items, emptyIc
     </div>
   );
 }
- 

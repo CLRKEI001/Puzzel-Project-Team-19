@@ -14,6 +14,7 @@
 // that same evaluate-in-order behaviour for the live screener).
 
 import React, { useEffect, useState } from "react";
+import Doodle from "./Doodle";
 import { supabase } from "../supabaseClient";
 
 const AGES = [5, 6];
@@ -105,7 +106,7 @@ export default function ScreenerScoreTableEditor({ questionId, valueUnit }) {
 
       {error && (
         <div style={{ padding: "6px 10px", background: "var(--pink-lt)", color: "var(--pink)", borderRadius: 8, fontSize: 11.5, fontWeight: 700, marginBottom: 8 }}>
-          ⚠ {error}
+          <Doodle name="warning" size={16} inline /> {error}
         </div>
       )}
 

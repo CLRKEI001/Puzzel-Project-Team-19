@@ -19,6 +19,7 @@ import TeacherHome from "./components/TeacherHome";
 import PsychologistHome from "./components/PsychologistHome";
 import AdminHome from "./components/AdminHome";
 import PuzzleTransition from "./components/PuzzleTransition";
+import TranslatorChat from "./components/TranslatorChat";
 
 // NEW — your teammate's public site pages. Adjust these paths if her files
 // don't actually live in ./components (e.g. change to "./pages/Homepage" etc.)
@@ -133,6 +134,20 @@ function App() {
             setMemberView(resolved);
             setMemberViewReady(true);
           }
+
+          // Psychologists skip the "Training / Buy Screener" landing choice
+          // entirely and go straight to their dashboard — that screen (and
+          // the underlying buy/training pages, still reachable from the
+          // sidebar via onOpenMember) is a Tier 1/teacher onboarding step,
+          // not something a psychologist needs to see on every login.
+          // Checked against anything other than "dashboard" (not just
+          // "landing") since this same browser tab's sessionStorage can
+          // still be holding "training"/"purchase" from an earlier visit —
+          // a fresh login as a psychologist should never land on any of
+          // those, only ever the dashboard.
+          if (mapped?.isVerified && mapped.role === "psychologist" && readMemberView() !== "dashboard") {
+            setMemberView("dashboard");
+          }
         } catch {
           setProfile(null);
         }
@@ -211,6 +226,7 @@ function App() {
       return (
         <>
           <MemberArea user={user} profile={profile} view={memberView} onView={setMemberView} />
+          <TranslatorChat />
           {transitioning && (
             <PuzzleTransition onComplete={() => setTransitioning(false)} />
           )}
@@ -244,6 +260,7 @@ function App() {
         ) : (
           <Dashboard user={user} profile={profile} />
         )}
+        {profile?.isVerified && <TranslatorChat />}
         {transitioning && (
           <PuzzleTransition onComplete={() => setTransitioning(false)} />
         )}
@@ -257,16 +274,22 @@ function App() {
       <Login
         tier={loginCtx?.tier || null}
         initialMode={loginCtx?.mode || "login"}
-        onBack={() => setShowLogin(false)}
+        onBack={() => { setShowLogin(false); setPublicPage("home"); }}
         onVerified={async (verifiedProfile) => {
           setProfile(verifiedProfile);
           // Teachers: resolve straight to Training or the dashboard, never
           // the "landing" choice screen (see resolveEducatorMemberView).
+          // Psychologists: same deal, just always straight to "dashboard" —
+          // mirrors the equivalent check in the onAuthStateChanged effect
+          // above, which only runs on a page load/refresh, not on this
+          // direct post-login handoff from Login.js.
           if (verifiedProfile?.isVerified && verifiedProfile.role === "educator") {
             setMemberViewReady(false);
             const resolved = await resolveEducatorMemberView(verifiedProfile.id || auth.currentUser?.uid);
             setMemberView(resolved);
             setMemberViewReady(true);
+          } else if (verifiedProfile?.isVerified && verifiedProfile.role === "psychologist") {
+            setMemberView("dashboard");
           } else {
             setMemberView("landing");
           }

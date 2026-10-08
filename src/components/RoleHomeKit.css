@@ -27,7 +27,7 @@
   color: rgba(255, 255, 255, 0.85); margin-bottom: 10px;
 }
 .rh-hero-greeting {
-  font-family: "Nunito", sans-serif; font-size: 30px; font-weight: 900;
+  font-family: var(--font-heading); font-size: 30px; font-weight: 900;
   letter-spacing: -0.01em; margin-bottom: 8px; line-height: 1.15;
 }
 .rh-hero-subtitle { font-size: 14px; color: rgba(255, 255, 255, 0.85); line-height: 1.5; }
@@ -66,7 +66,7 @@
 }
 .rh-card:last-child { margin-bottom: 0; }
 .rh-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-.rh-card-title { font-family: "Nunito", sans-serif; font-size: 15px; font-weight: 800; color: var(--ink, #1a1a2e); }
+.rh-card-title { font-family: var(--font-heading); font-size: 15px; font-weight: 800; color: var(--ink, #1a1a2e); }
 .rh-card-action {
   background: none; border: none; font-size: 12px; font-weight: 700;
   color: var(--ink-faint, #8a8aa3); cursor: pointer;
@@ -109,7 +109,7 @@
 .rh-profile-avatar {
   width: 66px; height: 66px; border-radius: 50%; margin: 0 auto 12px;
   display: flex; align-items: center; justify-content: center;
-  font-family: "Nunito", sans-serif; font-size: 24px; font-weight: 900; color: #fff;
+  font-family: var(--font-heading); font-size: 24px; font-weight: 900; color: #fff;
 }
 .rh-profile-name { font-size: 15px; font-weight: 800; color: var(--ink, #1a1a2e); }
 .rh-profile-role {
@@ -123,7 +123,7 @@
  
 .rh-chip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
 .rh-chip { background: #FAFAFF; border-radius: 14px; padding: 10px 8px; text-align: center; }
-.rh-chip-value { font-family: "Nunito", sans-serif; font-size: 17px; font-weight: 900; color: var(--ink, #1a1a2e); }
+.rh-chip-value { font-family: var(--font-heading); font-size: 17px; font-weight: 900; color: var(--ink, #1a1a2e); }
 .rh-chip-label { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-faint, #8a8aa3); margin-top: 2px; }
  
 /* ── STAT PILLS ROW (compact alternative to rings, used inline) ──── */
@@ -133,7 +133,7 @@
   box-shadow: 0 2px 14px rgba(20, 20, 43, 0.05); display: flex; align-items: center; gap: 12px;
 }
 .rh-pill-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
-.rh-pill-value { font-family: "Nunito", sans-serif; font-size: 19px; font-weight: 900; color: var(--ink, #1a1a2e); line-height: 1; }
+.rh-pill-value { font-family: var(--font-heading); font-size: 19px; font-weight: 900; color: var(--ink, #1a1a2e); line-height: 1; }
 .rh-pill-label { font-size: 10.5px; font-weight: 700; color: var(--ink-faint, #8a8aa3); margin-top: 3px; }
  
 /* ── SIDEBAR RESTYLE (scoped to role homes only) ─────────────────── */
@@ -190,3 +190,58 @@
   font-size: 10px; font-weight: 800; line-height: 1;
 }
 .nav-item.active .nav-badge { background: rgba(255, 255, 255, 0.35); }
+/* ── ANALYTICS PANELS EMBEDDED IN A ROLE HOME ────────────────────────
+   AnalyticsPanels.js drops the old "Full Analytics Dashboard" pages into
+   the role home itself. These overrides (scoped to .rh-analytics so the
+   standalone Dashboard is untouched) give those panels the same visual
+   language as the rest of the home page: soft rounded white cards with no
+   hard borders, and the role's accent colour instead of a rainbow of
+   teal/purple/orange/pink stripes. */
+.rh-analytics { margin-top: 0; }
+.rh-analytics-head { margin-bottom: 14px; }
+.rh-analytics-title { font-family: var(--font-heading); font-size: 22px; font-weight: 900; color: var(--ink, #1a1a2e); }
+.rh-analytics-sub { font-size: 13px; color: var(--ink-faint, #8a8aa3); margin-top: 3px; }
+
+.rh-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.rh-tab {
+  border: none; cursor: pointer; font-family: inherit; font-size: 12.5px; font-weight: 800;
+  padding: 9px 16px; border-radius: 999px;
+  background: #fff; color: var(--ink-mid, #55557a);
+  box-shadow: 0 2px 10px rgba(20, 20, 43, 0.05);
+  transition: background 0.15s, color 0.15s, transform 0.15s;
+}
+.rh-tab:hover { transform: translateY(-1px); color: var(--ink, #1a1a2e); }
+.rh-tab.active {
+  background: var(--rh-accent, #E8175D); color: #fff;
+  box-shadow: 0 6px 16px -4px var(--rh-accent, rgba(232, 23, 93, 0.5));
+}
+
+.rh-analytics .card,
+.rh-analytics .stat-card,
+.rh-analytics .stat-card.c1,
+.rh-analytics .stat-card.c2,
+.rh-analytics .stat-card.c3,
+.rh-analytics .stat-card.c4 {
+  border: none;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 2px 14px rgba(20, 20, 43, 0.05);
+}
+.rh-analytics .stat-card::before { border-radius: 22px 22px 0 0; height: 4px; background: var(--rh-accent, #E8175D); }
+.rh-analytics .stat-card.c1::before,
+.rh-analytics .stat-card.c2::before,
+.rh-analytics .stat-card.c3::before,
+.rh-analytics .stat-card.c4::before { background: var(--rh-accent, #E8175D); }
+.rh-analytics .card-title { font-family: var(--font-heading); font-weight: 800; color: var(--ink, #1a1a2e); }
+.rh-analytics .btn-primary { background: var(--rh-accent, #E8175D); }
+.rh-analytics .filter-btn.active,
+.rh-analytics .tab-btn.active { background: var(--rh-accent, #E8175D); border-color: var(--rh-accent, #E8175D); color: #fff; }
+
+[data-theme="dark"] .rh-tab { background: #1f1f36; color: rgba(255, 255, 255, 0.7); box-shadow: none; }
+[data-theme="dark"] .rh-tab.active { background: var(--rh-accent, #E8175D); color: #fff; }
+[data-theme="dark"] .rh-analytics .card,
+[data-theme="dark"] .rh-analytics .stat-card,
+[data-theme="dark"] .rh-analytics .stat-card.c1,
+[data-theme="dark"] .rh-analytics .stat-card.c2,
+[data-theme="dark"] .rh-analytics .stat-card.c3,
+[data-theme="dark"] .rh-analytics .stat-card.c4 { background: #1f1f36; box-shadow: none; }

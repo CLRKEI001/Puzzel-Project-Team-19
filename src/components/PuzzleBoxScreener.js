@@ -17,8 +17,10 @@
 //     Supabase-backed one later shouldn't require touching this file).
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import Doodle from "./Doodle";
 import { supabase } from "../supabaseClient";
 import { useScreenerContent, scoreFromAgeTable } from "../lib/useScreenerContent";
+import { mapChildRow } from "../lib/mappers";
 import { saveDraft, getDraft, deleteDraft, saveOfflineSession } from "../offline/offlineVault";
 import { SinglePuzzlePiece } from "./puzzlePiece";
 import "./PuzzleBoxScreener.css";
@@ -84,6 +86,10 @@ const T = {
     exitConfirmOffline: "Leave the screening? Your progress is saved on this device and you can resume later, even without signal.",
     notAgeSupported: "This screener's age-based scoring covers 5 and 6 year olds — a raw time/count is still recorded for this child, but no 0–2 score can be derived automatically.",
     checklistCount: "checked",
+    consentMissingTitle: "No consent form on file",
+    consentMissingBody: "A signed parent/guardian consent form is required before this child can be screened. Go to My Class, open this child's record, and upload one — you can also download a blank form to send home.",
+    consentIncompleteTitle: "Consent form incomplete",
+    consentVerifiedBadge: "Consent form on file ✓",
   },
 };
 
@@ -187,6 +193,20 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild,
   const [timerMs, setTimerMs] = useState(0);
   const timerIntervalRef = useRef(null);
 
+  // ── Continuous overall session timer ─────────────────────────────
+  // Separate from the per-section timer above: this one never resets
+  // between sections, so it answers "how long did the whole screening
+  // take" — see total_time_seconds (migration 025).
+  const [sessionTimerMs, setSessionTimerMs] = useState(0);
+  const sessionTimerIntervalRef = useRef(null);
+
+  // ── Per-section elapsed time ──────────────────────────────────────
+  // Most questions are plain 0-2 observational scores with no time of
+  // their own — this is how the review screen can still show "how long
+  // did section N take" without inventing a time for every question.
+  // Keyed by section id, accumulates (never resets) across revisits.
+  const [sectionTimes, setSectionTimes] = useState({});
+
   const offlineTeacher = offline?.screener?.teacher;
   const teacherEmail = offlineTeacher?.email || user?.email || "";
   const teacherName = offlineTeacher?.name || profile?.name || user?.email?.split("@")[0] || "Educator";
@@ -212,33 +232,34 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild,
     if (view !== "select") return;
     let active = true;
     if (isOffline) {
-      // This educator's consent-verified children, from the offline package
+      // This educator's consent-verified children, from the offline package.
+      // They're children_named rows (same as the online query below), so
+      // mapChildRow gives them exactly the same shape as online.
       const q = search.trim().toLowerCase();
       const all = offline.screener.children || [];
       const matches = q
         ? all.filter((c) =>
-            [c.name, c.full_name, c.school, c.student_number].some((v) => (v || "").toLowerCase().includes(q)))
+            [c.real_name, c.student_number, c.school].some((v) => (v || "").toLowerCase().includes(q)))
         : all;
-      setChildren(matches.slice(0, 50));
+      setChildren(matches.slice(0, 50).map(mapChildRow));
       setLoadingChildren(false);
       return () => { active = false; };
     }
     setLoadingChildren(true);
     const run = async () => {
-      // Scoped to this teacher's own children — same rule TeacherHome's
-      // "My Class" uses: match on the real teacher_email (migration 009)
-      // where it's set, and for older rows added before that column
-      // existed (NULL), fall back to an examiner-name match instead of
-      // showing them to every teacher. Seed/demo data and children
-      // explicitly owned by a different teacher are excluded either way.
+      // Scoped to this teacher's own children (teacher_uid). The database
+      // enforces the same rule, so this filter just keeps the intent clear.
+      // Read from `children_named` so the teacher sees real names.
       let query = supabase
-        .from("children")
+        .from("children_named")
         .select("*")
-        .or(`teacher_email.eq.${teacherEmail},and(teacher_email.is.null,examiner.ilike.${teacherName})`)
-        .order("name", { ascending: true })
+        .eq("teacher_uid", user?.uid || "")
+        .order("real_name", { ascending: true })
         .limit(50);
-      if (search.trim()) {
-        query = query.or(`name.ilike.%${search.trim()}%,school.ilike.%${search.trim()}%`);
+      // Commas and brackets would break the filter syntax, so strip them.
+      const term = search.trim().replace(/[,()*%]/g, " ").trim();
+      if (term) {
+        query = query.or(`real_name.ilike.%${term}%,student_number.ilike.%${term}%,school.ilike.%${term}%`);
       }
       const { data, error: qErr } = await query;
       if (!active) return;
@@ -246,13 +267,17 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild,
         setError("Could not load children: " + qErr.message);
         setChildren([]);
       } else {
-        setChildren(data || []);
+        // Mapped to camelCase so selectedChild is shaped identically whether
+        // it came from this search or was handed in as initialChild (which
+        // TeacherHome.js already maps via mapChildRow) — consentVerified
+        // and friends are read off selectedChild below either way.
+        setChildren((data || []).map(mapChildRow));
       }
       setLoadingChildren(false);
     };
     const debounce = setTimeout(run, 250);
     return () => { active = false; clearTimeout(debounce); };
-  }, [search, view]);
+  }, [search, view, user?.uid]);
 
   // ── Deep link: caller handed us a specific child directly ───────────
   // Mirrors the lookup half of selectChild() below, just without the
@@ -325,11 +350,20 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild,
   // ── Start (or resume) the screening session ──────────────────────────
   const beginScreening = async (resume) => {
     setError("");
+    // Defense in depth — the confirm screen's button is already disabled
+    // without a verified consent form, but a screening must never actually
+    // start without one regardless of how this function gets called.
+    if (!selectedChild?.consentVerified) {
+      setError(t.consentMissingBody);
+      return;
+    }
     if (resume && existingSession) {
       draftRef.current = existingSession;
       setSession(existingSession);
       setResponses(existingSession.responses || {});
       setObservations(existingSession.observations || "");
+      setSessionTimerMs((existingSession.total_time_seconds || 0) * 1000);
+      setSectionTimes(existingSession.section_times || {});
       setView("form");
       return;
     }
@@ -451,23 +485,70 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild,
   };
 
   // ── Live puzzle timer ────────────────────────────────────────────
-  // Stops the interval and drops back to idle whenever the teacher leaves
-  // this section, and loads any previously recorded time (e.g. resuming a
-  // saved session) as the timer's starting point.
+  // Resets whenever the teacher moves to a new section (loading any
+  // previously recorded time, e.g. resuming a saved session, as the
+  // starting point) and now auto-starts immediately instead of waiting
+  // for a manual "Start" click every time — teachers were having to
+  // remember to press Start on every single section. Pause/Reset are
+  // still there for a genuine interruption.
   useEffect(() => {
+    if (view !== "form") return;
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
-    setTimerRunning(false);
     setTimerMs(timerQuestion ? (responses[timerQuestion.id]?.rawValueSeconds || 0) * 1000 : 0);
+    setTimerRunning(true);
+    const sectionId = currentSection?.id;
+    timerIntervalRef.current = setInterval(() => {
+      setTimerMs((ms) => ms + 1000);
+      if (sectionId) {
+        setSectionTimes((prev) => ({ ...prev, [sectionId]: (prev[sectionId] || 0) + 1 }));
+      }
+    }, 1000);
+    // currentSection?.id is included (not just sectionIndex) because content
+    // loads asynchronously (useScreenerContent) — if this effect's first run
+    // lands before content has arrived, currentSection is still undefined
+    // and sectionId would be captured as undefined forever, since nothing
+    // would ever re-run this effect once content shows up. Re-running when
+    // the id itself changes (content finishes loading, or a real section
+    // change) fixes that without re-running on every unrelated render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sectionIndex]);
+  }, [sectionIndex, view, currentSection?.id]);
 
   // Clean up the interval if the component unmounts mid-timer.
   useEffect(() => () => {
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
   }, []);
+
+  // ── Continuous overall session timer ─────────────────────────────
+  // Starts the moment the screening form opens (new or resumed) and
+  // keeps ticking across every section change — unlike the per-section
+  // timer above, this one is never reset, so its value at submit time is
+  // "how long the whole screening took".
+  useEffect(() => {
+    if (view !== "form" || !session?.id) return;
+    sessionTimerIntervalRef.current = setInterval(() => {
+      setSessionTimerMs((ms) => ms + 1000);
+    }, 1000);
+    return () => {
+      if (sessionTimerIntervalRef.current) clearInterval(sessionTimerIntervalRef.current);
+      sessionTimerIntervalRef.current = null;
+    };
+  }, [view, session?.id]);
+
+  // Persists the running total and the per-section breakdown together as
+  // they tick (debounced, same pattern as every other autosaved field) so
+  // "time so far" survives a refresh and resume, not only a clean submit.
+  // These two update on the same 1-second cadence, so they're sent in one
+  // patch rather than two separate debounced calls — debouncedPersist
+  // shares a single pending timer, and two calls in the same tick would
+  // just have the second silently cancel the first.
+  useEffect(() => {
+    if (view !== "form" || !session?.id) return;
+    debouncedPersist({ total_time_seconds: Math.floor(sessionTimerMs / 1000), section_times: sectionTimes });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionTimerMs, sectionTimes]);
 
   // While running, every tick updates the on-screen clock and writes the
   // elapsed time into every question on the page — the official time-scored
@@ -554,6 +635,11 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild,
         raw_score: rawScore,
         interpretation_band: band?.band || null,
         content_snapshot: content,
+        total_time_seconds: Math.floor(sessionTimerMs / 1000),
+        section_times: sectionTimes,
+        // Applied after upload, same as the online submit: move the child's
+        // Stage badge to "Processing"
+        _childStage: { id: selectedChild.id, stage: "stage3" },
         _notify: {
           child_id: selectedChild.id,
           child_name: selectedChild.name,
@@ -562,7 +648,8 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild,
           teacher_email: teacherEmail,
           teacher_name: teacherName,
           diagnosis:
-            `${teacherName} finished a PuzzleBox screening for ${selectedChild.name} at ${selectedChild.school || "their school"}.` +
+            // Student number, not the name: psychologists only see student numbers.
+            `${teacherName} finished a PuzzleBox screening for ${selectedChild.studentNumber || "a child"} at ${selectedChild.school || "their school"}.` +
             (band ? ` Result: ${band.label}.` : "") +
             " Open it to review and share the outcome.",
         },
@@ -589,6 +676,8 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild,
         raw_score: rawScore,
         interpretation_band: band?.band || null,
         content_snapshot: content,
+        total_time_seconds: Math.floor(sessionTimerMs / 1000),
+        section_times: sectionTimes,
       })
       .eq("id", session.id);
 
@@ -596,6 +685,19 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild,
       setError("Could not submit the screening: " + submitErr.message);
       return;
     }
+
+    // Move the child's Stage badge (Student Records / Full Analytics
+    // Dashboard) forward to "Processing" — it's a separate, manually-set
+    // field on `children` left over from before PuzzleBox screenings got
+    // their own table, and nothing was ever advancing it automatically.
+    // Without this, a child who'd actually been screened (and even fully
+    // reviewed by a psychologist) still showed "Not Started" there forever.
+    // Non-fatal if it fails — the screening itself is already saved above.
+    const { error: stageErr } = await supabase
+      .from("children")
+      .update({ stage: "stage3" })
+      .eq("id", selectedChild.id);
+    if (stageErr) console.error("Could not update the child's stage:", stageErr.message);
 
     // Let the psychologist know there's a screening waiting on them. If
     // this insert fails for some reason, the screening itself is already
@@ -609,7 +711,8 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild,
       teacher_email: teacherEmail,
       teacher_name: teacherName,
       diagnosis:
-        `${teacherName} finished a PuzzleBox screening for ${selectedChild.name} at ${selectedChild.school || "their school"}.` +
+        // Student number, not the name: psychologists only see student numbers.
+        `${teacherName} finished a PuzzleBox screening for ${selectedChild.studentNumber || "a child"} at ${selectedChild.school || "their school"}.` +
         (band ? ` Result: ${band.label}.` : "") +
         " Open it to review and share the outcome.",
       sent_by: "Teacher",
@@ -631,7 +734,7 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild,
           <div className="pbs-question-label">{q.label}</div>
           {q.id !== timerQuestion?.id && r.timeSeconds != null && (
             <span className="pbs-question-time" title="Time recorded from the page timer">
-              ⏱ {formatTimer(r.timeSeconds * 1000)}
+              <Doodle name="stopwatch" size={16} inline /> {formatTimer(r.timeSeconds * 1000)}
             </span>
           )}
           {saveStatusBadgeFor(q.id)}
@@ -801,6 +904,20 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild,
               <div><div className="pbs-confirm-label">{t.language}</div><div>{selectedChild.language || "—"}</div></div>
             </div>
           </div>
+          {selectedChild.consentVerified ? (
+            <div className="card" style={{ marginTop: 12, padding: "10px 16px", background: "var(--teal-lt, #E6F7F5)", color: "var(--teal)", fontSize: 12.5, fontWeight: 700 }}>
+              {t.consentVerifiedBadge}
+            </div>
+          ) : (
+            <div className="card pbs-consent-block" style={{ marginTop: 12, padding: "14px 16px", background: "var(--pink-lt, #FFE6EF)" }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "var(--pink)" }}>
+                {selectedChild.consentFormUrl ? t.consentIncompleteTitle : t.consentMissingTitle}
+              </div>
+              <div style={{ fontSize: 12.5, color: "var(--ink-mid)", marginTop: 4, lineHeight: 1.5 }}>
+                {selectedChild.consentVerificationNotes || t.consentMissingBody}
+              </div>
+            </div>
+          )}
           {priorScreenings.length > 0 && (
             <div className="card" style={{ marginTop: 12, padding: "12px 16px", background: "var(--teal-lt, #E6F7F5)" }}>
               <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--teal)", marginBottom: 4 }}>
@@ -816,7 +933,12 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild,
           {error && <div className="pbs-error">{error}</div>}
           <div className="pbs-confirm-actions">
             <button className="btn btn-ghost" onClick={() => setView("select")}>{t.goBack}</button>
-            <button className="btn btn-teal" onClick={() => beginScreening(!!existingSession)}>
+            <button
+              className="btn btn-teal"
+              onClick={() => beginScreening(!!existingSession)}
+              disabled={!selectedChild.consentVerified}
+              title={selectedChild.consentVerified ? undefined : t.consentMissingBody}
+            >
               {existingSession ? t.resumeScreening : t.startScreening}
             </button>
           </div>
@@ -836,6 +958,7 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild,
               ? `${selectedChild?.name}'s screening ${t.submittedOffline}`
               : `${selectedChild?.name} ${t.submittedSub} ${selectedChild?.school || "the child's record"}.`}
           </p>
+          <p className="pbs-submitted-time">Total time taken: {formatTimer(sessionTimerMs)}</p>
           <button className="btn btn-teal" onClick={onExit}>{t.submittedBackHome}</button>
         </div>
       </div>
@@ -856,12 +979,12 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild,
   return (
     <div className="pbs-shell">
       <div className={`pbs-timer-panel ${timerRunning ? "running" : ""}`}>
-        <div className="pbs-timer-label">Timer</div>
+        <div className="pbs-timer-label">Section timer</div>
         <div className="pbs-timer-display">{formatTimer(timerMs)}</div>
         {timerQuestion && <div className="pbs-timer-target">for "{timerQuestion.label}"</div>}
         {isPuzzleOverTime && (
           <div className="pbs-timer-target" style={{ color: "var(--pink)", fontWeight: 800 }}>
-            ⚠ Over time (10 min limit)
+            <Doodle name="warning" size={16} inline /> Over time (10 min limit)
           </div>
         )}
         <div className="pbs-timer-controls">
@@ -881,8 +1004,11 @@ export default function PuzzleBoxScreener({ user, profile, onExit, initialChild,
           <div className="pbs-topbar-sub">{t.sectionOf} {sectionIndex + 1} {t.of} {sections.length} · {currentSection.title}</div>
         </div>
         <div className="pbs-topbar-right">
+          <span className="pbs-session-timer" title="Total time on this screening, across every section">
+            <Doodle name="stopwatch" size={16} inline /> {formatTimer(sessionTimerMs)}
+          </span>
           <span className={`pbs-save-indicator pbs-save-${saveStatus}`}>
-            {saveStatus === "saving" ? t.saving : saveStatus === "error" ? "⚠" : t.saved}
+            {saveStatus === "saving" ? t.saving : saveStatus === "error" ? <Doodle name="warning" size={16} inline /> : t.saved}
           </span>
           <button className="btn btn-ghost btn-sm" onClick={() => setShowExitConfirm(true)}>{t.exit}</button>
         </div>

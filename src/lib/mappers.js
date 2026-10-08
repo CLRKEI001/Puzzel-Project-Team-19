@@ -12,10 +12,17 @@
 // untouched — only the data-fetching/saving code at the top of each
 // component needs to change.
 
+// children.name holds the child's STUDENT NUMBER (e.g. FB-5-0042) — real
+// names live in child_identities, which only the child's own teacher and
+// psychologists can read (supabase/database/01 + 04). Rows read from the
+// `children_named` view carry that real name as `real_name`; for admins it
+// is null, so `name` falls back to the student number.
 export function mapChildRow(r) {
   return {
     id: r.id,
-    name: r.name,
+    name: r.real_name || r.name,
+    studentNumber: r.student_number || r.name,
+    dataSource: r.data_source, // "app" | "pilot" | "demo" (mock data for testing)
     school: r.school,
     province: r.province,
     age: r.age,
@@ -35,10 +42,19 @@ export function mapChildRow(r) {
     date: r.date,
     examiner: r.examiner,
     teacherEmail: r.teacher_email,
+    teacherUid: r.teacher_uid,
     stage: r.stage,
     consentFormUrl: r.consent_form_url,
     consentFileName: r.consent_file_name,
     consentUploadedAt: r.consent_uploaded_at,
+    consentVerified: r.consent_verified,
+    consentVerificationNotes: r.consent_verification_notes,
+    consentVerifiedAt: r.consent_verified_at,
+    consentReviewStatus: r.consent_review_status,
+    consentReviewRequestedAt: r.consent_review_requested_at,
+    consentReviewedBy: r.consent_reviewed_by,
+    consentReviewedAt: r.consent_reviewed_at,
+    consentReviewNote: r.consent_review_note,
     createdAt: r.created_at,
   };
 }
@@ -57,6 +73,8 @@ export function mapPuzzleboxScreeningRow(r) {
     responses: r.responses,
     puzzleTimeSeconds: r.puzzle_time_seconds,
     puzzleOverTime: r.puzzle_over_time,
+    totalTimeSeconds: r.total_time_seconds,
+    sectionTimes: r.section_times,
     observations: r.observations,
     rawScore: r.raw_score,
     interpretationBand: r.interpretation_band,

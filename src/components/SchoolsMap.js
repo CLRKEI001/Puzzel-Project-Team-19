@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import Doodle from "./Doodle";
 
 const TOWN_COORDS = {
   Adelaide:    { x: 285, y: 178 },
@@ -108,7 +109,7 @@ export default function SchoolsMap({ screenings = [], t = {} }) {
             transition: "all 0.18s",
           }}
         >
-          {expanded ? <>✕ Close map</> : <>🗺 View on map</>}
+          {expanded ? <>✕ Close map</> : <><Doodle name="pin" size={16} inline /> View on map</>}
         </button>
       </div>
 

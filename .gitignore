@@ -21,3 +21,7 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Pilot research data (children's screening answers) - never commit to this public repo.
+# Rebuild it locally with supabase/database/tools/build_pilot_import.py
+supabase/database/02_pilot_data.sql

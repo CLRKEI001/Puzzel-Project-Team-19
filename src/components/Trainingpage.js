@@ -290,7 +290,7 @@ function RequirementsSection({ onApply }) {
 }
 
 function ModulesSection() {
-  const { modules, loading } = useTrainingModules();
+  const { modules, loading } = useTrainingModules("educator");
 
   return (
     <section style={{ padding: "90px 40px", background: COLORS.white, position: "relative", overflow: "hidden" }}>

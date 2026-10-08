@@ -33,10 +33,19 @@ export default function TrainingModuleQuiz({ moduleId, color, onResult }) {
     );
     const outcome = { score, total: totalPoints, percent: totalPoints ? Math.round((score / totalPoints) * 100) : 0 };
     setResult(outcome);
+    // Snapshot exactly which version of each question this attempt was
+    // scored against — see migration 023. Without this, editing/publishing
+    // a question later would silently rewrite what an already-completed
+    // attempt means.
+    const questionVersions = questions.map((q) => ({
+      id: q.id,
+      questionKey: q.questionKey,
+      version: q.version,
+    }));
     // Let the parent (MemberArea's Training flow) persist pass/fail to
     // training_progress — this component stays pure/presentational and
     // keeps working exactly as before when no callback is passed in.
-    if (onResult) onResult({ ...outcome, passed: outcome.percent >= 70 });
+    if (onResult) onResult({ ...outcome, passed: outcome.percent >= 70, questionVersions });
   };
 
   const retake = () => {
@@ -67,7 +76,7 @@ export default function TrainingModuleQuiz({ moduleId, color, onResult }) {
     const passed = result.percent >= 70;
     return (
       <div style={{ marginTop: 12, padding: "16px 18px", borderRadius: 12, background: passed ? COLORS.tealLight : COLORS.pinkLight }}>
-        <div style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 900, fontSize: 18, color: passed ? COLORS.teal : COLORS.pink, marginBottom: 4 }}>
+        <div style={{ fontFamily: "var(--font-heading)", fontWeight: 900, fontSize: 18, color: passed ? COLORS.teal : COLORS.pink, marginBottom: 4 }}>
           {result.score} / {result.total} ({result.percent}%)
         </div>
         <div style={{ fontSize: 13, color: COLORS.inkMid, marginBottom: 12 }}>

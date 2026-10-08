@@ -227,7 +227,9 @@ export default function HowItWorks({ onNavigateToLogin, onNavigate }) {
       <style>{`${PUBLIC_FONT_IMPORT}${WARM_PAGE_CSS}`}</style>
       <Navbar site="pb" current="pb-how" onNavigate={go} onLoginClick={() => onNavigateToLogin()} />
       <PageHero
-        eyebrow="The Puzzle Box"
+        eyebrow="
+        
+        "
         title="How it"
         highlight="works"
         lead="From registration to research — a step-by-step walkthrough of the full screening process."

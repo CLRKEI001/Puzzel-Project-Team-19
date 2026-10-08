@@ -14,8 +14,10 @@
 //   collection.
 
 import React, { useState, useEffect, useMemo } from "react";
+import Doodle from "./Doodle";
 import { supabase } from "../supabaseClient";
 import { mapChildRow, mapPuzzleboxScreeningRow, mapMessageRow } from "../lib/mappers";
+import { uploadAndVerifyConsentForm, requestManualConsentReview, isOverloadNote } from "../lib/consentForms";
 
 import RoleSidebar from "./RoleSidebar";
 import RoleHero from "./RoleHero";
@@ -170,8 +172,8 @@ const T = {
       "View and screen the children in your own class.",
 
     myStudents: "My Class",
-    myStudentsSub:
-      "Children added or screened by you — not the full PuzzleBox dataset.",
+  
+      
 
     filterStatus: "All Stages",
 
@@ -806,7 +808,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
 
   const [lang, setLang] = useState("en");
 
-  const [messages, setMessages] = useState([]);
+  const [rawMessages, setMessages] = useState([]);
   const [loadingMessages, setLoadingMessages] = useState(true);
 
   const [students, setStudents] = useState([]);
@@ -826,6 +828,16 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState(false);
 
+  // ── Consent form prompt, right after a brand-new student is created ──
+  // A screening can't start without a verified consent form on file
+  // (PuzzleBoxScreener.js), so rather than leave that for later, the
+  // moment a new child is added offers to upload one immediately.
+  const [consentPromptChild, setConsentPromptChild] = useState(null); // { id, name }
+  const [consentPromptFile, setConsentPromptFile] = useState(null);
+  const [consentPromptSaving, setConsentPromptSaving] = useState(false);
+  const [consentPromptResult, setConsentPromptResult] = useState(null); // { valid, missingFields, notes }
+  const [consentPromptError, setConsentPromptError] = useState("");
+
   // Which child (if any) the "Screen" button on a row/modal was clicked
   // for — handed straight into PuzzleBoxScreener so it skips its own
   // search step and goes right to confirm/resume for that child.
@@ -833,7 +845,23 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
 
   // This teacher's own PuzzleBox screening sessions (in_progress /
   // awaiting_review / reviewed), for the Screening History tab.
-  const [sessions, setSessions] = useState([]);
+  const [rawSessions, setSessions] = useState([]);
+
+  // Messages and screenings store the child's student number in child_name
+  // (real names are kept private). This teacher may see their own
+  // children's real names, so swap them back in for display.
+  const realNameById = useMemo(
+    () => new Map(students.map((s) => [s.id, s.name])),
+    [students]
+  );
+  const messages = useMemo(
+    () => rawMessages.map((m) => ({ ...m, childName: realNameById.get(m.childId) || m.childName })),
+    [rawMessages, realNameById]
+  );
+  const sessions = useMemo(
+    () => rawSessions.map((x) => ({ ...x, childName: realNameById.get(x.childId) || x.childName })),
+    [rawSessions, realNameById]
+  );
   const [loadingSessions, setLoadingSessions] = useState(true);
 
   // The session (if any) whose psychologist feedback is open in the
@@ -946,8 +974,10 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
     const loadStudents = async () => {
       setLoadingStudents(true);
 
+      // children_named = children + the real name, which only this
+      // teacher can read (admins/psychologists see student numbers).
       const { data, error } = await supabase
-        .from("children")
+        .from("children_named")
         .select("*")
         .order("created_at", {
           ascending: false,
@@ -1117,22 +1147,15 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
 
 
   // ============================================================
-  // MY CLASS — scope the shared `children` table down to this
-  // teacher's own students. Prefer the real `teacher_email` column
-  // (migration 009, stamped on every new child going forward). Older
-  // rows created before that column existed have it as NULL, so for
-  // those specifically we still fall back to the old examiner-name
-  // match rather than losing them from every teacher's class.
+  // MY CLASS — this teacher's own students (teacher_uid). The database
+  // only returns a teacher's own children anyway (supabase/database/04);
+  // filtering here as well keeps the screen correct on its own.
   // ============================================================
 
-  const myStudents = useMemo(() => {
-    const mine = displayName.trim().toLowerCase();
-    return students.filter((s) =>
-      s.teacherEmail
-        ? s.teacherEmail === user?.email
-        : (s.examiner || "").trim().toLowerCase() === mine
-    );
-  }, [students, displayName, user?.email]);
+  const myStudents = useMemo(
+    () => students.filter((s) => s.teacherUid === user?.uid),
+    [students, user?.uid]
+  );
 
   // Flags raised on this teacher's own children — flagged and not
   // yet resolved, same definition FlagsAlerts/AdminHome use elsewhere.
@@ -1342,9 +1365,9 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
         data: existing,
         error: checkError,
       } = await supabase
-        .from("children")
+        .from("children_named")
         .select("id")
-        .eq("name", newStudent.name);
+        .ilike("real_name", newStudent.name.trim());
 
       if (checkError) {
         console.error(
@@ -1386,9 +1409,9 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
       date: newStudent.date || null,
     };
 
-    const { error: saveError } = editingStudentId
-      ? await supabase.from("children").update(recordToInsert).eq("id", editingStudentId)
-      : await supabase.from("children").insert(recordToInsert);
+    const { data: savedRow, error: saveError } = editingStudentId
+      ? await supabase.from("children").update(recordToInsert).eq("id", editingStudentId).select().maybeSingle()
+      : await supabase.from("children").insert(recordToInsert).select().single();
 
     if (saveError) {
       console.error(
@@ -1403,6 +1426,16 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
 
     setShowAddStudent(false);
     setDuplicateWarning(false);
+
+    // Brand-new student only (not an edit) — offer to upload their consent
+    // form right away, since a screening can't start without one.
+    if (!editingStudentId && savedRow?.id) {
+      setConsentPromptChild({ id: savedRow.id, name: newStudent.name });
+      setConsentPromptFile(null);
+      setConsentPromptResult(null);
+      setConsentPromptError("");
+    }
+
     setEditingStudentId(null);
     setAddStudentError("");
 
@@ -1420,6 +1453,59 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
       total: 0,
       status: "Progressing",
     });
+  };
+
+  // ── Consent form prompt handlers ──────────────────────────────────
+  const handleConsentPromptUpload = async () => {
+    if (!consentPromptChild?.id || !consentPromptFile) return;
+    setConsentPromptSaving(true);
+    setConsentPromptError("");
+    try {
+      const result = await uploadAndVerifyConsentForm({ childId: consentPromptChild.id, file: consentPromptFile });
+      setConsentPromptResult(result);
+      // Keep myStudents in sync without waiting for the realtime refetch —
+      // otherwise "Screen" would still look blocked right after a
+      // successful, verified upload until the next load.
+      setStudents((prev) =>
+        prev.map((s) =>
+          s.id === consentPromptChild.id
+            ? { ...s, consentFormUrl: result.url, consentFileName: result.fileName, consentVerified: result.valid, consentVerificationNotes: result.notes }
+            : s
+        )
+      );
+      // The Student Record modal (if open on this same child) holds its own
+      // copy of the row, so patch it too.
+      setSelectedStudent((prev) =>
+        prev && prev.id === consentPromptChild.id
+          ? { ...prev, consentFormUrl: result.url, consentFileName: result.fileName, consentVerified: result.valid, consentVerificationNotes: result.notes }
+          : prev
+      );
+    } catch (err) {
+      setConsentPromptError(err.message || "Could not save the consent form.");
+    }
+    setConsentPromptSaving(false);
+  };
+
+  const handleManualReview = async (childId) => {
+    setConsentPromptSaving(true);
+    setConsentPromptError("");
+    try {
+      await requestManualConsentReview({ childId, requestedBy: user?.email });
+      const patch = { consentReviewStatus: "pending" };
+      setStudents((prev) => prev.map((s) => (s.id === childId ? { ...s, ...patch } : s)));
+      setSelectedStudent((prev) => (prev && prev.id === childId ? { ...prev, ...patch } : prev));
+      setConsentPromptResult((r) => (r ? { ...r, sentForReview: true } : r));
+    } catch (err) {
+      setConsentPromptError(err.message);
+    }
+    setConsentPromptSaving(false);
+  };
+
+  const closeConsentPrompt = () => {
+    setConsentPromptChild(null);
+    setConsentPromptFile(null);
+    setConsentPromptResult(null);
+    setConsentPromptError("");
   };
 
   const openEditStudent = (student) => {
@@ -1643,7 +1729,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                   onAction={() =>
                     setActivePage("students")
                   }
-                  emptyIcon=""
+                  emptyIcon="tick"
                   emptyTitle={t.flagsEmptyTitle}
                   emptySub={t.flagsEmptySub}
                   onItemClick={(f) =>
@@ -1655,7 +1741,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                       : openFlaggedStudents
                           .slice(0, 5)
                           .map((c) => ({
-                            icon: "🚩",
+                            icon: "flag",
                             color: "#E8175D",
                             title: c.name,
                             meta: c.school || t.flagsCardSub,
@@ -1673,7 +1759,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                   onAction={() =>
                     setActivePage("messages")
                   }
-                  emptyIcon=""
+                  emptyIcon="mailbox"
                   emptyTitle={t.noMessages}
                   emptySub={t.noMessagesSub}
                   onItemClick={(m) =>
@@ -1685,7 +1771,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                       : messages
                           .slice(0, 5)
                           .map((m) => ({
-                            icon: "✉",
+                            icon: "envelope",
                             color: "#F26522",
                             title: m.childName,
                             meta: `${
@@ -1722,9 +1808,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                     }
                   >
 
-                    <div className="th-quicklink-icon">
-                      🧩
-                    </div>
+                    <div className="th-quicklink-icon"><Doodle name="puzzle" size={24} /></div>
 
                     <div>
                       <div className="th-quicklink-title">
@@ -1754,9 +1838,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                     }
                   >
 
-                    <div className="th-quicklink-icon">
-                      👥
-                    </div>
+                    <div className="th-quicklink-icon"><Doodle name="backpack" size={24} /></div>
 
                     <div>
                       <div className="th-quicklink-title">
@@ -1784,9 +1866,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                     }
                   >
 
-                    <div className="th-quicklink-icon">
-                      ➕
-                    </div>
+                    <div className="th-quicklink-icon"><Doodle name="pencil" size={24} /></div>
 
                     <div>
                       <div className="th-quicklink-title">
@@ -1816,9 +1896,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                     }
                   >
 
-                    <div className="th-quicklink-icon">
-                      🕘
-                    </div>
+                    <div className="th-quicklink-icon"><Doodle name="notes" size={24} /></div>
 
                     <div>
                       <div className="th-quicklink-title">
@@ -1852,7 +1930,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                   >
 
                     <div className="th-quicklink-icon">
-                      ✉
+                      <Doodle name="envelope" size={24} />
                     </div>
 
                     <div>
@@ -2060,7 +2138,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                       fontSize: 28,
                     }}
                   >
-                    ⏳
+                    
                   </div>
 
                   <div className="empty-state-title">
@@ -2079,7 +2157,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                 <div className="empty-state">
 
                   <div className="empty-state-icon">
-                    🧒
+                    <Doodle name="backpack" size={64} />
                   </div>
 
                   <div className="empty-state-title">
@@ -2244,12 +2322,14 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                                   style={{
                                     marginLeft: 6,
                                   }}
+                                  title={child.consentVerified ? undefined : "No verified consent form on file yet — you can still open this, but the screening won't be able to start"}
                                   onClick={() =>
                                     handleScreenChild(
                                       child
                                     )
                                   }
                                 >
+                                  {!child.consentVerified && <Doodle name="warning" size={14} inline />}
                                   {inProgressChildIds.has(
                                     child.id
                                   )
@@ -2361,7 +2441,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                     className="empty-state-icon"
                     style={{ fontSize: 28 }}
                   >
-                    ⏳
+                    
                   </div>
                   <div className="empty-state-title">
                     Loading screening history...
@@ -2371,9 +2451,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
               ) : myStudentSessions.length === 0 ? (
 
                 <div className="empty-state">
-                  <div className="empty-state-icon">
-                    🧩
-                  </div>
+                  <div className="empty-state-icon" style={{ display: "flex", justifyContent: "center" }}><Doodle name="notes" size={64} /></div>
                   <div className="empty-state-title">
                     {t.historyEmptyTitle}
                   </div>
@@ -2473,12 +2551,19 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                                 <button
                                   className="btn btn-primary btn-sm"
                                   onClick={() =>
-                                    handleScreenChild({
-                                      id: s.childId,
-                                      name: s.childName,
-                                      school: s.school,
-                                      age: s.childAge,
-                                    })
+                                    handleScreenChild(
+                                      // Prefer the full record (has
+                                      // consentVerified etc. via
+                                      // mapChildRow) — this fallback object
+                                      // is only for a child that's since
+                                      // been removed from "My Class".
+                                      myStudents.find((c) => c.id === s.childId) || {
+                                        id: s.childId,
+                                        name: s.childName,
+                                        school: s.school,
+                                        age: s.childAge,
+                                      }
+                                    )
                                   }
                                 >
                                   {t.resume}
@@ -2616,7 +2701,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                 <div className="empty-state">
 
                   <div className="empty-state-icon">
-                    📭
+                    <Doodle name="mailbox" size={64} />
                   </div>
 
                   <div className="empty-state-title">
@@ -3111,7 +3196,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                   marginBottom: 14,
                 }}
               >
-                ⚠ {addStudentError}
+                <Doodle name="warning" size={16} inline /> {addStudentError}
               </div>
             )}
 
@@ -3132,7 +3217,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                   marginBottom: 14,
                 }}
               >
-                ⚠{" "}
+                <Doodle name="warning" size={16} inline />{" "}
                 {t.duplicateWarning}{" "}
                 — "{newStudent.name}"{" "}
                 {t.duplicateDetail}
@@ -3408,6 +3493,114 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
 
         </div>
 
+      )}
+
+
+      {/* ======================================================
+          CONSENT FORM PROMPT — shown right after a brand-new
+          student is created. Skippable, but a screening can't
+          actually start for this child until a verified form is
+          on file (see the gate in PuzzleBoxScreener.js).
+      ====================================================== */}
+
+      {consentPromptChild && (
+        <div className="modal-overlay" style={{ zIndex: 300 }} onClick={() => !consentPromptSaving && closeConsentPrompt()}>
+          <div className="modal" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">Upload a consent form for {consentPromptChild.name}?</div>
+              <button className="modal-close" onClick={closeConsentPrompt}>✕</button>
+            </div>
+
+            <p style={{ fontSize: 13, color: "var(--ink-mid)", marginBottom: 16, lineHeight: 1.5 }}>
+              A signed parent/guardian consent form is required before {consentPromptChild.name} can be screened.
+              You can upload it now, or come back to it later from {consentPromptChild.name}'s record in Student Records.
+            </p>
+
+            <a
+              href="/puzzlebox-consent-form.pdf"
+              download
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: "var(--teal)", marginBottom: 16, textDecoration: "none" }}
+            >
+              <Doodle name="download" size={16} inline /> Download a blank consent form to print or send to a parent
+            </a>
+
+            {consentPromptResult && (
+              <div
+                style={{
+                  padding: "12px 14px", borderRadius: 10, marginBottom: 16,
+                  background: consentPromptResult.valid ? "var(--teal-lt)" : "var(--pink-lt)",
+                  color: consentPromptResult.valid ? "var(--teal)" : "var(--pink)",
+                }}
+              >
+                <div style={{ fontWeight: 800, fontSize: 13.5 }}>
+                  {consentPromptResult.valid ? "✓ Consent form verified" : "✗ Consent form incomplete"}
+                </div>
+                {!consentPromptResult.valid && (
+                  <>
+                    <div style={{ fontSize: 12.5, marginTop: 4, color: "var(--ink-mid)" }}>
+                      {consentPromptResult.notes || "Some required fields look blank."}
+                    </div>
+                    {consentPromptResult.missingFields?.length > 0 && (
+                      <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 12, color: "var(--ink-mid)" }}>
+                        {consentPromptResult.missingFields.map((f, i) => <li key={i}>{f}</li>)}
+                      </ul>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* File input stays available until a verified result comes
+                back — an incomplete form just means "pick a different (or
+                re-signed) file and try again" rather than starting over. */}
+            {consentPromptResult && !consentPromptResult.valid && isOverloadNote(consentPromptResult.notes) && (
+              <div style={{ padding: "12px 14px", borderRadius: 12, marginBottom: 14, background: "var(--orange-lt)", border: "1px solid rgba(242,101,34,0.25)" }}>
+                {consentPromptResult.sentForReview ? (
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--orange)" }}>
+                    ✓ Sent to an admin for manual review. You'll see the result on the student's record.
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 13, color: "var(--ink-mid)", marginBottom: 10 }}>
+                      The automatic check is busy right now (high demand). Your file is saved. You can send it to an admin to check by hand instead.
+                    </div>
+                    <button className="btn btn-sm btn-primary" disabled={consentPromptSaving} onClick={() => handleManualReview(consentPromptChild.id)}>
+                      {consentPromptSaving ? "Sending…" : "Send to admin for manual review"}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+
+            {!consentPromptResult?.valid && (
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                onChange={(e) => { setConsentPromptFile(e.target.files[0] || null); setConsentPromptResult(null); }}
+                style={{ marginBottom: 16, fontSize: 13 }}
+              />
+            )}
+
+            {consentPromptError && (
+              <div style={{ color: "var(--pink)", fontSize: 12.5, marginBottom: 12 }}><Doodle name="warning" size={16} inline /> {consentPromptError}</div>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button className="btn btn-ghost" onClick={closeConsentPrompt}>
+                {consentPromptResult?.valid ? "Done" : "Skip for now"}
+              </button>
+              {!consentPromptResult?.valid && (
+                <button
+                  className="btn btn-primary"
+                  disabled={!consentPromptFile || consentPromptSaving}
+                  onClick={handleConsentPromptUpload}
+                >
+                  {consentPromptSaving ? "Checking…" : "Upload & Verify"}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
 
@@ -3755,6 +3948,79 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
             </div>
 
 
+            {/* CONSENT FORM */}
+
+            <div
+              style={{
+                padding: "12px 14px",
+                borderRadius: 12,
+                marginBottom: 20,
+                background: selectedStudent.consentVerified
+                  ? "var(--teal-lt)"
+                  : selectedStudent.consentFormUrl
+                  ? "var(--pink-lt)"
+                  : "#F4F4F4",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <label style={labelStyle}>Consent form</label>
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: selectedStudent.consentVerified
+                      ? "var(--teal)"
+                      : selectedStudent.consentFormUrl
+                      ? "var(--pink)"
+                      : "var(--ink-mid)",
+                  }}
+                >
+                  {selectedStudent.consentVerified
+                    ? "✓ Verified"
+                    : selectedStudent.consentReviewStatus === "pending"
+                    ? "Awaiting manual review by an admin"
+                    : selectedStudent.consentFormUrl
+                    ? "✗ Incomplete — " + (selectedStudent.consentVerificationNotes || "some required fields look blank.")
+                    : "No consent form uploaded yet"}
+                </div>
+                {selectedStudent.consentFormUrl && (
+                  <a
+                    href={selectedStudent.consentFormUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ fontSize: 12, color: "var(--ink-mid)" }}
+                  >
+                    View uploaded file
+                  </a>
+                )}
+                {!selectedStudent.consentVerified && selectedStudent.consentFormUrl && selectedStudent.consentReviewStatus !== "pending" && isOverloadNote(selectedStudent.consentVerificationNotes) && (
+                  <div style={{ marginTop: 8 }}>
+                    <button className="btn btn-sm btn-primary" disabled={consentPromptSaving} onClick={() => handleManualReview(selectedStudent.id)}>
+                      Send to admin for manual review
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <button
+                className="btn btn-sm btn-ghost"
+                onClick={() =>
+                  setConsentPromptChild({
+                    id: selectedStudent.id,
+                    name: selectedStudent.name,
+                  })
+                }
+              >
+                {selectedStudent.consentFormUrl ? "Replace form" : "Upload consent form"}
+              </button>
+            </div>
+
+
             <div
               style={{
                 display: "flex",
@@ -3771,7 +4037,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                   setConfirmDeleteStudent(selectedStudent)
                 }
               >
-                🗑 {t.deleteChild || "Delete Child Record"}
+                {t.deleteChild || "Delete Child Record"}
               </button>
 
               <div style={{ display: "flex", gap: 10 }}>
@@ -3781,7 +4047,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                     handleScreenChild(selectedStudent)
                   }
                 >
-                  🧩{" "}
+                  {" "}
                   {inProgressChildIds.has(
                     selectedStudent.id
                   )
@@ -3795,7 +4061,7 @@ export default function TeacherHome({ user, profile, onOpenMember }) {
                     openEditStudent(selectedStudent)
                   }
                 >
-                  ✏ {t.editChild || "Edit Child"}
+                  {t.editChild || "Edit Child"}
                 </button>
 
                 <button

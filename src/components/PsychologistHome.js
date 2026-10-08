@@ -6,15 +6,16 @@
 // everything stays linked together rather than living on separate
 // disconnected screens.
  
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import Doodle from "./Doodle";
 import { supabase } from "../supabaseClient";
 import { mapChildRow, mapFollowUpRow, mapMessageRow, mapPuzzleboxScreeningRow } from "../lib/mappers";
 import RoleSidebar from "./RoleSidebar";
-import Dashboard from "./Dashboard";
+import AnalyticsPanels, { ANALYTICS_LABELS, ANALYTICS_SUBS } from "./AnalyticsPanels";
 import RoleHero from "./RoleHero";
 import StatRing from "./StatRing";
 import TodayList from "./TodayList";
-import "./TeacherHome.css"; // shared th-quicklink / th-back-fab styles
+import "./TeacherHome.css"; // shared th-quicklink styles
 import "./RoleHomeKit.css";
  
 const T = {
@@ -36,6 +37,7 @@ const T = {
     noFlaggedSub: "Children flagged for developmental concerns will appear here.",
     needsReview: "Needs Review", noNotifications: "No screenings waiting on review",
     noNotificationsSub: "When a teacher finishes a PuzzleBox screening, it'll show up here.",
+    deleteNotif: "Delete notification", deleteNotifConfirm: "Delete this notification? This only removes it from your list — the screening itself isn't affected.",
     quickLinks: "Quick Links", openDashboard: "Open Full Analytics Dashboard",
     openDashboardSub: "Screening results, trends, and student records.",
     openFlags: "Flags & Alerts", openFlagsSub: "Send diagnosis reports to teachers.",
@@ -49,6 +51,7 @@ const T = {
     profileName: "Full Name", profileEmail: "Email Address", profileRole: "Role",
     profileStaff: "Staff Number", profileStatus: "Verification Status", verified: "Verified",
     reviewTitle: "Review Screening", submittedBy: "Submitted by", rawScoreLabel: "Raw score",
+    timeTakenLabel: "Time taken", puzzleTimeLabel: "Puzzle time", overTimeFlag: "Over time",
     resultBand: "Result", observationsLabel: "Teacher's observations", noObservations: "None noted.",
     verdictQuestion: "How does this screening look?", verdictFine: "Everything is fine",
     verdictConcerns: "There are concerns", notesLabel: "Notes (optional)",
@@ -78,6 +81,7 @@ const T = {
     recentlyFlagged: "Onlangs Gevlagde Kinders", noFlagged: "Geen gevlagde kinders",
     noFlaggedSub: "Kinders wat gevlag word sal hier verskyn.",
     needsReview: "Benodig Hersiening", noNotifications: "Geen sifting wag op hersiening nie",
+    deleteNotif: "Skrap kennisgewing", deleteNotifConfirm: "Skrap hierdie kennisgewing? Dit verwyder dit net van jou lys — die sifting self word nie geraak nie.",
     noNotificationsSub: "Wanneer 'n onderwyser 'n sifting voltooi, verskyn dit hier.",
     quickLinks: "Vinnige Skakels", openDashboard: "Maak Volledige Paneelbord Oop",
     openDashboardSub: "Siftingsresultate, neigings en leerlingrekords.",
@@ -92,6 +96,7 @@ const T = {
     profileName: "Volle Naam", profileEmail: "E-pos", profileRole: "Rol",
     profileStaff: "Personeelnommer", profileStatus: "Verifikasiestatus", verified: "Geverifieer",
     reviewTitle: "Hersien Sifting", submittedBy: "Ingedien deur", rawScoreLabel: "Rou telling",
+    timeTakenLabel: "Tyd geneem", puzzleTimeLabel: "Legkaart tyd", overTimeFlag: "Oortyd",
     resultBand: "Resultaat", observationsLabel: "Onderwyser se waarnemings", noObservations: "Geen aangeteken nie.",
     verdictQuestion: "Hoe lyk hierdie sifting?", verdictFine: "Alles is reg",
     verdictConcerns: "Daar is kommer", notesLabel: "Notas (opsioneel)",
@@ -121,6 +126,7 @@ const T = {
     recentlyFlagged: "Abantwana Abakhonjwe Kutsha Nje", noFlagged: "Akukho bantwana abakhonjiweyo",
     noFlaggedSub: "Abantwana abakhonjiweyo baya kubonakala apha.",
     needsReview: "Kufuneka Uphononongo", noNotifications: "Akukho hlolo lulindele uphononongo",
+    deleteNotif: "Cima isaziso", deleteNotifConfirm: "Cima esi saziso? Oku kuyasisusa kuphela kuluhlu lwakho — uhlolo ngokwalo aluchaphazeleki.",
     noNotificationsSub: "Xa utitshala egqiba uhlolo, luya kubonakala apha.",
     quickLinks: "Amakhonkco Akhawulezayo", openDashboard: "Vula Ideshibhodi Epheleleyo",
     openDashboardSub: "Iziphumo zohlolo, iinkqubela neerekhodi zabafundi.",
@@ -135,6 +141,7 @@ const T = {
     profileName: "Igama Elipheleleyo", profileEmail: "I-imeyile", profileRole: "Indima",
     profileStaff: "Inombolo Yomsebenzi", profileStatus: "Imeko Yokuqinisekiswa", verified: "Kuqinisekisiwe",
     reviewTitle: "Phonononga Uhlolo", submittedBy: "Ithunyelwe ngu", rawScoreLabel: "Amanqaku aluhlaza",
+    timeTakenLabel: "Ixesha elithathiweyo", puzzleTimeLabel: "Ixesha lephazili", overTimeFlag: "Lidlulile ixesha",
     resultBand: "Isiphumo", observationsLabel: "Uphawu lukatitshala", noObservations: "Akukho kubhaliweyo.",
     verdictQuestion: "Lujongeka njani olu hlolo?", verdictFine: "Yonke into ilungile",
     verdictConcerns: "Kukho inkxalabo", notesLabel: "Amanqaku (ukhetho)",
@@ -149,6 +156,11 @@ const T = {
   },
 };
  
+// Each analytics page is its own sidebar item (ids are "a-" + page).
+const ANALYTICS_PAGES = ["overview", "results", "flags", "report"]; // Student Records ("children") sits in the Caseload group instead
+const ANALYTICS_SECTION = { en: "Analytics", af: "Ontleding", xh: "Uhlalutyo" };
+const ANALYTICS_ICONS = { overview: "aOverview", children: "aChildren", results: "aResults", flags: "aFlags", report: "aReport" };
+
 const followUpColors = {
   fu1: { bg: "#F7F6FF", color: "#8888a8" },
   fu2: { bg: "#FEF0E7", color: "#F26522" },
@@ -170,6 +182,12 @@ const NAV_ICONS = {
   dashboard: <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5" /><rect x="9" y="1" width="6" height="6" rx="1.5" /><rect x="1" y="9" width="6" height="6" rx="1.5" /><rect x="9" y="9" width="6" height="6" rx="1.5" /></svg>,
   profile: <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" strokeWidth="1.5" /><path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>,
   notifications: <svg viewBox="0 0 16 16" fill="none"><path d="M4 6a4 4 0 018 0c0 3.5 1.2 4.5 1.2 4.5H2.8S4 9.5 4 6z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><path d="M6.5 13a1.7 1.7 0 003 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>,
+  // analytics pages
+  aOverview: <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5" /><rect x="9" y="1" width="6" height="6" rx="1.5" /><rect x="1" y="9" width="6" height="6" rx="1.5" /><rect x="9" y="9" width="6" height="6" rx="1.5" /></svg>,
+  aChildren: <svg viewBox="0 0 16 16" fill="none"><circle cx="5.5" cy="5" r="2.3" stroke="currentColor" strokeWidth="1.5" /><circle cx="11.5" cy="6" r="1.8" stroke="currentColor" strokeWidth="1.5" /><path d="M1.5 13c0-2.4 1.8-3.8 4-3.8s4 1.4 4 3.8M10 9.6c2.4-.3 4.5.9 4.5 3.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>,
+  aResults: <svg viewBox="0 0 16 16" fill="none"><path d="M2 14V8M6 14V3M10 14V6M14 14V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>,
+  aFlags: <svg viewBox="0 0 16 16" fill="none"><path d="M3.5 14V2.5M3.5 3h8l-2 3 2 3h-8" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" /></svg>,
+  aReport: <svg viewBox="0 0 16 16" fill="none"><path d="M4 1.5h5.5L13 5v9.5H4z M9.5 1.5V5H13M6 8.5h5M6 11h5" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" strokeLinecap="round" /></svg>,
 };
  
 
@@ -201,14 +219,14 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
   const [activePage, setActivePage] = useState("home");
   const [lang, setLang] = useState("en");
   const [children, setChildren] = useState([]);
-  const [followUps, setFollowUps] = useState([]);
+  const [rawFollowUps, setFollowUps] = useState([]);
   const [messageCount, setMessageCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
 
   // ── Screening review notifications ──────────────────────────────
-  const [notifications, setNotifications] = useState([]);
+  const [rawNotifications, setNotifications] = useState([]);
   const [reviewing, setReviewing] = useState(null); // the notification (message row) open in the review modal
   const [reviewScreening, setReviewScreening] = useState(null); // the full puzzlebox_screenings row for it
   const [loadingReview, setLoadingReview] = useState(false);
@@ -231,7 +249,8 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
     let isMounted = true;
 
     const loadChildren = async () => {
-      const { data, error } = await supabase.from("children").select("*");
+      // children_named = children + the real name (psychologists may see it).
+      const { data, error } = await supabase.from("children_named").select("*");
       if (error) { console.error("Error loading children:", error); return; }
       if (isMounted) {
         setChildren(data.map(mapChildRow));
@@ -294,6 +313,17 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
     };
   }, []);
   const displayName = profile?.name || user?.email?.split("@")[0] || "Psychologist";
+
+  // Follow-ups, messages and screenings store the child's student number in
+  // child_name (admins only ever see numbers). Psychologists may see names,
+  // so swap the real name back in for display.
+  const childById = useMemo(() => new Map(children.map((c) => [c.id, c])), [children]);
+  const withRealName = useCallback(
+    (row) => (row && childById.get(row.childId) ? { ...row, childName: childById.get(row.childId).name } : row),
+    [childById]
+  );
+  const followUps = useMemo(() => rawFollowUps.map(withRealName), [rawFollowUps, withRealName]);
+  const notifications = useMemo(() => rawNotifications.map(withRealName), [rawNotifications, withRealName]);
  
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -329,7 +359,7 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
     if (notification.screeningId) {
       const { data, error } = await supabase.from("puzzlebox_screenings").select("*").eq("id", notification.screeningId).single();
       if (!error && data) {
-        const mapped = mapPuzzleboxScreeningRow(data);
+        const mapped = withRealName(mapPuzzleboxScreeningRow(data));
         setReviewScreening(mapped);
         if (mapped.reviewVerdict) setVerdict(mapped.reviewVerdict);
         if (mapped.reviewNotes) setReviewNotes(mapped.reviewNotes);
@@ -342,6 +372,22 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
     setReviewing(null);
     setReviewScreening(null);
     setReviewSaved(null);
+  };
+
+  // Removes a notification from this psychologist's list only — it's just
+  // the "messages" row that generated the notification, so the underlying
+  // screening (and the teacher's own view of it) is completely unaffected.
+  const deleteNotification = async (notification) => {
+    if (!window.confirm(t.deleteNotifConfirm)) return;
+    setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
+    const { error: delErr } = await supabase.from("messages").delete().eq("id", notification.id);
+    if (delErr) {
+      console.error("Could not delete notification:", delErr.message);
+      // Put it back — the delete didn't actually happen.
+      setNotifications((prev) =>
+        prev.some((n) => n.id === notification.id) ? prev : [...prev, notification].sort((a, b) => (b.sentAt || "").localeCompare(a.sentAt || ""))
+      );
+    }
   };
 
   const submitReview = async () => {
@@ -387,6 +433,19 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
         if (flagErr) console.error("Could not flag the child's record:", flagErr.message);
       }
 
+      // Move the child's Stage badge (Student Records / Full Analytics
+      // Dashboard) to "Completed" — same gap as the "Processing" update in
+      // PuzzleBoxScreener.js on submit: this field is separate from the
+      // actual puzzlebox_screenings data and nothing was moving it forward,
+      // so a fully reviewed/diagnosed child still showed "Not Started".
+      if (reviewScreening.childId) {
+        const { error: stageErr } = await supabase
+          .from("children")
+          .update({ stage: "stage4" })
+          .eq("id", reviewScreening.childId);
+        if (stageErr) console.error("Could not update the child's stage:", stageErr.message);
+      }
+
       // Safety net: clear the "awaiting review" notification badge for
       // this screening regardless of how the psychologist got here (opening
       // it via the notification list already marks it read on open, but
@@ -401,7 +460,8 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
 
       const verdictLabel = verdict === "fine" ? t.verdictFine : t.verdictConcerns;
       const body =
-        `${reviewScreening.childName}'s PuzzleBox screening has been reviewed. Outcome: ${verdictLabel}.` +
+        // Student number, not the name: admins can read every message.
+        `The PuzzleBox screening for ${childById.get(reviewScreening.childId)?.studentNumber || "this child"} has been reviewed. Outcome: ${verdictLabel}.` +
         (reviewNotes ? ` ${reviewNotes}` : "");
 
       // The teacher who submitted this screening always gets a message
@@ -460,6 +520,13 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
     return f.childName?.toLowerCase().includes(s) || f.school?.toLowerCase().includes(s);
   });
  
+  const analyticsItem = (id, section) => ({
+    id: "a-" + id,
+    label: (ANALYTICS_LABELS[lang] || ANALYTICS_LABELS.en)[id],
+    section: section || ANALYTICS_SECTION[lang] || ANALYTICS_SECTION.en,
+    icon: NAV_ICONS[ANALYTICS_ICONS[id]] || NAV_ICONS.dashboard,
+  });
+
   const navItems = [
     { id: "home", label: t.navHome, section: t.section1, icon: NAV_ICONS.home },
     {
@@ -473,22 +540,12 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
       section: t.section1,
       icon: NAV_ICONS.notifications,
     },
+    analyticsItem("children", t.section2),
     { id: "followups", label: t.navFollowUps, section: t.section2, icon: NAV_ICONS.followUps },
-    { id: "dashboard", label: t.navDashboard, section: t.section2, icon: NAV_ICONS.dashboard },
+    ...ANALYTICS_PAGES.map((id) => analyticsItem(id)),
     { id: "profile", label: t.navProfile, section: t.section3, icon: NAV_ICONS.profile },
     ...memberNavItems(onOpenMember),
   ];
- 
-  if (activePage === "dashboard") {
-    return (
-      <div className="th-dashboard-embed">
-        <button className="th-back-fab" onClick={() => setActivePage("home")}>
-          {t.backToHome}
-        </button>
-        <Dashboard user={user} />
-      </div>
-    );
-  }
  
   return (
     <div className="dashboard-layout rh-shell" style={{ "--rh-accent": "#E8175D", "--rh-accent-soft": "#FFE6EF" }}>
@@ -507,11 +564,13 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
               {activePage === "followups" && t.navFollowUps}
               {activePage === "profile" && t.navProfile}
               {activePage === "notifications" && t.navNotifications}
+              {activePage.startsWith("a-") && (ANALYTICS_LABELS[lang] || ANALYTICS_LABELS.en)[activePage.slice(2)]}
             </div>
             <div className="page-sub">
               {activePage === "followups" && t.followUpsSub}
               {activePage === "profile" && t.profileSub}
               {activePage === "notifications" && t.notifSub}
+              {activePage.startsWith("a-") && (ANALYTICS_SUBS[lang] || ANALYTICS_SUBS.en)[activePage.slice(2)]}
             </div>
           </div>
           <div className="topbar-right">
@@ -545,12 +604,12 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                   title={t.needsReview}
                   actionLabel={t.viewAll}
                   onAction={() => setActivePage("notifications")}
-                  emptyIcon="📝"
+                  emptyIcon="notes"
                   emptyTitle={t.noNotifications}
                   emptySub={t.noNotificationsSub}
                   onItemClick={(n) => openReview(n)}
                   items={loading ? null : notifications.slice(0, 5).map((n) => ({
-                    icon: "📝", color: n.readAt ? "#8888a8" : "#009B8D",
+                    icon: "notes", color: n.readAt ? "#8888a8" : "#009B8D",
                     title: n.childName, meta: `${n.school || ""} · ${n.teacherName || n.teacherEmail || ""}`.replace(/^ · /, ""),
                     badge: n.readAt ? undefined : "New",
                   }))}
@@ -559,23 +618,23 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                   title={t.upcomingFollowUps}
                   actionLabel={t.viewAll}
                   onAction={() => setActivePage("followups")}
-                  emptyIcon="🗓"
+                  emptyIcon="calendar"
                   emptyTitle={t.noFollowUps}
                   emptySub={t.noFollowUpsSub}
                   onItemClick={(f) => setSelected(f)}
                   items={loading ? null : followUps.slice(0, 5).map((f) => ({
-                    icon: "🗓", color: (followUpColors[f.followUpType] || followUpColors.fu1).color,
+                    icon: "calendar", color: (followUpColors[f.followUpType] || followUpColors.fu1).color,
                     title: f.childName, meta: `${f.school} · ${t.date}: ${f.followUpDate || "—"}`,
                     badge: t[f.followUpType] || f.followUpType,
                   }))}
                 />
                 <TodayList
                   title={t.recentlyFlagged}
-                  emptyIcon="✅"
+                  emptyIcon="tick"
                   emptyTitle={t.noFlagged}
                   emptySub={t.noFlaggedSub}
                   items={flaggedChildren.slice(0, 5).map((c) => ({
-                    icon: "⚑", color: "#E8175D", title: c.name, meta: c.school,
+                    icon: "flag", color: "#E8175D", title: c.name, meta: c.school,
                   }))}
                 />
               </div>
@@ -602,16 +661,16 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
  
                 <div className="rh-card">
                   <div className="rh-card-head"><div className="rh-card-title">{t.quickLinks}</div></div>
-                  <button className="th-quicklink" onClick={() => setActivePage("dashboard")}>
-                    <div className="th-quicklink-icon">📊</div>
+                  <button className="th-quicklink" onClick={() => setActivePage("a-overview")}>
+                    <div className="th-quicklink-icon"><Doodle name="chart" size={24} /></div>
                     <div>
                       <div className="th-quicklink-title">{t.openDashboard}</div>
                       <div className="th-quicklink-sub">{t.openDashboardSub}</div>
                     </div>
                     <div className="th-quicklink-arrow">→</div>
                   </button>
-                  <button className="th-quicklink" onClick={() => setActivePage("dashboard")} style={{ marginBottom: 0 }}>
-                    <div className="th-quicklink-icon">✉</div>
+                  <button className="th-quicklink" onClick={() => setActivePage("a-flags")} style={{ marginBottom: 0 }}>
+                    <div className="th-quicklink-icon"><Doodle name="envelope" size={24} /></div>
                     <div>
                       <div className="th-quicklink-title">{t.openFlags}</div>
                       <div className="th-quicklink-sub">{t.openFlagsSub}</div>
@@ -621,14 +680,19 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                 </div>
               </div>
             </div>
+
           </>
+        )}
+
+        {activePage.startsWith("a-") && (
+          <AnalyticsPanels lang={lang} page={activePage.slice(2)} />
         )}
 
         {activePage === "notifications" && (
           <div className="card" style={{ padding: 0, overflow: "hidden" }}>
             {notifications.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-state-icon">📝</div>
+                <div className="empty-state-icon"><Doodle name="notes" size={64} /></div>
                 <div className="empty-state-title">{t.noNotifications}</div>
                 <div className="empty-state-sub">{t.noNotificationsSub}</div>
               </div>
@@ -648,7 +712,7 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                     display: "flex", alignItems: "center", justifyContent: "center",
                     background: n.readAt ? "var(--surface)" : "var(--teal)",
                     color: n.readAt ? "var(--ink-faint)" : "#fff", fontSize: 16,
-                  }}>📝</div>
+                  }}><Doodle name="notes" size={18} /></div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 800, fontSize: 14, color: "var(--ink)" }}>{n.childName}</div>
                     <div style={{ fontSize: 12, color: "var(--ink-faint)" }}>
@@ -659,6 +723,21 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                     {n.sentAt ? new Date(n.sentAt).toLocaleDateString() : ""}
                   </div>
                   {!n.readAt && <span className="pill pill-teal">New</span>}
+                  <button
+                    type="button"
+                    title={t.deleteNotif}
+                    aria-label={t.deleteNotif}
+                    onClick={(e) => { e.stopPropagation(); deleteNotification(n); }}
+                    style={{
+                      flexShrink: 0, width: 28, height: 28, borderRadius: "50%", border: "none",
+                      background: "transparent", color: "var(--ink-faint)", cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15,
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--pink-lt)"; e.currentTarget.style.color = "var(--pink)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--ink-faint)"; }}
+                  >
+                    ✕
+                  </button>
                 </div>
               ))
             )}
@@ -676,7 +755,7 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
             <div className="card" style={{ padding: 0, overflow: "hidden" }}>
               {filteredFollowUps.length === 0 ? (
                 <div className="empty-state">
-                  <div className="empty-state-icon">🗓</div>
+                  <div className="empty-state-icon"><Doodle name="calendar" size={64} /></div>
                   <div className="empty-state-title">{t.noFollowUps}</div>
                   <div className="empty-state-sub">{t.noFollowUpsSub}</div>
                 </div>
@@ -778,12 +857,12 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
               </div>
             ) : reviewSaved ? (
               <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
-                <div style={{ fontFamily: "Nunito", fontSize: 19, fontWeight: 900, color: "var(--ink)", marginBottom: 6 }}>{t.reviewSaved}</div>
+                <div style={{ fontSize: 48, marginBottom: 12 }}><Doodle name="tick" size={64} /></div>
+                <div style={{ fontFamily: "var(--font-heading)", fontSize: 19, fontWeight: 900, color: "var(--ink)", marginBottom: 6 }}>{t.reviewSaved}</div>
                 <div style={{ fontSize: 13, color: "var(--ink-faint)", marginBottom: 20 }}>{t.reviewSavedSub}</div>
                 {reviewSaved.sharedWith.length > 0 && (
                   <div style={{ padding: "12px 16px", background: "var(--teal-lt)", borderRadius: 12, fontSize: 12, color: "var(--teal)", fontWeight: 600, marginBottom: 20, textAlign: "left" }}>
-                    {reviewSaved.sharedWith.map((label, i) => <div key={i}>📤 {t.reviewSharedWith}: {label}</div>)}
+                    {reviewSaved.sharedWith.map((label, i) => <div key={i}><Doodle name="envelope" size={16} inline /> {t.reviewSharedWith}: {label}</div>)}
                   </div>
                 )}
                 <button className="btn btn-teal" style={{ width: "100%" }} onClick={closeReview}>{t.done}</button>
@@ -807,6 +886,25 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                     <span className="report-row-label">{t.rawScoreLabel}</span>
                     <span className="report-row-value">{reviewScreening.rawScore ?? "—"}</span>
                   </div>
+                  <div className="report-row">
+                    <span className="report-row-label">{t.timeTakenLabel}</span>
+                    <span className="report-row-value">
+                      {reviewScreening.totalTimeSeconds != null ? formatSecs(reviewScreening.totalTimeSeconds) : "—"}
+                    </span>
+                  </div>
+                  {reviewScreening.puzzleTimeSeconds != null && (
+                    <div className="report-row">
+                      <span className="report-row-label">{t.puzzleTimeLabel}</span>
+                      <span className="report-row-value">
+                        {formatSecs(reviewScreening.puzzleTimeSeconds)}
+                        {reviewScreening.puzzleOverTime && (
+                          <span style={{ color: "var(--orange)", fontWeight: 700, marginLeft: 6, fontSize: 11.5 }}>
+                            <Doodle name="flag" size={16} inline /> {t.overTimeFlag}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  )}
                   <div className="report-row">
                     <span className="report-row-label">{t.resultBand}</span>
                     <span className="report-row-value">{bandLabels[reviewScreening.interpretationBand] || reviewScreening.interpretationBand || "—"}</span>
@@ -834,32 +932,37 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                     </button>
                     {showBreakdown && (
                       <div style={{ marginTop: 10, maxHeight: 260, overflowY: "auto", border: "1.5px solid var(--border)", borderRadius: 10, padding: "4px 14px" }}>
-                        {reviewScreening.contentSnapshot.sections.map((section) => (
+                        {reviewScreening.contentSnapshot.sections.map((section) => {
+                          const sectionSecs = reviewScreening.sectionTimes?.[section.id];
+                          return (
                           <div key={section.id || section.title} style={{ marginBottom: 12 }}>
-                            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.4px", color: "var(--ink-faint)", margin: "10px 0 4px" }}>
-                              {section.title}
+                            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.4px", color: "var(--ink-faint)", margin: "10px 0 4px", display: "flex", justifyContent: "space-between" }}>
+                              <span>{section.title}</span>
+                              {sectionSecs != null && <span style={{ fontVariantNumeric: "tabular-nums" }}>{formatSecs(sectionSecs)}</span>}
                             </div>
                             {section.questions.map((q) => {
                               const r = reviewScreening.responses?.[q.id] || {};
-                              const answer =
-                                r.checked?.length
-                                  ? r.checked.join(", ")
-                                  : r.rawValueSeconds != null
-                                  ? formatSecs(r.rawValueSeconds)
-                                  : typeof r.score === "number"
-                                  ? r.score
-                                  : "—";
+                              const hasScore = typeof r.score === "number";
+                              // Per-question time used to be shown here too, but for the
+                              // only two questions that ever had one (the puzzle, fence
+                              // sticks) it just duplicated the section header's time right
+                              // above — so this row sticks to score/checklist only now.
+                              const parts = [];
+                              if (hasScore) parts.push(`Score: ${r.score}`);
+                              if (r.checked?.length) parts.push(r.checked.join(", "));
+                              const answer = parts.length ? parts.join(" · ") : "—";
                               return (
                                 <div key={q.id} className="report-row" style={{ padding: "6px 0" }}>
                                   <span className="report-row-label" style={{ fontSize: 12.5 }}>{q.label}</span>
                                   <span className="report-row-value" style={{ fontSize: 12.5, fontWeight: 800 }}>
-                                    {typeof r.score === "number" ? `Score: ${r.score}` : answer}
+                                    {answer}
                                   </span>
                                 </div>
                               );
                             })}
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -890,7 +993,7 @@ export default function PsychologistHome({ user, profile, onOpenMember }) {
                         color: verdict === "concerns" ? "var(--pink)" : "var(--ink)",
                       }}
                     >
-                      ⚑ {t.verdictConcerns}
+                      <Doodle name="flag" size={16} inline /> {t.verdictConcerns}
                     </button>
                   </div>
                 </div>

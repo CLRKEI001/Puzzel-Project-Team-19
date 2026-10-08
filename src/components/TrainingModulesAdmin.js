@@ -8,9 +8,10 @@
 // shared read hook the public pages use.
 
 import React, { useState } from "react";
+import Doodle from "./Doodle";
 import { supabase } from "../supabaseClient";
 import { useTrainingModules, COLOR_KEYS } from "../lib/useTrainingModules";
-import TrainingQuizEditor from "./TrainingQuizEditor";
+import TrainingQuestionEditor from "./TrainingQuestionEditor";
 import TrainingContentEditor from "./TrainingContentEditor";
 
 const inputStyle = {
@@ -45,7 +46,10 @@ const COLOR_SWATCH = {
 const EMPTY_FORM = { title: "", description: "", colorKey: "teal", status: "coming_soon", videoUrl: "", contentUrl: "" };
 
 export default function TrainingModulesAdmin() {
-  const { modules, loading, error, refresh } = useTrainingModules();
+  const { modules: allModules, loading, error, refresh } = useTrainingModules();
+  // Educators and psychologists have separate tracks — edit one at a time
+  const [audience, setAudience] = useState("educator");
+  const modules = allModules.filter((m) => m.audience === audience);
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -106,7 +110,7 @@ export default function TrainingModulesAdmin() {
       ({ error: saveError } = await supabase.from("training_modules").update(payload).eq("id", editingId));
     } else {
       const nextOrder = modules.reduce((max, m) => Math.max(max, m.sortOrder || 0), 0) + 1;
-      ({ error: saveError } = await supabase.from("training_modules").insert({ ...payload, sort_order: nextOrder }));
+      ({ error: saveError } = await supabase.from("training_modules").insert({ ...payload, audience, sort_order: nextOrder }));
     }
 
     if (saveError) {
@@ -163,6 +167,22 @@ export default function TrainingModulesAdmin() {
 
   return (
     <>
+      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+        {[["educator", "Educator training (Tier 1)"], ["psychologist", "Psychologist training (Tier 2)"]].map(([key, label]) => (
+          <button
+            key={key}
+            className="btn btn-sm"
+            onClick={() => { setAudience(key); closeForm(); setQuizModuleId(null); setContentModuleId(null); }}
+            style={{
+              background: audience === key ? "var(--teal)" : "var(--surface)",
+              color: audience === key ? "#fff" : "var(--ink-mid)", border: "none", fontWeight: 800,
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="search-bar">
         <span style={{ fontSize: 13, color: "var(--ink-mid)", fontWeight: 600 }}>
           {sorted.length} module{sorted.length === 1 ? "" : "s"}
@@ -174,19 +194,19 @@ export default function TrainingModulesAdmin() {
 
       {error && (
         <div style={{ padding: "10px 14px", background: "var(--pink-lt)", color: "var(--pink)", borderRadius: 10, fontSize: 13, fontWeight: 700, marginBottom: 14 }}>
-          ⚠ {error}
+          <Doodle name="warning" size={16} inline /> {error}
         </div>
       )}
 
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         {loading ? (
           <div className="empty-state">
-            <div className="empty-state-icon" style={{ fontSize: 28 }}>⏳</div>
+            <div className="empty-state-icon" style={{ display: "flex", justifyContent: "center" }}><Doodle name="books" size={56} /></div>
             <div className="empty-state-title">Loading modules...</div>
           </div>
         ) : sorted.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">🧩</div>
+            <div className="empty-state-icon" style={{ display: "flex", justifyContent: "center" }}><Doodle name="books" size={56} /></div>
             <div className="empty-state-title">No modules yet</div>
             <div className="empty-state-sub">Add the first training module to get started.</div>
           </div>
@@ -286,7 +306,7 @@ export default function TrainingModulesAdmin() {
                   {quizModuleId === mod.id && (
                     <tr>
                       <td colSpan={4} style={{ padding: 0 }}>
-                        <TrainingQuizEditor moduleId={mod.id} />
+                        <TrainingQuestionEditor moduleId={mod.id} />
                       </td>
                     </tr>
                   )}
@@ -316,7 +336,7 @@ export default function TrainingModulesAdmin() {
 
             {formError && (
               <div style={{ padding: "10px 14px", background: "var(--pink-lt)", color: "var(--pink)", borderRadius: 10, fontSize: 13, fontWeight: 700, marginBottom: 14 }}>
-                ⚠ {formError}
+                <Doodle name="warning" size={16} inline /> {formError}
               </div>
             )}
 

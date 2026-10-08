@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
+import Doodle from "./Doodle";
 import { supabase } from "../supabaseClient";
-import { mapSessionRow, mapFollowUpRow } from "../lib/mappers";
+import { mapFollowUpRow } from "../lib/mappers";
  
 const T = {
   en: {
@@ -98,27 +99,9 @@ const domainColors = {
   social: "#E8175D", emotion: "#009B8D", moral: "#6B2F8A"
 };
  
-const SEED_SESSIONS = [
-  { childName: "Child PB-001", school: "Adelaide Primary", age: 5, language: "isiXhosa", score: 69, date: "2026-02-10", examiner: "Dr. Mokoena", status: "Progressing", stage: "stage4", followUpStage: "fu1", cognitive: 72, motor: 85, language_score: 68, social: 60, emotion: 74, moral: 55 },
-  { childName: "Child PB-002", school: "Adelaide Primary", age: 6, language: "isiXhosa", score: 42, date: "2026-02-10", examiner: "Dr. Mokoena", status: "Developmental Concerns", stage: "stage4", followUpStage: "fu2", cognitive: 45, motor: 52, language_score: 40, social: 38, emotion: 42, moral: 35 },
-  { childName: "Child PB-003", school: "Komani ECD", age: 5, language: "English", score: 88, date: "2026-02-14", examiner: "Dr. Mokoena", status: "On Track", stage: "stage4", followUpStage: "fu1", cognitive: 88, motor: 92, language_score: 85, social: 90, emotion: 88, moral: 82 },
-  { childName: "Child PB-004", school: "Komani ECD", age: 6, language: "Afrikaans", score: 34, date: "2026-02-14", examiner: "Dr. Mokoena", status: "Developmental Concerns", stage: "stage3", followUpStage: "fu5", cognitive: 35, motor: 40, language_score: 32, social: 28, emotion: 38, moral: 30 },
-  { childName: "Child PB-005", school: "Fort Beaufort", age: 5, language: "isiXhosa", score: 76, date: "2026-02-18", examiner: "Dr. Mokoena", status: "On Track", stage: "stage3", followUpStage: "fu4", cognitive: 78, motor: 80, language_score: 75, social: 72, emotion: 79, moral: 70 },
-  { childName: "Child PB-006", school: "Fort Beaufort", age: 6, language: "isiXhosa", score: 55, date: "2026-02-18", examiner: "Dr. Mokoena", status: "Progressing", stage: "stage2", followUpStage: "fu2", cognitive: 55, motor: 60, language_score: 58, social: 52, emotion: 56, moral: 50 },
-  { childName: "Child PB-007", school: "Stutterheim Primary", age: 5, language: "Afrikaans", score: 89, date: "2026-02-21", examiner: "Dr. Mokoena", status: "On Track", stage: "stage4", followUpStage: "fu1", cognitive: 90, motor: 88, language_score: 92, social: 87, emotion: 91, moral: 85 },
-  { childName: "Child PB-008", school: "Stutterheim Primary", age: 6, language: "English", score: 39, date: "2026-02-21", examiner: "Dr. Mokoena", status: "Developmental Concerns", stage: "stage2", followUpStage: "fu6", cognitive: 42, motor: 38, language_score: 45, social: 35, emotion: 40, moral: 32 },
-  { childName: "Child PB-009", school: "Adelaide Primary", age: 5, language: "isiXhosa", score: 65, date: "2026-02-25", examiner: "Dr. Mokoena", status: "Progressing", stage: "stage1", followUpStage: "fu1", cognitive: 65, motor: 70, language_score: 62, social: 68, emotion: 66, moral: 60 },
-  { childName: "Child PB-010", school: "Komani ECD", age: 6, language: "isiXhosa", score: 81, date: "2026-02-25", examiner: "Dr. Mokoena", status: "On Track", stage: "stage4", followUpStage: "fu1", cognitive: 82, motor: 79, language_score: 84, social: 80, emotion: 83, moral: 78 },
-  { childName: "Child PB-011", school: "Fort Beaufort", age: 5, language: "English", score: 30, date: "2026-03-03", examiner: "Dr. Mokoena", status: "Developmental Concerns", stage: "stage1", followUpStage: "fu5", cognitive: 30, motor: 35, language_score: 28, social: 25, emotion: 32, moral: 27 },
-  { childName: "Child PB-012", school: "Adelaide Primary", age: 6, language: "Afrikaans", score: 75, date: "2026-03-03", examiner: "Dr. Mokoena", status: "On Track", stage: "stage3", followUpStage: "fu1", cognitive: 75, motor: 77, language_score: 73, social: 76, emotion: 74, moral: 72 },
-  { childName: "Child PB-013", school: "Stutterheim Primary", age: 5, language: "isiXhosa", score: 57, date: "2026-03-07", examiner: "Dr. Mokoena", status: "Progressing", stage: "stage1", followUpStage: "fu1", cognitive: 58, motor: 62, language_score: 55, social: 60, emotion: 57, moral: 52 },
-  { childName: "Child PB-014", school: "Komani ECD", age: 6, language: "English", score: 47, date: "2026-03-07", examiner: "Dr. Mokoena", status: "Progressing", stage: "stage2", followUpStage: "fu3", cognitive: 48, motor: 50, language_score: 46, social: 44, emotion: 49, moral: 43 },
-  { childName: "Child PB-015", school: "Adelaide Primary", age: 5, language: "isiXhosa", score: 92, date: "2026-03-10", examiner: "Dr. Mokoena", status: "On Track", stage: "stage1", followUpStage: "fu1", cognitive: 93, motor: 90, language_score: 95, social: 92, emotion: 94, moral: 88 },
-];
  
-export default function ScreenerResults({ lang }) {
+export default function ScreenerResults({ lang, sessions = [] }) {
   const t = T[lang];
-  const [sessions, setSessions] = useState([]);
   const [followUps, setFollowUps] = useState({});
   const [search, setSearch] = useState("");
  const [stageFilter, setStageFilter] = useState("");
@@ -127,85 +110,12 @@ const [languageFilter, setLanguageFilter] = useState("");
 const [scoreFilter, setScoreFilter] = useState("");
 const [followUpFilter, setFollowUpFilter] = useState("");
   const [selected, setSelected] = useState(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const loading = false;
  
-  // Load sessions — replaces onSnapshot(collection(db, "screeningSessions"), ...).
-  // Fetch once, seed if empty, then stay live via a Realtime channel.
-  useEffect(() => {
-    let isMounted = true;
-    let seeding = false;
-
-    const loadSessions = async () => {
-      const { data, error } = await supabase
-        .from("screening_sessions")
-        .select("*")
-        .order("created_at", { ascending: true });
-
-      if (error) {
-        console.error("Error loading screening sessions:", error);
-        return;
-      }
-
-      if (data.length === 0 && !seeding) {
-        seeding = true;
-        const seedRows = SEED_SESSIONS.map(s => ({
-          child_name: s.childName,
-          school: s.school,
-          age: s.age,
-          language: s.language,
-          score: s.score,
-          date: s.date,
-          examiner: s.examiner,
-          status: s.status,
-          stage: s.stage,
-          follow_up_stage: s.followUpStage,
-          cognitive: s.cognitive,
-          motor: s.motor,
-          language_score: s.language_score,
-          social: s.social,
-          emotion: s.emotion,
-          moral: s.moral,
-        }));
-        const { error: insertError } = await supabase.from("screening_sessions").insert(seedRows);
-        if (insertError) {
-          console.error("Error seeding screening sessions:", insertError);
-          return;
-        }
-        const { data: seededData, error: reloadError } = await supabase
-          .from("screening_sessions")
-          .select("*")
-          .order("created_at", { ascending: true });
-        if (reloadError) {
-          console.error("Error reloading seeded sessions:", reloadError);
-          return;
-        }
-        if (isMounted) {
-          setSessions(seededData.map(mapSessionRow));
-          setLoading(false);
-        }
-      } else if (isMounted) {
-        setSessions(data.map(mapSessionRow));
-        setLoading(false);
-      }
-    };
-
-    loadSessions();
-
-    // NOTE: Realtime must be enabled for "screening_sessions" — Supabase
-    // Dashboard → Database → Replication. See MIGRATION_GUIDE.md.
-    const channel = supabase
-      .channel("screening-sessions-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "screening_sessions" }, () => {
-        loadSessions();
-      })
-      .subscribe();
-
-    return () => {
-      isMounted = false;
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  // Sessions now come in as a prop: one row per real, submitted PuzzleBox
+  // screening (built in lib/analyticsData.js). This page used to read the
+  // demo `screening_sessions` table — and even auto-inserted fake rows into
+  // it when empty — which is why it never matched the real results.
 
   // Load follow-ups in real time — replaces onSnapshot(collection(db, "followUps"), ...)
   useEffect(() => {
@@ -248,9 +158,9 @@ const [followUpFilter, setFollowUpFilter] = useState("");
   const matchLanguage = !languageFilter || s.language === languageFilter;
   const matchScore =
     !scoreFilter ? true
-    : scoreFilter === "low" ? s.score < 40
-    : scoreFilter === "mid" ? s.score >= 40 && s.score <= 60
-    : scoreFilter === "high" ? s.score > 60
+    : scoreFilter === "low" ? s.score < 35
+    : scoreFilter === "mid" ? s.score >= 35 && s.score < 50
+    : scoreFilter === "high" ? s.score >= 50
     : true;
   const matchFollowUp = !followUpFilter || s.followUpStage === followUpFilter;
   return matchSearch && matchStage && matchAge && matchLanguage && matchScore && matchFollowUp;
@@ -261,17 +171,6 @@ const [followUpFilter, setFollowUpFilter] = useState("");
     if (s === "Progressing") return t.progressing;
     if (s === "Developmental Concerns") return t.devConcerns;
     return s;
-  };
- 
-  const handleDeleteSession = async () => {
-    if (!selected?.id) return;
-    const { error } = await supabase.from("screening_sessions").delete().eq("id", selected.id);
-    if (error) {
-      console.error("Error deleting session:", error);
-      return;
-    }
-    setSelected(null);
-    setShowDeleteConfirm(false);
   };
  
   const domains = [
@@ -290,7 +189,7 @@ const [followUpFilter, setFollowUpFilter] = useState("");
         <div className="filter-heading">Student Filters</div>
         <div className="card">
           <div className="empty-state">
-            <div className="empty-state-icon">⏳</div>
+            <div className="empty-state-icon" style={{ display: "flex", justifyContent: "center" }}><Doodle name="clipboard" size={56} /></div>
             <div className="empty-state-title">Loading sessions...</div>
             <div className="empty-state-sub">Setting up database</div>
           </div>
@@ -300,6 +199,7 @@ const [followUpFilter, setFollowUpFilter] = useState("");
   }
  
   return (
+    <>
     <div className="top-filter-bar" style={{ marginBottom: 20, display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 12 }}>
   <div className="filter-heading">Student Filters</div>
 
@@ -377,12 +277,13 @@ const [followUpFilter, setFollowUpFilter] = useState("");
   <div style={{ marginLeft: "auto", fontSize: 12, color: "var(--ink-faint)", fontWeight: 600, alignSelf: "center", whiteSpace: "nowrap" }}>
     {t.showing} {filtered.length} {t.of} {sessions.length} {t.sessions}
   </div>
+    </div>
 
  
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         {filtered.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">🔍</div>
+            <div className="empty-state-icon"><Doodle name="magnifier" size={64} /></div>
             <div className="empty-state-title">{t.noResults}</div>
             <div className="empty-state-sub">{t.noResultsSub}</div>
           </div>
@@ -429,7 +330,7 @@ const fc = followUpColors[followUpKey] || followUpColors.fu1;
                         </span>
                       </td>
                       <td>
-                        <button className="btn btn-teal btn-sm" onClick={() => { setSelected(s); setShowDeleteConfirm(false); }}>{t.view}</button>
+                        <button className="btn btn-teal btn-sm" onClick={() => setSelected(s)}>{t.view}</button>
                       </td>
                     </tr>
                   );
@@ -523,33 +424,21 @@ const fc = followUpColors[followUpKey] || followUpColors.fu1;
               <span style={{ fontWeight: 800, fontSize: 14, color: selected.status === "Developmental Concerns" ? "var(--pink)" : selected.status === "On Track" ? "var(--teal)" : "var(--orange)" }}>
                 {statusLabel(selected.status)}
               </span>
-              <span style={{ fontFamily: "Nunito", fontSize: 28, fontWeight: 900 }}>{selected.score}%</span>
+              <span style={{ fontFamily: "var(--font-heading)", fontSize: 28, fontWeight: 900 }}>{selected.score}%</span>
             </div>
  
-            {/* DELETE SESSION */}
-            {!showDeleteConfirm ? (
-              <button
-                className="btn btn-sm"
-                style={{ width: "100%", background: "var(--pink-lt)", color: "var(--pink)", border: "1px solid rgba(232,23,93,0.2)" }}
-                onClick={() => setShowDeleteConfirm(true)}
-              >
-                🗑 {t.deleteSession}
-              </button>
-            ) : (
-              <div style={{ padding: 14, background: "var(--pink-lt)", borderRadius: 12, border: "1px solid rgba(232,23,93,0.2)" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--pink)", marginBottom: 10 }}>{t.deleteConfirm}</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setShowDeleteConfirm(false)} style={{ flex: 1 }}>{t.cancel}</button>
-                  <button className="btn btn-sm" style={{ flex: 1, background: "var(--pink)", color: "#fff", border: "none" }} onClick={handleDeleteSession}>
-                    Confirm Delete
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* RAW SCORE + REVIEW OUTCOME (real PuzzleBox screening) */}
+            <div style={{ padding: 14, background: "var(--surface)", borderRadius: 12, fontSize: 13, color: "var(--ink-mid)", lineHeight: 1.6 }}>
+              <div><strong>Raw score:</strong> {selected.rawScore}{selected.maxScore ? ` / ${selected.maxScore}` : ""}</div>
+              <div><strong>Screening:</strong> {selected.screeningStatus === "reviewed" ? "Reviewed by a psychologist" : "Awaiting psychologist review"}</div>
+              {selected.reviewVerdict && (
+                <div><strong>Psychologist's verdict:</strong> {selected.reviewVerdict === "concerns" ? "Developmental concerns" : "No concerns"}</div>
+              )}
+              {selected.reviewNotes && <div><strong>Notes:</strong> {selected.reviewNotes}</div>}
+            </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
- 

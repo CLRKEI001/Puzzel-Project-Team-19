@@ -5,8 +5,10 @@
 // Uses Supabase/Postgres for all database operations.
 
 import React, { useState, useEffect } from "react";
+import Doodle from "./Doodle";
 import { supabase } from "../supabaseClient";
 import { mapFollowUpRow } from "../lib/mappers";
+import { uploadAndVerifyConsentForm, requestManualConsentReview, isOverloadNote } from "../lib/consentForms";
 
 
 // ============================================================
@@ -412,6 +414,7 @@ export default function ChildrenTable({ children, lang }) {
   const [consentFiles, setConsentFiles] = useState({});
   const [consentSaving, setConsentSaving] = useState(false);
   const [consentError, setConsentError] = useState("");
+  const [consentMissingFields, setConsentMissingFields] = useState([]);
 
   const [showFollowUp, setShowFollowUp] = useState(false);
   const [followUpDate, setFollowUpDate] = useState("");
@@ -581,6 +584,8 @@ export default function ChildrenTable({ children, lang }) {
 
     setSelected(child);
 
+    setConsentMissingFields([]);
+    setConsentError("");
     setConsentView(false);
 
     setShowFollowUp(false);
@@ -788,6 +793,7 @@ export default function ChildrenTable({ children, lang }) {
     if (!file) return;
 
     setConsentError("");
+    setConsentMissingFields([]);
     setUploadedFile(file);
 
     // Local preview only, shown in the "about to save" panel before
@@ -821,34 +827,16 @@ export default function ChildrenTable({ children, lang }) {
     setConsentSaving(true);
     setConsentError("");
 
-    const path = `${selected.id}/${Date.now()}-${uploadedFile.name}`;
-
-    const { error: uploadErr } = await supabase.storage
-      .from("consent-forms")
-      .upload(path, uploadedFile, { upsert: true, contentType: uploadedFileType });
-
-    if (uploadErr) {
-      console.error("Error uploading consent form:", uploadErr);
-      setConsentError("Could not upload the consent form — " + uploadErr.message);
-      setConsentSaving(false);
-      return;
-    }
-
-    const { data: pub } = supabase.storage.from("consent-forms").getPublicUrl(path);
-    const nowIso = new Date().toISOString();
-
-    const { error: saveErr } = await supabase
-      .from("children")
-      .update({
-        consent_form_url: pub.publicUrl,
-        consent_file_name: uploadedFile.name,
-        consent_uploaded_at: nowIso,
-      })
-      .eq("id", selected.id);
-
-    if (saveErr) {
-      console.error("Error saving consent form record:", saveErr);
-      setConsentError("Uploaded, but could not save the record — " + saveErr.message);
+    let result;
+    try {
+      // Uploads the file, has it read for completeness (even handwritten —
+      // see validate-consent-form), and saves consent_verified onto the
+      // child's row all in one step — this is also what gates whether a
+      // screening is allowed to start (PuzzleBoxScreener.js).
+      result = await uploadAndVerifyConsentForm({ childId: selected.id, file: uploadedFile });
+    } catch (err) {
+      console.error("Error saving consent form:", err);
+      setConsentError(err.message || "Could not save the consent form.");
       setConsentSaving(false);
       return;
     }
@@ -857,20 +845,24 @@ export default function ChildrenTable({ children, lang }) {
       ...prev,
 
       [selected.id || selected.name]: {
-        url: pub.publicUrl,
-        type: uploadedFileType,
-        name: uploadedFile.name,
+        url: result.url,
+        type: result.fileType,
+        name: result.fileName,
       },
 
     }));
 
     setSelected(prev => prev && ({
       ...prev,
-      consentFormUrl: pub.publicUrl,
-      consentFileName: uploadedFile.name,
-      consentUploadedAt: nowIso,
+      consentFormUrl: result.url,
+      consentFileName: result.fileName,
+      consentUploadedAt: result.uploadedAt,
+      consentVerified: result.valid,
+      consentVerificationNotes: result.notes,
+      consentVerifiedAt: result.uploadedAt,
     }));
 
+    setConsentMissingFields(result.missingFields || []);
     setUploadedFile(null);
     setUploadedFileURL(null);
     setUploadedFileType(null);
@@ -1316,7 +1308,7 @@ export default function ChildrenTable({ children, lang }) {
           <div className="empty-state">
 
             <div className="empty-state-icon">
-              🔍
+              <Doodle name="magnifier" size={64} />
             </div>
 
             <div className="empty-state-title">
@@ -1549,7 +1541,7 @@ export default function ChildrenTable({ children, lang }) {
                       gap: 5,
                     }}
                   >
-                    ✏ {t.editChild}
+                    <Doodle name="pencil" size={16} inline /> {t.editChild}
                   </button>
 
                 )}
@@ -1606,7 +1598,7 @@ export default function ChildrenTable({ children, lang }) {
                         "var(--teal)",
                     }}
                   >
-                    ✏ {t.editChild}
+                    <Doodle name="pencil" size={16} inline /> {t.editChild}
                   </div>
 
                   <div
@@ -1642,7 +1634,7 @@ export default function ChildrenTable({ children, lang }) {
                       marginBottom: 14,
                     }}
                   >
-                    ⚠{" "}
+                    <Doodle name="warning" size={16} inline />{" "}
                     {t.duplicateEditWarning}
                     <div
                       style={{
@@ -2054,7 +2046,7 @@ export default function ChildrenTable({ children, lang }) {
                       setConsentView(false)
                     }
                   >
-                    📋 {t.childDetail}
+                    <Doodle name="clipboard" size={16} inline /> {t.childDetail}
                   </button>
 
 
@@ -2068,7 +2060,7 @@ export default function ChildrenTable({ children, lang }) {
                       setConsentView(true)
                     }
                   >
-                    📄 {t.consentForm}
+                    <Doodle name="document" size={16} inline /> {t.consentForm}
                   </button>
 
                 </div>
@@ -2246,7 +2238,7 @@ export default function ChildrenTable({ children, lang }) {
                                 handleDeleteFollowUp
                               }
                             >
-                              🗑{" "}
+                              <Doodle name="bin" size={16} inline />{" "}
                               {t.deleteFollowUp}
                             </button>
 
@@ -2341,7 +2333,7 @@ export default function ChildrenTable({ children, lang }) {
 
                             }}
                           >
-                            ✏ Edit Follow-up
+                            <Doodle name="pencil" size={16} inline /> Edit Follow-up
                           </button>
 
                         </div>
@@ -2390,8 +2382,7 @@ export default function ChildrenTable({ children, lang }) {
 
                         <div
                           style={{
-                            fontFamily:
-                              "Nunito",
+                            fontFamily: "var(--font-heading)",
                             fontSize: 14,
                             fontWeight: 800,
                             marginBottom: 14,
@@ -2642,7 +2633,7 @@ export default function ChildrenTable({ children, lang }) {
                           )
                         }
                       >
-                        🗑{" "}
+                        <Doodle name="bin" size={16} inline />{" "}
                         {t.deleteChild}
                       </button>
 
@@ -2729,17 +2720,19 @@ export default function ChildrenTable({ children, lang }) {
 
                     <div
                       style={{
-                        padding:
-                          "14px 16px",
-                        background:
-                          consentFile
-                            ? "var(--teal-lt)"
-                            : "var(--orange-lt)",
+                        padding: "14px 16px",
+                        background: selected?.consentVerified
+                          ? "var(--teal-lt)"
+                          : consentFile
+                          ? "var(--pink-lt)"
+                          : "var(--orange-lt)",
                         borderRadius: 12,
-                        marginBottom: 20,
+                        marginBottom: 12,
                         border: `1px solid ${
-                          consentFile
+                          selected?.consentVerified
                             ? "rgba(0,155,141,0.2)"
+                            : consentFile
+                            ? "rgba(232,23,93,0.2)"
                             : "rgba(242,101,34,0.2)"
                         }`,
                       }}
@@ -2749,16 +2742,19 @@ export default function ChildrenTable({ children, lang }) {
                         style={{
                           fontWeight: 800,
                           fontSize: 14,
-                          color:
-                            consentFile
-                              ? "var(--teal)"
-                              : "var(--orange)",
+                          color: selected?.consentVerified
+                            ? "var(--teal)"
+                            : consentFile
+                            ? "var(--pink)"
+                            : "var(--orange)",
                           marginBottom: 4,
                         }}
                       >
-                        {consentFile
+                        {selected?.consentVerified
                           ? `✓ ${t.consentSigned}`
-                          : "⚠ No Consent Form Yet"}
+                          : consentFile
+                          ? "✗ Consent Form Incomplete"
+                          : <><Doodle name="warning" size={16} inline /> No Consent Form Yet</>}
                       </div>
 
 
@@ -2769,12 +2765,56 @@ export default function ChildrenTable({ children, lang }) {
                             "var(--ink-mid)",
                         }}
                       >
-                        {consentFile
+                        {selected?.consentVerified
                           ? t.consentNote
+                          : consentFile
+                          ? (selected?.consentVerificationNotes || "The uploaded form is missing required details — a screening can't start until a complete form is on file.")
                           : "Upload the signed consent form below"}
                       </div>
 
+                      {!selected?.consentVerified && selected?.consentReviewStatus === "pending" && (
+                        <div style={{ marginTop: 8, fontSize: 12.5, fontWeight: 700, color: "var(--orange)" }}>
+                          Sent to an admin for manual review.
+                        </div>
+                      )}
+
+                      {!selected?.consentVerified && selected?.consentFormUrl && selected?.consentReviewStatus !== "pending" && isOverloadNote(selected?.consentVerificationNotes) && (
+                        <div style={{ marginTop: 10 }}>
+                          <div style={{ fontSize: 12.5, color: "var(--ink-mid)", marginBottom: 8 }}>
+                            The automatic check is busy right now. Your file is saved. You can send it to an admin to check by hand.
+                          </div>
+                          <button
+                            className="btn btn-sm btn-primary"
+                            onClick={async () => {
+                              try {
+                                await requestManualConsentReview({ childId: selected.id });
+                                setSelected((prev) => prev && ({ ...prev, consentReviewStatus: "pending" }));
+                              } catch (e) { setConsentError(e.message); }
+                            }}
+                          >
+                            Send to admin for manual review
+                          </button>
+                        </div>
+                      )}
+
+                      {!selected?.consentVerified && consentMissingFields.length > 0 && (
+                        <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 12.5, color: "var(--ink-mid)" }}>
+                          {consentMissingFields.map((f, i) => <li key={i}>{f}</li>)}
+                        </ul>
+                      )}
+
                     </div>
+
+                    <a
+                      href="/puzzlebox-consent-form.pdf"
+                      download
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700,
+                        color: "var(--teal)", marginBottom: 20, textDecoration: "none",
+                      }}
+                    >
+                      <Doodle name="download" size={16} inline /> Download blank consent form (to print or send to a parent)
+                    </a>
 
 
                     {/* EXISTING CONSENT */}
@@ -2809,8 +2849,8 @@ export default function ChildrenTable({ children, lang }) {
                             {consentFile.type.includes(
                               "pdf"
                             )
-                              ? "📄"
-                              : "🖼"}
+                              ? <Doodle name="document" size={22} />
+                              : <Doodle name="photo" size={22} />}
                           </span>
 
                           <span
@@ -2888,7 +2928,7 @@ export default function ChildrenTable({ children, lang }) {
                                 "center",
                             }}
                           >
-                            ⬇{" "}
+                            <Doodle name="download" size={16} inline />{" "}
                             {t.downloadConsent}
                           </a>
 
@@ -3014,7 +3054,7 @@ export default function ChildrenTable({ children, lang }) {
 
                           {consentError && (
                             <div style={{ color: "var(--pink)", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>
-                              ⚠ {consentError}
+                              <Doodle name="warning" size={16} inline /> {consentError}
                             </div>
                           )}
 
@@ -3110,7 +3150,7 @@ export default function ChildrenTable({ children, lang }) {
                 }}
               >
                 <div>
-                  ⚠️ {t.missingFieldsWarning}
+                  <Doodle name="warning" size={16} inline /> {t.missingFieldsWarning}
                 </div>
                 <div
                   style={{
@@ -3143,7 +3183,7 @@ export default function ChildrenTable({ children, lang }) {
                   marginBottom: 14,
                 }}
               >
-                ⚠{" "}
+                <Doodle name="warning" size={16} inline />{" "}
                 {t.duplicateWarning} — "
                 {newChild.name}"{" "}
                 {t.duplicateDetail}

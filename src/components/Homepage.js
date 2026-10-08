@@ -4,6 +4,7 @@ import {
 } from "./SiteChrome";
 // Hero footage lives in src/lib so webpack bundles it.
 // hero-puzzle.mp4 = desktop (1280x960), hero-puzzle-mobile.mp4 = phones (720x540, ~3 MB)
+import Doodle from "./Doodle";
 import heroVideo from "../hero-puzzle.mp4";
 import heroVideoMobile from "../hero-puzzle-mobile.mp4";
 import heroPoster from "../hero-poster.jpg";
@@ -29,26 +30,30 @@ import momentClassroom from "../moment-classroom.jpg";
 const DOMAINS = [
   {
     key: "cognitive", label: "Cognitive", color: COLORS.teal,
-    row: 0, col: 0, edges: { top: 0, right: 1, bottom: 1, left: 0 },
+    row: 0, col: 0, edges: { top: -1, right: 1, bottom: -1, left: 1 },
     from: "translate(-70px, -70px)",
+    icon: "bulb",
     desc: "Thinking, attention, planning, memory and early number concepts.",
   },
   {
-    key: "language", label: "Language", color: COLORS.pink,
-    row: 0, col: 1, edges: { top: 0, right: 0, bottom: 1, left: -1 },
+    key: "language", label: "Language", color: COLORS.pink, labelDy: -0.22,
+    row: 0, col: 1, edges: { top: 1, right: -1, bottom: 1, left: -1 },
     from: "translate(70px, -70px)",
+    icon: "books",
     desc: "Understanding spoken instructions and using language accurately.",
   },
   {
     key: "finemotor", label: "Fine Motor", color: COLORS.orange,
-    row: 1, col: 0, edges: { top: -1, right: 1, bottom: 0, left: 0 },
+    row: 1, col: 0, edges: { top: 1, right: 1, bottom: 1, left: -1 },
     from: "translate(-70px, 70px)",
+    icon: "pencil",
     desc: "Hand-eye coordination, pencil control and motor planning.",
   },
   {
     key: "social", label: "Social & Emotional", color: COLORS.purple,
-    row: 1, col: 1, edges: { top: -1, right: 0, bottom: 0, left: -1 },
+    row: 1, col: 1, edges: { top: -1, right: 1, bottom: -1, left: -1 },
     from: "translate(70px, 70px)",
+    icon: "users",
     desc: "Understanding feelings, getting along with peers, making fair choices.",
   },
 ];
@@ -60,19 +65,27 @@ function DomainPuzzle() {
 
   // Rendered size of one piece body — shrinks on narrow phones so the
   // 2x2 grid (BODY_PX * 2 wide) never forces horizontal scroll.
-  const BODY_PX = isMobile ? 108 : 148;
+  const BODY_PX = isMobile ? 124 : 188;
   const SCALE = BODY_PX / PIECE_BODY;
   const PAD_PX = PIECE_PAD * SCALE;                       // room the tabs need
   const SVG_PX = (PIECE_BODY + PIECE_PAD * 2) * SCALE;
-  const labelSize = isMobile ? 12 : 14.5;
+  const labelSize = isMobile ? 12.5 : 16.5;
+  // Push a label away from a socket (a neighbour's tab pokes in); sockets that
+  // face a neighbouring piece are deeper-looking, so they push a little harder.
+  const nudge = (side, d) => {
+    if (d.edges[side] !== -1) return 0;
+    const inner = (side === "left" && d.col === 1) || (side === "right" && d.col === 0) ||
+                  (side === "top" && d.row === 1) || (side === "bottom" && d.row === 0);
+    return BODY_PX * (inner ? 0.18 : 0.13);
+  };
 
   return (
-    <div style={{ position: "relative", width: "100%", maxWidth: 440, margin: "0 auto" }}>
+    <div style={{ position: "relative", width: "100%", maxWidth: 520, margin: "0 auto" }}>
       {/* The assembled jigsaw. Pieces are absolutely positioned so their tabs
           overlap into the neighbouring sockets rather than sitting in a grid. */}
       <div style={{
         position: "relative", width: BODY_PX * 2, height: BODY_PX * 2,
-        margin: "0 auto", overflow: "visible",
+        margin: `${PAD_PX * 0.8}px auto`, overflow: "visible",
       }}>
         {DOMAINS.map((d, i) => {
           const isHovered = hovered === d.key;
@@ -105,14 +118,16 @@ function DomainPuzzle() {
                     filter: `drop-shadow(0 8px 20px ${d.color}45)`,
                   }}
                 >
-                  <path d={piecePath(d.edges)} fill={d.color} />
+                  <path d={piecePath(d.edges)} fill={d.color} stroke="#fff" strokeWidth={3.5} strokeLinejoin="round" />
                 </svg>
                 <span style={{
                   position: "absolute", inset: 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontFamily: FONTS.heading, fontWeight: 900,
                   fontSize: labelSize, color: ON_DARK, textAlign: "center",
-                  lineHeight: 1.2, pointerEvents: "none", padding: isMobile ? "0 14px" : "0 22px",
+                  lineHeight: 1.2, pointerEvents: "none", padding: isMobile ? "0 12px" : "0 18px",
+                  // Nudge the label away from an inner socket, where a neighbour tab pokes in
+                  transform: `translate(${nudge("left", d) - nudge("right", d)}px, ${nudge("top", d) - nudge("bottom", d) + (d.labelDy || 0) * BODY_PX}px)`,
                   textShadow: "0 1px 6px rgba(0,0,0,0.3)",
                 }}>
                   {d.label}
@@ -126,23 +141,34 @@ function DomainPuzzle() {
       {/* Description panel — swaps as you hover each piece */}
       <div style={{
         marginTop: 20, minHeight: 78, padding: "16px 20px",
-        borderRadius: 14, textAlign: "center", background: COLORS.white,
+        borderRadius: 14, background: COLORS.white,
         border: `1px solid ${active ? active.color + "55" : COLORS.border}`,
         boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
         transition: "border-color 0.25s ease",
+        display: "flex", alignItems: "center", gap: 16, textAlign: "left",
       }}>
-        {active ? (
-          <>
-            <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: active.color, marginBottom: 5 }}>
-              {active.label} development
+        <div style={{
+          flex: "0 0 auto", width: 64, height: 64, borderRadius: 16,
+          background: (active ? active.color : COLORS.teal) + "1f",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          transition: "background 0.25s ease",
+        }}>
+          <Doodle name={active ? active.icon : "puzzle"} size={44} color={active ? active.color : COLORS.teal} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {active ? (
+            <>
+              <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: active.color, marginBottom: 5 }}>
+                {active.label} development
+              </p>
+              <p style={{ fontSize: 13.5, color: COLORS.inkMid, lineHeight: 1.6 }}>{active.desc}</p>
+            </>
+          ) : (
+            <p style={{ fontSize: 13, color: COLORS.inkFaint, lineHeight: 1.6 }}>
+              One screener. Four developmental domains.<br />Hover a piece to explore.
             </p>
-            <p style={{ fontSize: 13.5, color: COLORS.inkMid, lineHeight: 1.6 }}>{active.desc}</p>
-          </>
-        ) : (
-          <p style={{ fontSize: 13, color: COLORS.inkFaint, lineHeight: 1.6, paddingTop: 12 }}>
-            One screener. Four developmental domains.<br />Hover a piece to explore.
-          </p>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
@@ -208,6 +234,7 @@ export function Hero({ badge = TPP_HERO.badge, lead = TPP_HERO.lead, actions = [
       }}>
         {/* Left — message */}
         <div style={{ textAlign: isMobile ? "center" : "left" }}>
+          {badge && (
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 8,
             padding: "7px 16px", borderRadius: 20,
@@ -219,6 +246,7 @@ export function Hero({ badge = TPP_HERO.badge, lead = TPP_HERO.lead, actions = [
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS.teal }} />
             {badge}
           </div>
+          )}
 
           <h1 style={{
             fontFamily: FONTS.heading,
@@ -288,10 +316,7 @@ export function Hero({ badge = TPP_HERO.badge, lead = TPP_HERO.lead, actions = [
           borderTop: `1px solid ${COLORS.border}`, borderBottom: `1px solid ${COLORS.border}`,
         }}>
           {[
-            { value: "295+", label: "Children screened" },
-            { value: "4", label: "Partner schools" },
-            { value: "3", label: "Languages" },
-            { value: "4", label: "Developmental domains" },
+            
           ].map((s, i) => {
             const cols = isMobile ? 2 : 4;
             const isFirstInRow = i % cols === 0;
@@ -591,7 +616,7 @@ function WhatWeDo({ onNavigate }) {
                 height: "100%", padding: isMobile ? "30px 26px" : "38px 32px", borderRadius: 28,
                 background: item.bg, display: "flex", flexDirection: "column",
               }}>
-                <PuzzlePiece size={46} color={item.color} fillOpacity={1} rotate={-8} style={{ marginBottom: 20 }} />
+                <PuzzlePiece size={68} color={item.color} fillOpacity={1} rotate={-8} style={{ marginBottom: 6, marginLeft: -6 }} />
                 <h3 style={{ fontFamily: FONTS.heading, fontSize: 22, fontWeight: 800, color: COLORS.ink, marginBottom: 10 }}>{item.title}</h3>
                 <p style={{ fontSize: 15, color: COLORS.inkMid, lineHeight: 1.7, flex: 1 }}>{item.desc}</p>
                 {item.page && (
@@ -633,10 +658,10 @@ const lighten = (color, amount = 0.5) =>
   `color-mix(in srgb, ${color} ${Math.round((1 - amount) * 100)}%, ${COLORS.white})`;
 
 const VISION_ITEMS = [
-  { title: "The Puzzle Box", desc: "ECD developmental screening\nfor 5 to 6 year olds.", color: COLORS.teal, page: "pb-home", row: 0, col: 0, edges: { top: 0, right: 1, bottom: 1, left: 0 } },
+  { title: "The Puzzle Box", desc: "ECD developmental screening\nfor 5 to 6 year olds.", color: COLORS.teal, page: "pb-home", row: 0, col: 0, edges: { top: -1, right: 1, bottom: -1, left: 1 } },
    {title: "Puzzle Play", desc: "Nationwide puzzle development\nfor Grades 0 to 7.", color: COLORS.pink, page: "pp-home", row: 0, col: 1, edges: { top: 0, right: 1, bottom: 1, left: -1 } },
   { title: "Puzzle TV", desc: "An educational TV show\ntaking development into\nhomes.", color: lighten(COLORS.purple), inDevelopment: true, row: 0, col: 2, edges: { top: 0, right: 0, bottom: 1, left: -1 } },
-  { title: "Puzzle App", desc: "Puzzles for all — a digital\nplatform, everywhere.", color: lighten(COLORS.orange), inDevelopment: true, row: 1, col: 0, edges: { top: -1, right: 1, bottom: 0, left: 0 } },
+  { title: "Puzzle App", desc: "Puzzles for all — a digital\nplatform, everywhere.", color: lighten(COLORS.orange), inDevelopment: true, row: 1, col: 0, edges: { top: 1, right: 1, bottom: 1, left: -1 } },
   { title: "Puzzle Production", desc: "Design, production and\ndistribution, creating jobs\nthrough printing and recycling.", color: lighten(COLORS.maroon), inDevelopment: true, row: 1, col: 1, edges: { top: -1, right: 1, bottom: 0, left: -1 } },
   { title: "Puzzle Data Analysis", desc: "Recording the shifts that\npuzzles make.", color: lighten(COLORS.teal), inDevelopment: true, row: 1, col: 2, edges: { top: -1, right: 0, bottom: 0, left: -1 } },
 ];

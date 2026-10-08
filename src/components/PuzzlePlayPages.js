@@ -37,7 +37,7 @@ function PlayShell({ current, onNavigate, onNavigateToLogin, children }) {
   );
 }
 
-function PlayHero({ badge, title, lead, children, accent = COLORS.pink }) {
+function PlayHero({ title, lead, children, accent = COLORS.pink }) {
   const isMobile = useIsMobile(640);
   return (
     <section style={{
@@ -47,13 +47,6 @@ function PlayHero({ badge, title, lead, children, accent = COLORS.pink }) {
     }}>
       <PuzzlePiece size={150} color={accent} rotate={12} style={{ position: "absolute", top: 50, right: -40 }} />
       <div style={{ maxWidth: 1300, margin: "0 auto", padding: isMobile ? "48px 20px 40px" : "72px 40px 56px", position: "relative" }}>
-        <span style={{
-          display: "inline-block", padding: "7px 16px", borderRadius: 20,
-          background: COLORS.pinkLight, border: "1px solid rgba(232,23,93,0.25)",
-          fontSize: 12, fontWeight: 800, color: COLORS.pink, marginBottom: 24,
-        }}>
-          {badge}
-        </span>
         <h1 style={{
           fontFamily: FONTS.heading, fontSize: "clamp(34px, 4.4vw, 56px)",
           fontWeight: 900, color: COLORS.ink, lineHeight: 1.08, letterSpacing: "-0.03em", marginBottom: 20,
@@ -137,8 +130,6 @@ export function PuzzlePlayHome(props) {
       {(go) => (
         <>
           <PlayHero
-            badge="Puzzle Play"
-            title="Puzzle Play"
             lead="Nationwide puzzle development for Grades 0 to 7 — digital lesson plans, multilingual instructional videos and training quizzes that help educators run puzzle-based activities in the classroom."
           >
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 32 }}>
@@ -155,7 +146,6 @@ export function PuzzlePlayHome(props) {
                 Purchase
               </button>
             </div>
-            <TbcNote>The full Puzzle Play introduction is still being written.</TbcNote>
           </PlayHero>
 
           <section style={{ padding: isMobile ? "56px 20px" : "90px 40px", background: COLORS.white }}>
@@ -191,7 +181,7 @@ export function PuzzlePlayHow(props) {
             title="How Puzzle Play works"
             lead="From choosing the puzzle to seeing your learners' progress."
           >
-            <TbcNote>This outline is a draft — the full description is still to be provided.</TbcNote>
+            
           </PlayHero>
           <section style={{ padding: isMobile ? "56px 20px" : "90px 40px", background: COLORS.white }}>
             <div style={{ maxWidth: 1300, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>

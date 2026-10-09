@@ -93,16 +93,53 @@ function rateLimited(uid: string) {
   return hits.length > PER_MINUTE;
 }
 
+// Verifies the Firebase ID token sent by the browser and returns the
+// caller's Firebase UID, or null if the request can't be trusted.
+// Unlike verifyFirebase in issue-offline-package, this never throws:
+// every failure becomes null, so the handler must turn null into a 401.
+
 async function verifiedUser(req: Request) {
+
+   // Pull the token out of "Authorization: Bearer <token>". The regex strips
+  // the "Bearer " prefix case-insensitively; if the header is missing, the
+  // `?? ""` fallback leaves an empty string instead of crashing on null.
+
   const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+
+   // No token supplied, so there is nothing to verify
+
   if (!token) return null;
   try {
+
+
+      // Check the token's signature against Google's public keys
+    // (firebaseKeys). jwtVerify also rejects expired or not-yet-valid
+    // tokens automatically.
+
     const { payload } = await jwtVerify(token, firebaseKeys, {
+
+       // Must have been issued by this Firebase project's token service
+
       issuer: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
+
+      // Must be meant for this project, so tokens minted for other
+      // Firebase apps are rejected here
+
       audience: FIREBASE_PROJECT_ID,
     });
+
+     // `sub` is the Firebase UID. Only return it if it's a non-empty string;
+    // anything else (missing, wrong type, empty) is treated as unusable.
+
     return typeof payload.sub === "string" && payload.sub ? payload.sub : null;
   } catch {
+
+
+    // Any verification failure (bad signature, expired, wrong issuer or
+    // audience, malformed token) ends up here. Returning null instead of
+    // the error means callers learn nothing about why it failed, which
+    // avoids leaking details to an attacker.
+    
     return null;
   }
 }

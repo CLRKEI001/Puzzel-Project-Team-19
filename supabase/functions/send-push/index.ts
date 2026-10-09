@@ -62,7 +62,23 @@ function render(m: Record<string, any>) {
 
 serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  // Authenticate the caller with a shared secret. This function is called by
+// a database trigger (not a signed-in user), so there is no Firebase token
+// to verify. Instead, the trigger sends a secret header that only the
+// database and this function know.
+
+// Read the expected secret from the function's environment variables
+// (set as a Supabase secret, never hard-coded in the source).
+
   const secret = env("WEBHOOK_SECRET");
+
+  // Reject the request unless the header matches the secret exactly.
+// `!secret` makes this fail closed: if WEBHOOK_SECRET was never configured,
+// every request is refused, rather than an undefined secret accidentally
+// letting callers through. Returning 401 before doing anything else means
+// no email is built or sent for an unauthorised caller.
+
   if (!secret || req.headers.get("x-webhook-secret") !== secret) return json({ error: "Unauthorized" }, 401);
 
   let payload: any;

@@ -8,32 +8,32 @@
 //    unchanged from before.
 
 import React, { useState, useEffect } from "react";
-import { auth } from "./firebase";
+import { auth } from "./services/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { supabase } from "./supabaseClient";
-import { mapUserRow } from "./lib/mappers";
-import Login from "./components/Login";
-import PendingApproval from "./components/PendingApproval";
-import Dashboard from "./components/Dashboard";
-import TeacherHome from "./components/TeacherHome";
-import PsychologistHome from "./components/PsychologistHome";
-import AdminHome from "./components/AdminHome";
-import PuzzleTransition from "./components/PuzzleTransition";
-import TranslatorChat from "./components/TranslatorChat";
+import { supabase } from "./services/supabaseClient";
+import { mapUserRow } from "./utils/mappers";
+import Login from "./components/dashboards/Login";
+import PendingApproval from "./components/dashboards/PendingApproval";
+import Dashboard from "./components/dashboards/Dashboard";
+import TeacherHome from "./components/dashboards/TeacherHome";
+import PsychologistHome from "./components/dashboards/PsychologistHome";
+import AdminHome from "./components/dashboards/AdminHome";
+import PuzzleTransition from "./components/shared/PuzzleTransition";
+import TranslatorChat from "./components/translator/TranslatorChat";
 
 // NEW — your teammate's public site pages. Adjust these paths if her files
 // don't actually live in ./components (e.g. change to "./pages/Homepage" etc.)
-import Homepage from "./components/Homepage";
-import About from "./components/About";
-import HowItWorks from "./components/HowItWorks";
-import TrainingPage from "./components/Trainingpage";
-import DonatePage from "./components/DonatePage";
-import PuzzleBoxHome from "./components/PuzzleBoxHome";
-import PuzzleBoxPurchase from "./components/PuzzleBoxPurchase";
-import MemberArea from "./components/MemberArea";
+import Homepage from "./components/public/Homepage";
+import About from "./components/public/About";
+import HowItWorks from "./components/public/HowItWorks";
+import TrainingPage from "./components/public/Trainingpage";
+import DonatePage from "./components/public/DonatePage";
+import PuzzleBoxHome from "./components/public/PuzzleBoxHome";
+import PuzzleBoxPurchase from "./components/public/PuzzleBoxPurchase";
+import MemberArea from "./components/dashboards/MemberArea";
 import {
   PuzzlePlayHome, PuzzlePlayHow, PuzzlePlayPurchase, PuzzlePlayLogin,
-} from "./components/PuzzlePlayPages";
+} from "./components/public/PuzzlePlayPages";
 
 import "./App.css";
 
